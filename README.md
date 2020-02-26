@@ -1,7 +1,7 @@
 <div align="center">
   <br>
   <br>
-  <img src="assets/icons/logo.svg" alt="The Diffr logo: two slightly overlapping diamond shapes" width="210" height="140">
+  <img src="logo.png" alt="The Diffr logo: two slightly overlapping diamond shapes" width="210" height="140">
 
   <br>
 </div>
