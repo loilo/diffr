@@ -32,6 +32,12 @@ export default {
   },
   methods: {
     async finishAnimation() {
+      // Skip all animation steps if the document is hidden
+      if (document.hidden) {
+        this.$emit('done')
+        return
+      }
+
       this.$refs.square1.style.animationPlayState = 'paused'
       this.$refs.square2.style.animationPlayState = 'paused'
 
