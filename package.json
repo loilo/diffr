@@ -29,6 +29,6 @@
     "prettier": "^2.0.5",
     "sass": "^1.26.8",
     "sass-loader": "^8.0.2",
-    "workerize-loader": "^1.2.1"
+    "workerize-loader": "^1.3.0"
   }
 }
