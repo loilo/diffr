@@ -8757,10 +8757,10 @@ vue-client-only@^2.0.0:
   resolved "https://registry.yarnpkg.com/vue-client-only/-/vue-client-only-2.0.0.tgz#ddad8d675ee02c761a14229f0e440e219de1da1c"
   integrity sha512-arhk1wtWAfLsJyxGMoEYhoBowM87/i6HLSG2LH/03Yog6i2d9JEN1peMP0Ceis+/n9DxdenGYZZTxbPPJyHciA==
 
-vue-context@^5.2.0:
-  version "5.2.0"
-  resolved "https://registry.yarnpkg.com/vue-context/-/vue-context-5.2.0.tgz#d027f626af50e717c2afd57859dec30a851167de"
-  integrity sha512-XH3SwDanAcE7ppzVEkXqpMyzkFKUDp8TDh4vBE9UPbT6OHwLIwtANH6ZAakq8q2iV+hGtDDfwYgX12IbZjyNnw==
+vue-context@^6.0.0:
+  version "6.0.0"
+  resolved "https://registry.yarnpkg.com/vue-context/-/vue-context-6.0.0.tgz#97a1a423fc86fb7a54f46d1567670aba281a5970"
+  integrity sha512-x8gO6xgj0MtTCWcYbDjO/7VJ/gT+nV+unqICvsN0hwqqBzft31eYyExYqrSvfDCRI7ixxObu5tbl7BQAKge7eg==
   dependencies:
     vue-clickaway "^2.2.2"
 
