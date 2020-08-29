@@ -106,7 +106,8 @@ export default {
     display: string.oneOf('split', 'unified').def('split'),
     ignoreTrimWhitespace: boolean.def(true),
     originalEditable: boolean.def(false),
-    modifiedEditable: boolean.def(false)
+    modifiedEditable: boolean.def(false),
+    wordWrap: string.def('on')
   },
   data: vm => ({
     originalModel: undefined,
