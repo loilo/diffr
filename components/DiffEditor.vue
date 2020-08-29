@@ -247,15 +247,10 @@ export default {
         wordWrap: 'on'
       })
 
-      // Disable editor search by disabling the according keybinding
+      // Disable editor functionalities by disabling the associated keybinding
       // This is a workaround to avoid extra widgets which break tab navigation
-      editor
-        .getOriginalEditor()
-        ._standaloneKeybindingService.addDynamicKeybinding('-actions.find')
-
-      editor
-        .getModifiedEditor()
-        ._standaloneKeybindingService.addDynamicKeybinding('-actions.find')
+      this.modifyEditorBehavior(editor.getOriginalEditor())
+      this.modifyEditorBehavior(editor.getModifiedEditor())
 
       window.editor = editor
 
@@ -277,6 +272,25 @@ export default {
       this.editor = editor
       this.originalModel = originalModel
       this.modifiedModel = modifiedModel
+    },
+    modifyEditorBehavior(editor) {
+      const keybindings = editor._standaloneKeybindingService
+
+      const disabledActions = [
+        'actions.find',
+        'actions.findWithSelection',
+        'editor.action.startFindReplaceAction',
+        'editor.action.nextMatchFindAction',
+        'editor.action.previousMatchFindAction',
+        'editor.action.nextSelectionMatchFindAction',
+        'editor.action.previousSelectionMatchFindAction',
+        'editor.action.startFindReplaceAction',
+        'editor.action.referenceSearch.trigger'
+      ]
+
+      for (const action of disabledActions) {
+        keybindings.addDynamicKeybinding(`-${action}`)
+      }
     },
     handleDragEnter(event) {
       if (this.display === 'unified') {
