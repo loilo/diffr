@@ -243,8 +243,7 @@ export default {
         showUnused: false,
         tabCompletion: 'off',
         theme: this.$store.state.theme.name,
-        useTabStops: false,
-        wordWrap: 'on'
+        useTabStops: false
       })
 
       // Disable editor functionalities by disabling the associated keybinding
@@ -274,6 +273,7 @@ export default {
       this.modifiedModel = modifiedModel
     },
     modifyEditorBehavior(editor) {
+      // Disable keybindings
       const keybindings = editor._standaloneKeybindingService
 
       const disabledActions = [
@@ -291,6 +291,11 @@ export default {
       for (const action of disabledActions) {
         keybindings.addDynamicKeybinding(`-${action}`)
       }
+
+      // Set word wrap
+      editor.updateOptions({
+        wordWrap: this.wordWrap
+      })
     },
     handleDragEnter(event) {
       if (this.display === 'unified') {
