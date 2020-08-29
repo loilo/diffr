@@ -253,16 +253,6 @@ export default {
 
       window.editor = editor
 
-      const stopTabs = event => {
-        if (event.code === 'Tab') {
-          event.stopPropagation()
-        }
-      }
-      editor.getOriginalEditor().onKeyDown(stopTabs)
-      editor.getModifiedEditor().onKeyDown(stopTabs)
-      editor.getOriginalEditor().onKeyUp(stopTabs)
-      editor.getModifiedEditor().onKeyUp(stopTabs)
-
       editor.setModel({
         original: originalModel,
         modified: modifiedModel
@@ -291,6 +281,15 @@ export default {
       for (const action of disabledActions) {
         keybindings.addDynamicKeybinding(`-${action}`)
       }
+
+      // Stop action when pressing Tab key
+      const stopTabs = event => {
+        if (event.code === 'Tab') {
+          event.stopPropagation()
+        }
+      }
+      editor.onKeyDown(stopTabs)
+      editor.onKeyUp(stopTabs)
 
       // Set word wrap
       editor.updateOptions({
