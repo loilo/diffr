@@ -21,7 +21,9 @@
     "textLink.foreground": "#47b5e8",
 
     "diffEditor.insertedTextBackground": "#2DAE5824",
+    "diffEditor.insertedTextForeground": "#2DAE5899",
     "diffEditor.removedTextBackground": "#FFAEAC44",
+    "diffEditor.removedTextForeground": "#FFAEAC",
 
     "editorLineNumber.foreground": "#9194A2aa"
   },

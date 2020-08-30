@@ -68,7 +68,9 @@ export default {
         '--shadow': colors['editor.foreground'].slice(0, 7) + '33',
         '--shadow-light': colors['editor.foreground'].slice(0, 7) + '11',
         '--remove': colors['diffEditor.removedTextBackground'],
+        '--remove-text': colors['diffEditor.removedTextForeground'],
         '--add': colors['diffEditor.insertedTextBackground'],
+        '--add-text': colors['diffEditor.insertedTextForeground'],
         '--selection': colors['editor.selectionBackground'],
         '--highlight': colors['editor.hoverHighlightBackground'],
         '--highlight-strong': colors['editor.hoverHighlightBackground'].slice(

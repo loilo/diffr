@@ -216,6 +216,14 @@ body {
   .monaco-editor .view-overlays .current-line {
     transition: border-color 0.2s;
   }
+
+  .monaco-editor .delete-sign + .line-numbers {
+    color: var(--remove-text);
+  }
+
+  .monaco-editor .insert-sign + .line-numbers {
+    color: var(--add-text);
+  }
 }
 
 .action-button {

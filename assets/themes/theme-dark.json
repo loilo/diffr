@@ -2,7 +2,9 @@
   "base": "vs-dark",
   "colors": {
     "diffEditor.insertedTextBackground": "#95e6cb40",
+    "diffEditor.insertedTextForeground": "#95e6cb99",
     "diffEditor.removedTextBackground": "#f0717844",
+    "diffEditor.removedTextForeground": "#f07178bb",
     "editor.contextMenuBackground": "#2c3340",
     "editor.background": "#212733",
     "editor.findMatchBackground": "#ffcc6633",
