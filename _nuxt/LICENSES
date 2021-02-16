@@ -1,14 +1,7 @@
-/*!
-  * vue-router v3.4.9
-  * (c) 2020 Evan You
-  * @license MIT
-  */
+/*!---------------------------------------------------------------------------------------------
+ *  Copyright (C) David Owens II, owensd.io. All rights reserved.
+ *--------------------------------------------------------------------------------------------*/
 
-/*!
- * Vue.js v2.6.12
- * (c) 2014-2020 Evan You
- * Released under the MIT License.
- */
 
 /*!
  * vue-client-only v2.0.0
@@ -22,12 +15,21 @@
  * Released under the MIT License.
  */
 
+
 /*!
- * vuex v3.6.0
- * (c) 2020 Evan You
- * @license MIT
+  * vue-router v3.5.1
+  * (c) 2021 Evan You
+  * @license MIT
+  */
+
+/*!
+ * Vue.js v2.6.12
+ * (c) 2014-2020 Evan You
+ * Released under the MIT License.
  */
 
-/*!---------------------------------------------------------------------------------------------
- *  Copyright (C) David Owens II, owensd.io. All rights reserved.
- *--------------------------------------------------------------------------------------------*/
+/*!
+ * vuex v3.6.2
+ * (c) 2021 Evan You
+ * @license MIT
+ */
