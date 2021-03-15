@@ -12,7 +12,7 @@
     "lodash-es": "^4.17.21",
     "lz-string": "^1.4.4",
     "monaco-editor": "^0.20.0",
-    "nuxt": "^2.15.2",
+    "nuxt": "^2.15.3",
     "vue-browser-state": "^2.0.0",
     "vue-context": "^6.0.0",
     "vue-reactivator": "^2.0.1"
