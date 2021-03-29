@@ -6,7 +6,7 @@ const PUBLIC_PATH = process.env.PUBLIC_PATH || '/'
 const POSSIBLY_EMPTY_PUBLIC_PATH = PUBLIC_PATH === '/' ? '' : PUBLIC_PATH
 
 export default {
-  mode: 'universal',
+  target: 'static',
 
   // Inform the router about the base directory
   router: {
