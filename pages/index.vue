@@ -56,6 +56,18 @@
       <button
         v-focus-ring
         type="button"
+        class="action-button action-button--clear"
+        :class="{ disabled: !mounted }"
+        @click="clear"
+      >
+        <!-- prettier-ignore -->
+        <svg aria-hidden="true" focusable="false" class="action-button__icon" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 14 14"><g fill="currentColor"><path d="M14 1.41L12.59 0 7 5.59 1.41 0 0 1.41 5.59 7 0 12.59 1.41 14 7 8.41 12.59 14 14 12.59 8.41 7z"/></g></svg>
+        <span class="action-button__label">Clear</span>
+      </button>
+
+      <button
+        v-focus-ring
+        type="button"
         class="action-button"
         :class="{ active: darkMode, disabled: !mounted }"
         :aria-pressed="String(darkMode)"
@@ -173,6 +185,10 @@ export default {
 
       this.original = modified
       this.modified = original
+    },
+    clear(){
+      this.original = ''
+      this.modified = ''
     }
   }
 }
