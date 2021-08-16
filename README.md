@@ -11,6 +11,7 @@
 > Create and share diffs with Diffr, the privacy focused online text diffing tool.
 
 This is the source code repository of the Diffr app. You can find the app at [loilo.github.io/diffr](https://loilo.github.io/diffr/).
+Updated.
 
 ## Technologies
 
