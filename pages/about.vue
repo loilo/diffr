@@ -143,8 +143,10 @@ export default {
 </script>
 
 <style lang="scss">
+@use 'sass:math';
+
 @function strip-unit($value) {
-  @return $value / ($value * 0 + 1);
+  @return math.div($value, ($value * 0 + 1));
 }
 
 @mixin fluid-type($min-vw, $max-vw, $min-font-size, $max-font-size) {
