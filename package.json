@@ -27,7 +27,7 @@
     "eslint-plugin-prettier": "^4.0.0",
     "monaco-editor-webpack-plugin": "^1.9.1",
     "prettier": "^2.6.2",
-    "sass": "^1.52.1",
+    "sass": "^1.52.2",
     "sass-loader": "^10.2.0",
     "workerize-loader": "^2.0.2"
   }
