@@ -24,7 +24,7 @@
     "eslint-config-prettier": "^8.5.0",
     "eslint": "^8.18.0",
     "eslint-plugin-nuxt": ">=3.2.0",
-    "eslint-plugin-prettier": "^4.0.0",
+    "eslint-plugin-prettier": "^4.1.0",
     "monaco-editor-webpack-plugin": "^1.9.1",
     "prettier": "^2.7.1",
     "sass": "^1.53.0",
