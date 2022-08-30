@@ -15,7 +15,7 @@
     "nuxt": "^2.15.8",
     "vue-browser-state": "^3.0.0",
     "vue-context": "^6.0.0",
-    "vue-reactivator": "^2.0.1"
+    "vue-reactivator": "^3.0.2"
   },
   "devDependencies": {
     "@nuxtjs/eslint-config": "^10.0.0",
