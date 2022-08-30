@@ -8884,10 +8884,10 @@ vue-no-ssr@^1.1.1:
   resolved "https://registry.yarnpkg.com/vue-no-ssr/-/vue-no-ssr-1.1.1.tgz#875f3be6fb0ae41568a837f3ac1a80eaa137b998"
   integrity sha512-ZMjqRpWabMPqPc7gIrG0Nw6vRf1+itwf0Itft7LbMXs2g3Zs/NFmevjZGN1x7K3Q95GmIjWbQZTVerxiBxI+0g==
 
-vue-reactivator@^2.0.1:
-  version "2.0.1"
-  resolved "https://registry.yarnpkg.com/vue-reactivator/-/vue-reactivator-2.0.1.tgz#5a7809f68c8a663324edcfb0f4a1ee9224234e4c"
-  integrity sha512-4WStrv4JTZyxfkWcPNUrCw2ElINPKNnQBZzBpp1nKQywcHLKx9WS3SvTDrw4Xlav6pzi5pQlI5pbb8xJRKZuyQ==
+vue-reactivator@^3.0.2:
+  version "3.0.2"
+  resolved "https://registry.yarnpkg.com/vue-reactivator/-/vue-reactivator-3.0.2.tgz#598c9453c2e63d074b4ed1ede100cc3a8a7dff7f"
+  integrity sha512-4VXZyh7EWT/5OgH7BUwW9UIfS3cvUbb8E0gQIZ1b+EP/Ynvf+vGpe7Xtfr5nbzQvJZ03XPTlYQZYjOSZMev/Ww==
 
 vue-router@^3.5.1:
   version "3.5.1"
