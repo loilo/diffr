@@ -12,13 +12,13 @@
     "lodash-es": "^4.17.21",
     "lz-string": "^1.4.4",
     "monaco-editor": "^0.20.0",
-    "nuxt": "^3.0.0",
+    "nuxt": "^2.0.0",
     "vue-browser-state": "^3.0.0",
     "vue-context": "^6.0.0",
-    "vue-reactivator": "^3.0.2"
+    "vue-reactivator": "^2.0.0"
   },
   "devDependencies": {
-    "@nuxtjs/eslint-config": "^12.0.0",
+    "@nuxtjs/eslint-config": "^11.0.0",
     "@nuxtjs/eslint-module": "^3.1.0",
     "babel-eslint": "^10.1.0",
     "eslint-config-prettier": "^8.5.0",
