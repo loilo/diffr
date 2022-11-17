@@ -17,8 +17,8 @@ jobs:
     - uses: actions/setup-node@v2
       with:
         node-version: '18'
-    - run: yarn install
-    - run: yarn build
+    - run: npm ci
+    - run: npm run build
       env:
         PUBLIC_PATH: /diffr
     - uses: JamesIves/github-pages-deploy-action@releases/v3
