@@ -11,7 +11,7 @@
     "@nuxtjs/pwa": "^3.3.5",
     "lodash-es": "^4.17.21",
     "lz-string": "^1.4.4",
-    "monaco-editor": "^0.34.1",
+    "monaco-editor": "^0.35.0",
     "nuxt": "^2.16.0",
     "vue-browser-state": "^3.0.0",
     "vue-context": "^6.0.0",
