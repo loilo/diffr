@@ -10,7 +10,7 @@
   "dependencies": {
     "@nuxtjs/pwa": "^3.3.5",
     "lodash-es": "^4.17.21",
-    "lz-string": "^1.4.4",
+    "lz-string": "^1.5.0",
     "monaco-editor": "^0.36.1",
     "nuxt": "^2.16.2",
     "vue-browser-state": "^3.0.0",
