@@ -4,73 +4,107 @@ Thanks to the CSS animation, the loader is already visible and animated
 before any JavaScript is loaded on the page.
 -->
 
-<template>
-  <div ref="loading" class="loading" :class="{ 'loading--finish': finish }">
-    <div class="loading__spinner" role="presentation">
-      <div ref="square1" class="loading__spinner-square-1" />
-      <div ref="square2" class="loading__spinner-square-2" />
-    </div>
-    <span class="loading__label"><slot>Loading</slot></span>
-  </div>
-</template>
-
-<script>
-import { boolean, number } from '~/assets/prop-types'
-import { whenEventDispatches, delay } from '~/assets/util'
-
-export default {
-  props: {
-    finish: boolean.def(false),
-    delayAfterFinish: number.def(0)
+<script lang="ts" setup>
+let props = withDefaults(
+  defineProps<{
+    finish?: boolean
+    delayAfterFinish?: number
+  }>(),
+  {
+    finish: false,
+    delayAfterFinish: 0,
   },
-  watch: {
-    finish(value) {
-      if (value) {
-        this.finishAnimation()
-      }
-    }
+)
+
+let emit = defineEmits<{
+  (e: 'done'): void
+}>()
+
+let square1Ref = ref<HTMLElement>()!
+let square2Ref = ref<HTMLElement>()!
+
+watch(
+  () => props.finish,
+  value => {
+    if (!value) return
+    finishAnimation()
   },
-  methods: {
-    async finishAnimation() {
-      // Skip all animation steps if the document is hidden
-      if (document.hidden) {
-        this.$emit('done')
-        return
-      }
+)
 
-      this.$refs.square1.style.animationPlayState = 'paused'
-      this.$refs.square2.style.animationPlayState = 'paused'
+function delay(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}
 
-      const square1Transform = window.getComputedStyle(this.$refs.square1)
-        .transform
-      const square2Transform = window.getComputedStyle(this.$refs.square2)
-        .transform
-
-      this.$refs.square1.style.animation = 'none'
-      this.$refs.square1.style.transform = square1Transform
-      this.$refs.square2.style.animation = 'none'
-      this.$refs.square2.style.transform = square2Transform
-
-      await delay(0)
-
-      const whenTransitionEnd = whenEventDispatches(
-        this.$refs.square1,
-        'transitionend'
-      )
-
-      this.$refs.square1.removeAttribute('style')
-      this.$refs.square2.removeAttribute('style')
-
-      await delay(0)
-      await whenTransitionEnd
-
-      await delay(this.delayAfterFinish)
-
-      this.$emit('done')
-    }
+async function finishAnimation() {
+  // Skip all animation steps if the document is hidden
+  if (document.hidden) {
+    emit('done')
+    return
   }
+
+  square1Ref.value!.style.animationPlayState = 'paused'
+  square2Ref.value!.style.animationPlayState = 'paused'
+
+  const square1Transform = window.getComputedStyle(square1Ref.value!).transform
+  const square2Transform = window.getComputedStyle(square2Ref.value!).transform
+
+  square1Ref.value!.style.animation = 'none'
+  square1Ref.value!.style.transform = square1Transform
+  square2Ref.value!.style.animation = 'none'
+  square2Ref.value!.style.transform = square2Transform
+
+  await delay(0)
+
+  let whenTransitionEnd = new Promise<void>(resolve => {
+    square1Ref.value!.addEventListener(
+      'transitionend',
+      () => {
+        resolve()
+      },
+      { once: true },
+    )
+  })
+
+  square1Ref.value!.removeAttribute('style')
+  square2Ref.value!.removeAttribute('style')
+
+  await delay(0)
+  await whenTransitionEnd
+
+  await delay(props.delayAfterFinish)
+
+  emit('done')
 }
 </script>
+
+<template>
+  <div
+    ref="loading"
+    class="loading z-1 absolute inset-0 flex h-full flex-col items-center justify-center"
+    :class="{ 'loading--finish': finish }"
+  >
+    <div class="loading__spinner" role="presentation">
+      <div
+        ref="square1Ref"
+        class="loading__spinner-square-1 bg-gradient-to-t from-blue-500 to-teal-400"
+      />
+      <div
+        ref="square2Ref"
+        class="loading__spinner-square-2 bg-gradient-to-t from-teal-500 to-teal-700"
+      />
+    </div>
+    <span class="mt-6 block text-2xl"
+      ><slot>Loading Diffr Editor...</slot></span
+    >
+    <span
+      class="mt-2 block animate-fade-in text-base opacity-0"
+      style="--animation-delay: 3000ms"
+      ><slot name="subtitle"
+        >This may take a moment on your first visit.</slot
+      ></span
+    >
+  </div>
+</template>
 
 <style lang="scss" scoped>
 $shadow-distance: 1px;
@@ -79,21 +113,6 @@ $shadow-spread: 0;
 $shadow-color: rgba(0, 0, 0, 0.25);
 
 .loading {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 0;
-  bottom: 0;
-  z-index: 1;
-
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  font-size: 1.5em;
-  font-weight: 300;
-
   &__label {
     display: block;
     margin-top: 1.5em;
@@ -118,12 +137,7 @@ $shadow-color: rgba(0, 0, 0, 0.25);
       animation: spin-square 2.5s infinite ease-in-out;
     }
 
-    &-square-1 {
-      background-color: #2fb1f0;
-    }
-
     &-square-2 {
-      background-color: #1d7caa;
       animation-delay: -1.1s;
     }
   }
@@ -145,7 +159,6 @@ $shadow-color: rgba(0, 0, 0, 0.25);
   .loading__spinner-square-2 {
     transform: translate(-13px, -13px) translate(24px, 34px) translateX(35px)
       translateX(-14px) rotate(45deg);
-    mix-blend-mode: color-dodge;
   }
 }
 

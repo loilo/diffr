@@ -1,0 +1,29 @@
+{
+  "base": "vs",
+  "inherit": false,
+  "colors": {
+    "focusBorder": "#47b5e8",
+    "foreground": "#686968",
+    "editorGroup.emptyBackground": "#F3F4F5",
+    "editor.selectionBackground": "#47b5e844",
+    "editor.background": "#FAFBFC",
+    "editor.foreground": "#565869",
+    "editorWhitespace.foreground": "#ADB1C255",
+    "editor.contextMenuBackground": "#ffffff",
+    "editor.findMatchBackground": "#00E6E06A",
+    "editor.findMatchHighlightBackground": "#00E6E02A",
+    "editor.hoverHighlightBackground": "#47b5e844",
+    "input.border": "#E9EAEB",
+    "editorLink.activeForeground": "#47b5e8",
+    "textLink.foreground": "#47b5e8",
+    "diffEditor.insertedTextBackground": "#2DAE5844",
+    "diffEditor.removedTextBackground": "#FFAEAC5b",
+    "editorLineNumber.foreground": "#9194A2"
+  },
+  "rules": [
+    {
+      "token": "",
+      "foreground": "565869"
+    }
+  ]
+}

@@ -1,34 +1,33 @@
 {
-  "author": "Florian Reuschel",
+  "name": "nuxt-app",
   "private": true,
   "scripts": {
-    "dev": "nuxt",
-    "build": "nuxt generate",
-    "lint": "eslint --ext .js,.vue --ignore-path .gitignore ."
-  },
-  "browserslist": "last 2 versions, not < 0.5%, not ie <= 11, not ie_mob <= 10",
-  "dependencies": {
-    "@nuxtjs/pwa": "^3.3.5",
-    "lodash-es": "^4.17.21",
-    "lz-string": "^1.5.0",
-    "monaco-editor": "^0.37.1",
-    "nuxt": "^2.16.3",
-    "vue-browser-state": "^3.0.0",
-    "vue-context": "^6.0.0",
-    "vue-reactivator": "^2.0.0"
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare"
   },
   "devDependencies": {
-    "@nuxtjs/eslint-config": "^11.0.0",
-    "@nuxtjs/eslint-module": "^4.0.2",
-    "babel-eslint": "^10.1.0",
-    "eslint-config-prettier": "^8.8.0",
-    "eslint": "^8.39.0",
-    "eslint-plugin-nuxt": ">=4.0.0",
-    "eslint-plugin-prettier": "^4.2.1",
-    "monaco-editor-webpack-plugin": "^1.9.1",
+    "@nuxtjs/google-fonts": "^3.0.0",
+    "@nuxtjs/tailwindcss": "^6.6.6",
+    "@pinia/nuxt": "^0.4.9",
+    "@tailwindcss/typography": "^0.5.9",
+    "@types/node": "^18",
+    "@vite-pwa/nuxt": "^0.0.7",
+    "monaco-editor": "^0.32.1",
+    "nuxt": "^3.4.2",
+    "nuxt-headlessui": "^1.1.4",
+    "pinia": "^2.0.35",
     "prettier": "^2.8.8",
-    "sass": "^1.62.1",
-    "sass-loader": "^10.2.0",
-    "workerize-loader": "^2.0.2"
+    "prettier-plugin-tailwindcss": "^0.2.7",
+    "sass": "^1.62.1"
+  },
+  "dependencies": {
+    "@nuxtjs/color-mode": "^3.2.0",
+    "@vueuse/nuxt": "^10.1.0",
+    "floating-vue": "^2.0.0-beta.20",
+    "lz-string": "^1.5.0",
+    "nuxt-monaco-editor": "^1.2.2"
   }
 }

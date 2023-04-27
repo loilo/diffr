@@ -1,0 +1,7 @@
+body {
+  @apply bg-slate-50 text-slate-600 dark:bg-slate-900 dark:text-slate-500;
+}
+
+div:where(.diffr-prose) {
+  @apply prose prose-slate dark:prose-invert prose-headings:font-normal prose-headings:text-slate-400 prose-a:rounded-md prose-a:text-blue-400 prose-a:no-underline focus-visible:prose-a:outline focus-visible:prose-a:outline-2 focus-visible:prose-a:outline-offset-8 focus-visible:prose-a:outline-current dark:prose-headings:text-slate-500 dark:prose-a:text-teal-400;
+}
