@@ -1,5 +1,6 @@
 export function useDiffrHead() {
   useHead({
+    title: 'Diffr',
     link: [
       {
         rel: 'icon',
