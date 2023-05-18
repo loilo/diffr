@@ -18,7 +18,7 @@
     "monaco-editor": "^0.32.1",
     "nuxt": "^3.4.2",
     "nuxt-headlessui": "^1.1.4",
-    "pinia": "^2.0.36",
+    "pinia": "^2.1.1",
     "prettier": "^2.8.8",
     "prettier-plugin-tailwindcss": "^0.3.0",
     "sass": "^1.62.1"
