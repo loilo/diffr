@@ -21,7 +21,7 @@
     "pinia": "^2.1.6",
     "prettier": "^3.0.0",
     "prettier-plugin-tailwindcss": "^0.4.1",
-    "sass": "^1.64.1"
+    "sass": "^1.64.2"
   },
   "dependencies": {
     "@nuxtjs/color-mode": "^3.3.0",
