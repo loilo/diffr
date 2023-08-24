@@ -10,6 +10,7 @@ updates:
       - dependency-name: sass-loader
         versions:
           - '>= 11.a, < 12'
-      - update-types:
+      - dependency-name: '*'
+        update-types:
           - 'version-update:semver-patch'
           - 'version-update:semver-minor'
