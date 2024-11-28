@@ -25,7 +25,7 @@
   },
   "dependencies": {
     "@nuxtjs/color-mode": "^3.3.0",
-    "@vueuse/nuxt": "^11.0.0",
+    "@vueuse/nuxt": "^12.0.0",
     "floating-vue": "^5.0.2",
     "lz-string": "^1.5.0",
     "nuxt-monaco-editor": "^1.2.3"
