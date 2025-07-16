@@ -16,7 +16,7 @@
     "@types/node": "^24",
     "@vite-pwa/nuxt": "^1.0.0",
     "monaco-editor": "^0.32.1",
-    "nuxt": "^3.16.1",
+    "nuxt": "^4.0.0",
     "nuxt-headlessui": "^1.1.4",
     "pinia": "^3.0.0",
     "prettier": "^3.0.2",
