@@ -49,7 +49,7 @@ let emit = defineEmits<Emits>()
 let isLoading = ref(true)
 
 let editorElementRef = ref<HTMLDivElement>()
-let monaco = useMonaco()!
+let monaco = await useMonaco()!
 
 let editor: Monaco.editor.IStandaloneDiffEditor
 let originalModel: Monaco.editor.ITextModel
@@ -134,10 +134,10 @@ until(() => unref(mounted) && unref(hasEditorElementRef))
       links: false,
       matchBrackets: 'never',
       originalEditable: true,
-      occurrencesHighlight: false,
+      occurrencesHighlight: 'off',
       renderWhitespace: 'selection',
       lightbulb: {
-        enabled: false,
+        enabled: monaco.editor.ShowLightbulbIconMode.Off,
       },
       quickSuggestions: false,
       inlineSuggest: { enabled: false },
@@ -150,6 +150,7 @@ until(() => unref(mounted) && unref(hasEditorElementRef))
       useTabStops: false,
       wordWrap: 'on',
       wrappingStrategy: 'advanced',
+      renderGutterMenu: false,
       // wordWrapColumn
       ...props.options,
     })
@@ -288,8 +289,8 @@ function onDragEnter(event: DragEvent) {
     event.dataTransfer?.types.includes('Files')
       ? 'Drop file here to compare'
       : event.dataTransfer?.types.includes('text/plain')
-      ? 'Drop text here to compare'
-      : undefined
+        ? 'Drop text here to compare'
+        : undefined
 }
 
 function onDragLeave(event: DragEvent) {
@@ -332,5 +333,9 @@ async function onDrop(event: DragEvent) {
 [data-editor] .drop-zone::after {
   @apply absolute inset-1 box-border flex items-center justify-center rounded bg-blue-400/20 text-2xl text-blue-400 dark:bg-teal-400/20 dark:text-teal-500;
   content: attr(data-drop-label);
+}
+
+[data-editor] :is(.monaco-editor, .monaco-diff-editor, .monaco-component) {
+  --vscode-focusBorder: #e5e7eb;
 }
 </style>

@@ -14,18 +14,11 @@ export default defineNuxtConfig({
     '@nuxtjs/google-fonts',
     'nuxt-headlessui',
     'nuxt-monaco-editor',
-    '~/modules/floating-vue/module',
-    '~/modules/fix-manifest/module',
+    '~~/modules/floating-vue/module',
+    '~~/modules/fix-manifest/module',
   ],
-  app: {
-    baseURL,
-    keepalive: true,
-  },
-  runtimeConfig: {
-    public: {
-      baseURL,
-    },
-  },
+  app: { baseURL, keepalive: true },
+  runtimeConfig: { public: { baseURL } },
   css: ['~/assets/css/global.scss'],
   pwa: {
     registerType: 'autoUpdate',
@@ -58,28 +51,11 @@ export default defineNuxtConfig({
       navigateFallback: baseURL,
       globPatterns: ['**/*.{js,css,html,png,svg,ico,ttf,woff,woff2}'],
     },
-    client: {
-      installPrompt: true,
-    },
-    devOptions: {
-      enabled: true,
-      type: 'module',
-    },
+    client: { installPrompt: true },
+    devOptions: { enabled: true, type: 'module' },
   },
-  googleFonts: {
-    families: {
-      'Fragment+Mono': [400],
-      Poppins: [400],
-    },
-  },
-  imports: {
-    dirs: ['./stores'],
-  },
-  pinia: {
-    autoImports: ['defineStore', 'acceptHMRUpdate'],
-  },
-  colorMode: {
-    storageKey: 'theme',
-    classSuffix: '',
-  },
+  googleFonts: { families: { 'Fragment+Mono': [400], Poppins: [400] } },
+  imports: { dirs: ['./app/stores'] },
+  pinia: { autoImports: ['defineStore', 'acceptHMRUpdate'] },
+  colorMode: { storageKey: 'theme', classSuffix: '' },
 })

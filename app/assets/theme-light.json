@@ -16,7 +16,9 @@
     "input.border": "#E9EAEB",
     "editorLink.activeForeground": "#47b5e8",
     "textLink.foreground": "#47b5e8",
+    "diffEditor.insertedLineBackground": "#2DAE5844",
     "diffEditor.insertedTextBackground": "#2DAE5844",
+    "diffEditor.removedLineBackground": "#FFAEAC5b",
     "diffEditor.removedTextBackground": "#FFAEAC5b",
     "editorLineNumber.foreground": "#9194A2"
   },

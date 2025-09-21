@@ -4,6 +4,8 @@
   "colors": {
     "diffEditor.insertedTextBackground": "#5af78e44",
     "diffEditor.insertedTextForeground": "#95e6cb99",
+    "diffEditor.insertedLineBackground": "#5af78e44",
+    "diffEditor.insertedLineForeground": "#95e6cb99",
     "diffEditor.removedTextBackground": "#ff5c5744",
     "diffEditor.removedTextForeground": "#f07178bb",
     "editor.contextMenuBackground": "#2c3340",
