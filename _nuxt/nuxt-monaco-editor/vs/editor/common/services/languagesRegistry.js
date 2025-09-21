@@ -2,10 +2,12 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
+import { coalesce } from '../../../base/common/arrays.js';
+import { onUnexpectedError } from '../../../base/common/errors.js';
 import { Emitter } from '../../../base/common/event.js';
 import { Disposable } from '../../../base/common/lifecycle.js';
 import { regExpLeadsToEndlessLoop } from '../../../base/common/strings.js';
-import { clearPlatformLanguageAssociations, getLanguageIds, registerPlatformLanguageAssociation } from './languagesAssociations.js';
+import { clearLanguageAssociations, getMimeTypes, registerLanguageAssociation } from './languagesAssociations.js';
 import { ModesRegistry, PLAINTEXT_LANGUAGE_ID } from '../languages/modesRegistry.js';
 import { Extensions } from '../../../platform/configuration/common/configurationRegistry.js';
 import { Registry } from '../../../platform/registry/common/platform.js';
@@ -15,8 +17,8 @@ export class LanguageIdCodec {
     constructor() {
         this._languageIdToLanguage = [];
         this._languageToLanguageId = new Map();
-        this._register(NULL_LANGUAGE_ID, 0 /* LanguageId.Null */);
-        this._register(PLAINTEXT_LANGUAGE_ID, 1 /* LanguageId.PlainText */);
+        this._register(NULL_LANGUAGE_ID, 0 /* Null */);
+        this._register(PLAINTEXT_LANGUAGE_ID, 1 /* PlainText */);
         this._nextLanguageId = 2;
     }
     _register(language, languageId) {
@@ -31,14 +33,13 @@ export class LanguageIdCodec {
         this._register(language, languageId);
     }
     encodeLanguageId(languageId) {
-        return this._languageToLanguageId.get(languageId) || 0 /* LanguageId.Null */;
+        return this._languageToLanguageId.get(languageId) || 0 /* Null */;
     }
     decodeLanguageId(languageId) {
         return this._languageIdToLanguage[languageId] || NULL_LANGUAGE_ID;
     }
 }
 export class LanguagesRegistry extends Disposable {
-    static { this.instanceCount = 0; }
     constructor(useModesRegistry = true, warnOnOverwrite = false) {
         super();
         this._onDidChange = this._register(new Emitter());
@@ -67,7 +68,7 @@ export class LanguagesRegistry extends Disposable {
         this._mimeTypesMap = {};
         this._nameMap = {};
         this._lowercaseNameMap = {};
-        clearPlatformLanguageAssociations();
+        clearLanguageAssociations();
         const desc = [].concat(ModesRegistry.getLanguages()).concat(this._dynamicLanguages);
         this._registerLanguages(desc);
     }
@@ -135,19 +136,19 @@ export class LanguagesRegistry extends Disposable {
             else {
                 resolvedLanguage.extensions = resolvedLanguage.extensions.concat(lang.extensions);
             }
-            for (const extension of lang.extensions) {
-                registerPlatformLanguageAssociation({ id: langId, mime: primaryMime, extension: extension }, this._warnOnOverwrite);
+            for (let extension of lang.extensions) {
+                registerLanguageAssociation({ id: langId, mime: primaryMime, extension: extension }, this._warnOnOverwrite);
             }
         }
         if (Array.isArray(lang.filenames)) {
-            for (const filename of lang.filenames) {
-                registerPlatformLanguageAssociation({ id: langId, mime: primaryMime, filename: filename }, this._warnOnOverwrite);
+            for (let filename of lang.filenames) {
+                registerLanguageAssociation({ id: langId, mime: primaryMime, filename: filename }, this._warnOnOverwrite);
                 resolvedLanguage.filenames.push(filename);
             }
         }
         if (Array.isArray(lang.filenamePatterns)) {
-            for (const filenamePattern of lang.filenamePatterns) {
-                registerPlatformLanguageAssociation({ id: langId, mime: primaryMime, filepattern: filenamePattern }, this._warnOnOverwrite);
+            for (let filenamePattern of lang.filenamePatterns) {
+                registerLanguageAssociation({ id: langId, mime: primaryMime, filepattern: filenamePattern }, this._warnOnOverwrite);
             }
         }
         if (typeof lang.firstLine === 'string' && lang.firstLine.length > 0) {
@@ -158,12 +159,12 @@ export class LanguagesRegistry extends Disposable {
             try {
                 const firstLineRegex = new RegExp(firstLineRegexStr);
                 if (!regExpLeadsToEndlessLoop(firstLineRegex)) {
-                    registerPlatformLanguageAssociation({ id: langId, mime: primaryMime, firstline: firstLineRegex }, this._warnOnOverwrite);
+                    registerLanguageAssociation({ id: langId, mime: primaryMime, firstline: firstLineRegex }, this._warnOnOverwrite);
                 }
             }
             catch (err) {
                 // Most likely, the regex was bad
-                console.warn(`[${lang.id}]: Invalid regular expression \`${firstLineRegexStr}\`: `, err);
+                onUnexpectedError(err);
             }
         }
         resolvedLanguage.aliases.push(langId);
@@ -231,7 +232,8 @@ export class LanguagesRegistry extends Disposable {
         if (!resource && !firstLine) {
             return [];
         }
-        return getLanguageIds(resource, firstLine);
+        const mimeTypes = getMimeTypes(resource, firstLine);
+        return coalesce(mimeTypes.map(mimeType => this.getLanguageIdByMimeType(mimeType)));
     }
 }
-//# sourceMappingURL=languagesRegistry.js.map
+LanguagesRegistry.instanceCount = 0;

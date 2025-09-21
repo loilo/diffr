@@ -21,16 +21,10 @@ import { IThemeService } from '../../../platform/theme/common/themeService.js';
 let StandaloneCodeEditorService = class StandaloneCodeEditorService extends AbstractCodeEditorService {
     constructor(contextKeyService, themeService) {
         super(themeService);
-        this._register(this.onCodeEditorAdd(() => this._checkContextKey()));
-        this._register(this.onCodeEditorRemove(() => this._checkContextKey()));
+        this.onCodeEditorAdd(() => this._checkContextKey());
+        this.onCodeEditorRemove(() => this._checkContextKey());
         this._editorIsOpen = contextKeyService.createKey('editorIsOpen', false);
         this._activeCodeEditor = null;
-        this._register(this.registerCodeEditorOpenHandler(async (input, source, sideBySide) => {
-            if (!source) {
-                return null;
-            }
-            return this.doOpenEditor(source, input);
-        }));
     }
     _checkContextKey() {
         let hasCodeEditor = false;
@@ -47,6 +41,12 @@ let StandaloneCodeEditorService = class StandaloneCodeEditorService extends Abst
     }
     getActiveCodeEditor() {
         return this._activeCodeEditor;
+    }
+    openCodeEditor(input, source, sideBySide) {
+        if (!source) {
+            return Promise.resolve(null);
+        }
+        return Promise.resolve(this.doOpenEditor(source, input));
     }
     doOpenEditor(editor, input) {
         const model = this.findModel(editor, input.resource);
@@ -65,7 +65,7 @@ let StandaloneCodeEditorService = class StandaloneCodeEditorService extends Abst
         if (selection) {
             if (typeof selection.endLineNumber === 'number' && typeof selection.endColumn === 'number') {
                 editor.setSelection(selection);
-                editor.revealRangeInCenter(selection, 1 /* ScrollType.Immediate */);
+                editor.revealRangeInCenter(selection, 1 /* Immediate */);
             }
             else {
                 const pos = {
@@ -73,7 +73,7 @@ let StandaloneCodeEditorService = class StandaloneCodeEditorService extends Abst
                     column: selection.startColumn
                 };
                 editor.setPosition(pos);
-                editor.revealPositionInCenter(pos, 1 /* ScrollType.Immediate */);
+                editor.revealPositionInCenter(pos, 1 /* Immediate */);
             }
         }
         return editor;
@@ -91,5 +91,4 @@ StandaloneCodeEditorService = __decorate([
     __param(1, IThemeService)
 ], StandaloneCodeEditorService);
 export { StandaloneCodeEditorService };
-registerSingleton(ICodeEditorService, StandaloneCodeEditorService, 0 /* InstantiationType.Eager */);
-//# sourceMappingURL=standaloneCodeEditorService.js.map
+registerSingleton(ICodeEditorService, StandaloneCodeEditorService);

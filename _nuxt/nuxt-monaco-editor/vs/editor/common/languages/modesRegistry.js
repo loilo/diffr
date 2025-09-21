@@ -4,18 +4,17 @@
  *--------------------------------------------------------------------------------------------*/
 import * as nls from '../../../nls.js';
 import { Emitter } from '../../../base/common/event.js';
+import { LanguageConfigurationRegistry } from './languageConfigurationRegistry.js';
 import { Registry } from '../../../platform/registry/common/platform.js';
-import { Disposable } from '../../../base/common/lifecycle.js';
 import { Mimes } from '../../../base/common/mime.js';
 import { Extensions as ConfigurationExtensions } from '../../../platform/configuration/common/configurationRegistry.js';
 // Define extension point ids
 export const Extensions = {
     ModesRegistry: 'editor.modesRegistry'
 };
-export class EditorModesRegistry extends Disposable {
+export class EditorModesRegistry {
     constructor() {
-        super();
-        this._onDidChangeLanguages = this._register(new Emitter());
+        this._onDidChangeLanguages = new Emitter();
         this.onDidChangeLanguages = this._onDidChangeLanguages.event;
         this._languages = [];
     }
@@ -44,30 +43,35 @@ export const PLAINTEXT_EXTENSION = '.txt';
 ModesRegistry.registerLanguage({
     id: PLAINTEXT_LANGUAGE_ID,
     extensions: [PLAINTEXT_EXTENSION],
-    aliases: [nls.localize(777, "Plain Text"), 'text'],
+    aliases: [nls.localize('plainText.alias', "Plain Text"), 'text'],
     mimetypes: [Mimes.text]
 });
+LanguageConfigurationRegistry.register(PLAINTEXT_LANGUAGE_ID, {
+    brackets: [
+        ['(', ')'],
+        ['[', ']'],
+        ['{', '}'],
+    ],
+    surroundingPairs: [
+        { open: '{', close: '}' },
+        { open: '[', close: ']' },
+        { open: '(', close: ')' },
+        { open: '<', close: '>' },
+        { open: '\"', close: '\"' },
+        { open: '\'', close: '\'' },
+        { open: '`', close: '`' },
+    ],
+    colorizedBracketPairs: [],
+    folding: {
+        offSide: true
+    }
+}, 0);
 Registry.as(ConfigurationExtensions.Configuration)
     .registerDefaultConfigurations([{
         overrides: {
             '[plaintext]': {
                 'editor.unicodeHighlight.ambiguousCharacters': false,
                 'editor.unicodeHighlight.invisibleCharacters': false
-            },
-            // TODO: Below is a workaround for: https://github.com/microsoft/vscode/issues/240567
-            '[go]': {
-                'editor.insertSpaces': false
-            },
-            '[makefile]': {
-                'editor.insertSpaces': false,
-            },
-            '[shellscript]': {
-                'files.eol': '\n'
-            },
-            '[yaml]': {
-                'editor.insertSpaces': true,
-                'editor.tabSize': 2
             }
         }
     }]);
-//# sourceMappingURL=modesRegistry.js.map

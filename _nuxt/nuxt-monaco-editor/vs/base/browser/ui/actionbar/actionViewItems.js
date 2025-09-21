@@ -4,21 +4,15 @@
  *--------------------------------------------------------------------------------------------*/
 import { isFirefox } from '../../browser.js';
 import { DataTransfers } from '../../dnd.js';
-import { addDisposableListener, EventHelper, EventType } from '../../dom.js';
+import { $, addDisposableListener, append, EventHelper, EventType } from '../../dom.js';
 import { EventType as TouchEventType, Gesture } from '../../touch.js';
-import { getDefaultHoverDelegate } from '../hover/hoverDelegateFactory.js';
-import { SelectBox } from '../selectBox/selectBox.js';
 import { Action, ActionRunner, Separator } from '../../../common/actions.js';
 import { Disposable } from '../../../common/lifecycle.js';
 import * as platform from '../../../common/platform.js';
 import * as types from '../../../common/types.js';
 import './actionbar.css';
 import * as nls from '../../../../nls.js';
-import { getBaseLayerHoverDelegate } from '../hover/hoverDelegate2.js';
 export class BaseActionViewItem extends Disposable {
-    get action() {
-        return this._action;
-    }
     constructor(context, action, options = {}) {
         super();
         this.options = options;
@@ -62,6 +56,9 @@ export class BaseActionViewItem extends Disposable {
     set actionRunner(actionRunner) {
         this._actionRunner = actionRunner;
     }
+    getAction() {
+        return this._action;
+    }
     isEnabled() {
         return this._action.enabled;
     }
@@ -76,7 +73,7 @@ export class BaseActionViewItem extends Disposable {
             container.draggable = true;
             if (isFirefox) {
                 // Firefox: requires to set a text data transfer to get going
-                this._register(addDisposableListener(container, EventType.DRAG_START, e => e.dataTransfer?.setData(DataTransfers.TEXT, this._action.label)));
+                this._register(addDisposableListener(container, EventType.DRAG_START, e => { var _a; return (_a = e.dataTransfer) === null || _a === void 0 ? void 0 : _a.setData(DataTransfers.TEXT, this._action.label); }));
             }
         }
         this._register(addDisposableListener(element, TouchEventType.Tap, e => this.onClick(e, true))); // Preserve focus on tap #125470
@@ -117,8 +114,9 @@ export class BaseActionViewItem extends Disposable {
         });
     }
     onClick(event, preserveFocus = false) {
+        var _a;
         EventHelper.stop(event, true);
-        const context = types.isUndefinedOrNull(this._context) ? this.options?.useEventAsContext ? event : { preserveFocus } : this._context;
+        const context = types.isUndefinedOrNull(this._context) ? ((_a = this.options) === null || _a === void 0 ? void 0 : _a.useEventAsContext) ? event : { preserveFocus } : this._context;
         this.actionRunner.run(this._action, context);
     }
     // Only set the tabIndex on the element once it is about to get focused
@@ -151,34 +149,8 @@ export class BaseActionViewItem extends Disposable {
     updateLabel() {
         // implement in subclass
     }
-    getClass() {
-        return this.action.class;
-    }
-    getTooltip() {
-        return this.action.tooltip;
-    }
-    getHoverContents() {
-        return this.getTooltip();
-    }
     updateTooltip() {
-        if (!this.element) {
-            return;
-        }
-        const title = this.getHoverContents() ?? '';
-        this.updateAriaLabel();
-        if (!this.customHover && title !== '') {
-            const hoverDelegate = this.options.hoverDelegate ?? getDefaultHoverDelegate('element');
-            this.customHover = this._store.add(getBaseLayerHoverDelegate().setupManagedHover(hoverDelegate, this.element, title));
-        }
-        else if (this.customHover) {
-            this.customHover.update(title);
-        }
-    }
-    updateAriaLabel() {
-        if (this.element) {
-            const title = this.getTooltip() ?? '';
-            this.element.setAttribute('aria-label', title);
-        }
+        // implement in subclass
     }
     updateClass() {
         // implement in subclass
@@ -191,56 +163,43 @@ export class BaseActionViewItem extends Disposable {
             this.element.remove();
             this.element = undefined;
         }
-        this._context = undefined;
         super.dispose();
     }
 }
 export class ActionViewItem extends BaseActionViewItem {
-    constructor(context, action, options) {
-        options = {
-            ...options,
-            icon: options.icon !== undefined ? options.icon : false,
-            label: options.label !== undefined ? options.label : true,
-        };
+    constructor(context, action, options = {}) {
         super(context, action, options);
         this.options = options;
+        this.options.icon = options.icon !== undefined ? options.icon : false;
+        this.options.label = options.label !== undefined ? options.label : true;
         this.cssClass = '';
     }
     render(container) {
         super.render(container);
-        types.assertType(this.element);
-        const label = document.createElement('a');
-        label.classList.add('action-label');
-        label.setAttribute('role', this.getDefaultAriaRole());
-        this.label = label;
-        this.element.appendChild(label);
-        if (this.options.label && this.options.keybinding && !this.options.keybindingNotRenderedWithLabel) {
-            const kbLabel = document.createElement('span');
-            kbLabel.classList.add('keybinding');
-            kbLabel.textContent = this.options.keybinding;
-            this.element.appendChild(kbLabel);
+        if (this.element) {
+            this.label = append(this.element, $('a.action-label'));
+        }
+        if (this.label) {
+            if (this._action.id === Separator.ID) {
+                this.label.setAttribute('role', 'presentation'); // A separator is a presentation item
+            }
+            else {
+                if (this.options.isMenu) {
+                    this.label.setAttribute('role', 'menuitem');
+                }
+                else {
+                    this.label.setAttribute('role', 'button');
+                }
+            }
+        }
+        if (this.options.label && this.options.keybinding && this.element) {
+            append(this.element, $('span.keybinding')).textContent = this.options.keybinding;
         }
         this.updateClass();
         this.updateLabel();
         this.updateTooltip();
         this.updateEnabled();
         this.updateChecked();
-    }
-    getDefaultAriaRole() {
-        if (this._action.id === Separator.ID) {
-            return 'presentation'; // A separator is a presentation item
-        }
-        else {
-            if (this.options.isMenu) {
-                return 'menuitem';
-            }
-            else if (this.options.isTabList) {
-                return 'tab';
-            }
-            else {
-                return 'button';
-            }
-        }
     }
     // Only set the tabIndex on the element once it is about to get focused
     // That way this element wont be a tab stop when it is not needed #106441
@@ -262,28 +221,30 @@ export class ActionViewItem extends BaseActionViewItem {
     }
     updateLabel() {
         if (this.options.label && this.label) {
-            this.label.textContent = this.action.label;
+            this.label.textContent = this.getAction().label;
         }
     }
-    getTooltip() {
+    updateTooltip() {
         let title = null;
-        if (this.action.tooltip) {
-            title = this.action.tooltip;
+        if (this.getAction().tooltip) {
+            title = this.getAction().tooltip;
         }
-        else if (this.action.label) {
-            title = this.action.label;
+        else if (!this.options.label && this.getAction().label && this.options.icon) {
+            title = this.getAction().label;
             if (this.options.keybinding) {
-                title = nls.localize(0, "{0} ({1})", title, this.options.keybinding);
+                title = nls.localize({ key: 'titleLabel', comment: ['action title', 'action keybinding'] }, "{0} ({1})", title, this.options.keybinding);
             }
         }
-        return title ?? undefined;
+        if (title && this.label) {
+            this.label.title = title;
+        }
     }
     updateClass() {
         if (this.cssClass && this.label) {
             this.label.classList.remove(...this.cssClass.split(' '));
         }
         if (this.options.icon) {
-            this.cssClass = this.getClass();
+            this.cssClass = this.getAction().class;
             if (this.label) {
                 this.label.classList.add('codicon');
                 if (this.cssClass) {
@@ -293,82 +254,39 @@ export class ActionViewItem extends BaseActionViewItem {
             this.updateEnabled();
         }
         else {
-            this.label?.classList.remove('codicon');
+            if (this.label) {
+                this.label.classList.remove('codicon');
+            }
         }
     }
     updateEnabled() {
-        if (this.action.enabled) {
+        if (this.getAction().enabled) {
             if (this.label) {
                 this.label.removeAttribute('aria-disabled');
                 this.label.classList.remove('disabled');
             }
-            this.element?.classList.remove('disabled');
+            if (this.element) {
+                this.element.classList.remove('disabled');
+            }
         }
         else {
             if (this.label) {
                 this.label.setAttribute('aria-disabled', 'true');
                 this.label.classList.add('disabled');
             }
-            this.element?.classList.add('disabled');
-        }
-    }
-    updateAriaLabel() {
-        if (this.label) {
-            const title = this.getTooltip() ?? '';
-            this.label.setAttribute('aria-label', title);
+            if (this.element) {
+                this.element.classList.add('disabled');
+            }
         }
     }
     updateChecked() {
         if (this.label) {
-            if (this.action.checked !== undefined) {
-                this.label.classList.toggle('checked', this.action.checked);
-                if (this.options.isTabList) {
-                    this.label.setAttribute('aria-selected', this.action.checked ? 'true' : 'false');
-                }
-                else {
-                    this.label.setAttribute('aria-checked', this.action.checked ? 'true' : 'false');
-                    this.label.setAttribute('role', 'checkbox');
-                }
+            if (this.getAction().checked) {
+                this.label.classList.add('checked');
             }
             else {
                 this.label.classList.remove('checked');
-                this.label.removeAttribute(this.options.isTabList ? 'aria-selected' : 'aria-checked');
-                this.label.setAttribute('role', this.getDefaultAriaRole());
             }
         }
     }
 }
-export class SelectActionViewItem extends BaseActionViewItem {
-    constructor(ctx, action, options, selected, contextViewProvider, styles, selectBoxOptions) {
-        super(ctx, action);
-        this.selectBox = new SelectBox(options, selected, contextViewProvider, styles, selectBoxOptions);
-        this.selectBox.setFocusable(false);
-        this._register(this.selectBox);
-        this.registerListeners();
-    }
-    select(index) {
-        this.selectBox.select(index);
-    }
-    registerListeners() {
-        this._register(this.selectBox.onDidSelect(e => this.runAction(e.selected, e.index)));
-    }
-    runAction(option, index) {
-        this.actionRunner.run(this._action, this.getActionContext(option, index));
-    }
-    getActionContext(option, index) {
-        return option;
-    }
-    setFocusable(focusable) {
-        this.selectBox.setFocusable(focusable);
-    }
-    focus() {
-        this.selectBox?.focus();
-    }
-    blur() {
-        this.selectBox?.blur();
-    }
-    render(container) {
-        this.selectBox.render(container);
-    }
-}
-//# sourceMappingURL=actionViewItems.js.map

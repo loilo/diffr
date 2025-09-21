@@ -4,7 +4,20 @@
  *--------------------------------------------------------------------------------------------*/
 import { splitLines } from '../../../../../base/common/strings.js';
 import { Range } from '../../../core/range.js';
-import { TextLength } from '../../../core/text/textLength.js';
+/**
+ * Represents a non-negative length in terms of line and column count.
+ * Prefer using {@link Length} for performance reasons.
+*/
+export class LengthObj {
+    constructor(lineCount, columnCount) {
+        this.lineCount = lineCount;
+        this.columnCount = columnCount;
+    }
+    toString() {
+        return `${this.lineCount},${this.columnCount}`;
+    }
+}
+LengthObj.zero = new LengthObj(0, 0);
 /**
  * The end must be greater than or equal to the start.
 */
@@ -20,12 +33,10 @@ export function lengthIsZero(length) {
 /*
  * We have 52 bits available in a JS number.
  * We use the upper 26 bits to store the line and the lower 26 bits to store the column.
+ *
+ * Set boolean to `true` when debugging, so that debugging is easier.
  */
-///*
-const factor = 2 ** 26;
-/*/
-const factor = 1000000;
-// */
+const factor = /* is debug: */ false ? 100000 : Math.pow(2, 26);
 export function toLength(lineCount, columnCount) {
     // llllllllllllllllllllllllllcccccccccccccccccccccccccc (52 bits)
     //       line count (26 bits)    column count (26 bits)
@@ -37,7 +48,7 @@ export function lengthToObj(length) {
     const l = length;
     const lineCount = Math.floor(l / factor);
     const columnCount = l - lineCount * factor;
-    return new TextLength(lineCount, columnCount);
+    return new LengthObj(lineCount, columnCount);
 }
 export function lengthGetLineCount(length) {
     return Math.floor(length / factor);
@@ -49,17 +60,9 @@ export function lengthGetColumnCountIfZeroLineCount(length) {
     return length;
 }
 export function lengthAdd(l1, l2) {
-    let r = l1 + l2;
-    if (l2 >= factor) {
-        r = r - (l1 % factor);
-    }
-    return r;
-}
-export function sumLengths(items, lengthFn) {
-    return items.reduce((a, b) => lengthAdd(a, lengthFn(b)), lengthZero);
-}
-export function lengthEquals(length1, length2) {
-    return length1 === length2;
+    return ((l2 < factor)
+        ? (l1 + l2) // l2 is the amount of columns (zero line count). Keep the column count from l1.
+        : (l1 - (l1 % factor) + l2)); // l1 - (l1 % factor) equals toLength(l1.lineCount, 0)
 }
 /**
  * Returns a non negative length `result` such that `lengthAdd(length1, result) = length2`, or zero if such length does not exist.
@@ -110,4 +113,3 @@ export function lengthOfString(str) {
     const lines = splitLines(str);
     return toLength(lines.length - 1, lines[lines.length - 1].length);
 }
-//# sourceMappingURL=length.js.map

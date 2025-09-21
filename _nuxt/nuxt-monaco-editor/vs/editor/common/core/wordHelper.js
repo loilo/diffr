@@ -2,8 +2,6 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-import { Iterable } from '../../../base/common/iterator.js';
-import { LinkedList } from '../../../base/common/linkedList.js';
 export const USUAL_WORD_SEPARATORS = '`~!@#$%^&*()-=+[{]}\\|;:\'",.<>/?';
 /**
  * Create a word definition regular expression based on default word separators.
@@ -48,18 +46,12 @@ export function ensureValidWordDefinition(wordDefinition) {
     result.lastIndex = 0;
     return result;
 }
-const _defaultConfig = new LinkedList();
-_defaultConfig.unshift({
+const _defaultConfig = {
     maxLen: 1000,
     windowSize: 15,
     timeBudget: 150
-});
-export function getWordAtText(column, wordDefinition, text, textOffset, config) {
-    // Ensure the regex has the 'g' flag, otherwise this will loop forever
-    wordDefinition = ensureValidWordDefinition(wordDefinition);
-    if (!config) {
-        config = Iterable.first(_defaultConfig);
-    }
+};
+export function getWordAtText(column, wordDefinition, text, textOffset, config = _defaultConfig) {
     if (text.length > config.maxLen) {
         // don't throw strings that long at the regexp
         // but use a sub-string in which a word must occur
@@ -122,4 +114,3 @@ function _findRegexMatchEnclosingPosition(wordDefinition, text, pos, stopPos) {
     }
     return null;
 }
-//# sourceMappingURL=wordHelper.js.map

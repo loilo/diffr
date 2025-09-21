@@ -12,19 +12,19 @@ export class DeleteWordPartLeft extends DeleteWordCommand {
     constructor() {
         super({
             whitespaceHeuristics: true,
-            wordNavigationType: 0 /* WordNavigationType.WordStart */,
+            wordNavigationType: 0 /* WordStart */,
             id: 'deleteWordPartLeft',
             precondition: EditorContextKeys.writable,
             kbOpts: {
                 kbExpr: EditorContextKeys.textInputFocus,
                 primary: 0,
-                mac: { primary: 256 /* KeyMod.WinCtrl */ | 512 /* KeyMod.Alt */ | 1 /* KeyCode.Backspace */ },
-                weight: 100 /* KeybindingWeight.EditorContrib */
+                mac: { primary: 256 /* WinCtrl */ | 512 /* Alt */ | 1 /* Backspace */ },
+                weight: 100 /* EditorContrib */
             }
         });
     }
     _delete(ctx, wordNavigationType) {
-        const r = WordPartOperations.deleteWordPartLeft(ctx);
+        let r = WordPartOperations.deleteWordPartLeft(ctx);
         if (r) {
             return r;
         }
@@ -35,19 +35,19 @@ export class DeleteWordPartRight extends DeleteWordCommand {
     constructor() {
         super({
             whitespaceHeuristics: true,
-            wordNavigationType: 2 /* WordNavigationType.WordEnd */,
+            wordNavigationType: 2 /* WordEnd */,
             id: 'deleteWordPartRight',
             precondition: EditorContextKeys.writable,
             kbOpts: {
                 kbExpr: EditorContextKeys.textInputFocus,
                 primary: 0,
-                mac: { primary: 256 /* KeyMod.WinCtrl */ | 512 /* KeyMod.Alt */ | 20 /* KeyCode.Delete */ },
-                weight: 100 /* KeybindingWeight.EditorContrib */
+                mac: { primary: 256 /* WinCtrl */ | 512 /* Alt */ | 20 /* Delete */ },
+                weight: 100 /* EditorContrib */
             }
         });
     }
     _delete(ctx, wordNavigationType) {
-        const r = WordPartOperations.deleteWordPartRight(ctx);
+        let r = WordPartOperations.deleteWordPartRight(ctx);
         if (r) {
             return r;
         }
@@ -57,22 +57,22 @@ export class DeleteWordPartRight extends DeleteWordCommand {
     }
 }
 export class WordPartLeftCommand extends MoveWordCommand {
-    _move(wordSeparators, model, position, wordNavigationType, hasMulticursor) {
-        return WordPartOperations.moveWordPartLeft(wordSeparators, model, position, hasMulticursor);
+    _move(wordSeparators, model, position, wordNavigationType) {
+        return WordPartOperations.moveWordPartLeft(wordSeparators, model, position);
     }
 }
 export class CursorWordPartLeft extends WordPartLeftCommand {
     constructor() {
         super({
             inSelectionMode: false,
-            wordNavigationType: 0 /* WordNavigationType.WordStart */,
+            wordNavigationType: 0 /* WordStart */,
             id: 'cursorWordPartLeft',
             precondition: undefined,
             kbOpts: {
                 kbExpr: EditorContextKeys.textInputFocus,
                 primary: 0,
-                mac: { primary: 256 /* KeyMod.WinCtrl */ | 512 /* KeyMod.Alt */ | 15 /* KeyCode.LeftArrow */ },
-                weight: 100 /* KeybindingWeight.EditorContrib */
+                mac: { primary: 256 /* WinCtrl */ | 512 /* Alt */ | 15 /* LeftArrow */ },
+                weight: 100 /* EditorContrib */
             }
         });
     }
@@ -83,14 +83,14 @@ export class CursorWordPartLeftSelect extends WordPartLeftCommand {
     constructor() {
         super({
             inSelectionMode: true,
-            wordNavigationType: 0 /* WordNavigationType.WordStart */,
+            wordNavigationType: 0 /* WordStart */,
             id: 'cursorWordPartLeftSelect',
             precondition: undefined,
             kbOpts: {
                 kbExpr: EditorContextKeys.textInputFocus,
                 primary: 0,
-                mac: { primary: 256 /* KeyMod.WinCtrl */ | 512 /* KeyMod.Alt */ | 1024 /* KeyMod.Shift */ | 15 /* KeyCode.LeftArrow */ },
-                weight: 100 /* KeybindingWeight.EditorContrib */
+                mac: { primary: 256 /* WinCtrl */ | 512 /* Alt */ | 1024 /* Shift */ | 15 /* LeftArrow */ },
+                weight: 100 /* EditorContrib */
             }
         });
     }
@@ -98,7 +98,7 @@ export class CursorWordPartLeftSelect extends WordPartLeftCommand {
 // Register previous id for compatibility purposes
 CommandsRegistry.registerCommandAlias('cursorWordPartStartLeftSelect', 'cursorWordPartLeftSelect');
 export class WordPartRightCommand extends MoveWordCommand {
-    _move(wordSeparators, model, position, wordNavigationType, hasMulticursor) {
+    _move(wordSeparators, model, position, wordNavigationType) {
         return WordPartOperations.moveWordPartRight(wordSeparators, model, position);
     }
 }
@@ -106,14 +106,14 @@ export class CursorWordPartRight extends WordPartRightCommand {
     constructor() {
         super({
             inSelectionMode: false,
-            wordNavigationType: 2 /* WordNavigationType.WordEnd */,
+            wordNavigationType: 2 /* WordEnd */,
             id: 'cursorWordPartRight',
             precondition: undefined,
             kbOpts: {
                 kbExpr: EditorContextKeys.textInputFocus,
                 primary: 0,
-                mac: { primary: 256 /* KeyMod.WinCtrl */ | 512 /* KeyMod.Alt */ | 17 /* KeyCode.RightArrow */ },
-                weight: 100 /* KeybindingWeight.EditorContrib */
+                mac: { primary: 256 /* WinCtrl */ | 512 /* Alt */ | 17 /* RightArrow */ },
+                weight: 100 /* EditorContrib */
             }
         });
     }
@@ -122,14 +122,14 @@ export class CursorWordPartRightSelect extends WordPartRightCommand {
     constructor() {
         super({
             inSelectionMode: true,
-            wordNavigationType: 2 /* WordNavigationType.WordEnd */,
+            wordNavigationType: 2 /* WordEnd */,
             id: 'cursorWordPartRightSelect',
             precondition: undefined,
             kbOpts: {
                 kbExpr: EditorContextKeys.textInputFocus,
                 primary: 0,
-                mac: { primary: 256 /* KeyMod.WinCtrl */ | 512 /* KeyMod.Alt */ | 1024 /* KeyMod.Shift */ | 17 /* KeyCode.RightArrow */ },
-                weight: 100 /* KeybindingWeight.EditorContrib */
+                mac: { primary: 256 /* WinCtrl */ | 512 /* Alt */ | 1024 /* Shift */ | 17 /* RightArrow */ },
+                weight: 100 /* EditorContrib */
             }
         });
     }
@@ -140,4 +140,3 @@ registerEditorCommand(new CursorWordPartLeft());
 registerEditorCommand(new CursorWordPartLeftSelect());
 registerEditorCommand(new CursorWordPartRight());
 registerEditorCommand(new CursorWordPartRightSelect());
-//# sourceMappingURL=wordPartOperations.js.map

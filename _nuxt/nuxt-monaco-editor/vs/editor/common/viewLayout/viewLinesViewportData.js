@@ -13,16 +13,14 @@ export class ViewportData {
         this.endLineNumber = partialData.endLineNumber | 0;
         this.relativeVerticalOffset = partialData.relativeVerticalOffset;
         this.bigNumbersDelta = partialData.bigNumbersDelta | 0;
-        this.lineHeight = partialData.lineHeight | 0;
         this.whitespaceViewportData = whitespaceViewportData;
         this._model = model;
         this.visibleRange = new Range(partialData.startLineNumber, this._model.getLineMinColumn(partialData.startLineNumber), partialData.endLineNumber, this._model.getLineMaxColumn(partialData.endLineNumber));
     }
     getViewLineRenderingData(lineNumber) {
-        return this._model.getViewportViewLineRenderingData(this.visibleRange, lineNumber);
+        return this._model.getViewLineRenderingData(this.visibleRange, lineNumber);
     }
     getDecorationsInViewport() {
         return this._model.getDecorationsInViewport(this.visibleRange);
     }
 }
-//# sourceMappingURL=viewLinesViewportData.js.map

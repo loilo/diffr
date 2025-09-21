@@ -7,15 +7,39 @@ import { Disposable } from '../../../../base/common/lifecycle.js';
 import { Range } from '../../../common/core/range.js';
 import { MATCHES_LIMIT } from './findModel.js';
 function effectiveOptionValue(override, value) {
-    if (override === 1 /* FindOptionOverride.True */) {
+    if (override === 1 /* True */) {
         return true;
     }
-    if (override === 2 /* FindOptionOverride.False */) {
+    if (override === 2 /* False */) {
         return false;
     }
     return value;
 }
 export class FindReplaceState extends Disposable {
+    constructor() {
+        super();
+        this._onFindReplaceStateChange = this._register(new Emitter());
+        this.onFindReplaceStateChange = this._onFindReplaceStateChange.event;
+        this._searchString = '';
+        this._replaceString = '';
+        this._isRevealed = false;
+        this._isReplaceRevealed = false;
+        this._isRegex = false;
+        this._isRegexOverride = 0 /* NotSet */;
+        this._wholeWord = false;
+        this._wholeWordOverride = 0 /* NotSet */;
+        this._matchCase = false;
+        this._matchCaseOverride = 0 /* NotSet */;
+        this._preserveCase = false;
+        this._preserveCaseOverride = 0 /* NotSet */;
+        this._searchScope = null;
+        this._matchesPosition = 0;
+        this._matchesCount = 0;
+        this._currentMatch = null;
+        this._loop = true;
+        this._isSearching = false;
+        this._filters = null;
+    }
     get searchString() { return this._searchString; }
     get replaceString() { return this._replaceString; }
     get isRevealed() { return this._isRevealed; }
@@ -32,32 +56,8 @@ export class FindReplaceState extends Disposable {
     get matchesPosition() { return this._matchesPosition; }
     get matchesCount() { return this._matchesCount; }
     get currentMatch() { return this._currentMatch; }
-    constructor() {
-        super();
-        this._onFindReplaceStateChange = this._register(new Emitter());
-        this.onFindReplaceStateChange = this._onFindReplaceStateChange.event;
-        this._searchString = '';
-        this._replaceString = '';
-        this._isRevealed = false;
-        this._isReplaceRevealed = false;
-        this._isRegex = false;
-        this._isRegexOverride = 0 /* FindOptionOverride.NotSet */;
-        this._wholeWord = false;
-        this._wholeWordOverride = 0 /* FindOptionOverride.NotSet */;
-        this._matchCase = false;
-        this._matchCaseOverride = 0 /* FindOptionOverride.NotSet */;
-        this._preserveCase = false;
-        this._preserveCaseOverride = 0 /* FindOptionOverride.NotSet */;
-        this._searchScope = null;
-        this._matchesPosition = 0;
-        this._matchesCount = 0;
-        this._currentMatch = null;
-        this._loop = true;
-        this._isSearching = false;
-        this._filters = null;
-    }
     changeMatchInfo(matchesPosition, matchesCount, currentMatch) {
-        const changeEvent = {
+        let changeEvent = {
             moveCursor: false,
             updateHistory: false,
             searchString: false,
@@ -105,7 +105,8 @@ export class FindReplaceState extends Disposable {
         }
     }
     change(newState, moveCursor, updateHistory = true) {
-        const changeEvent = {
+        var _a;
+        let changeEvent = {
             moveCursor: moveCursor,
             updateHistory: updateHistory,
             searchString: false,
@@ -170,11 +171,12 @@ export class FindReplaceState extends Disposable {
             this._preserveCase = newState.preserveCase;
         }
         if (typeof newState.searchScope !== 'undefined') {
-            if (!newState.searchScope?.every((newSearchScope) => {
-                return this._searchScope?.some(existingSearchScope => {
+            if (!((_a = newState.searchScope) === null || _a === void 0 ? void 0 : _a.every((newSearchScope) => {
+                var _a;
+                return (_a = this._searchScope) === null || _a === void 0 ? void 0 : _a.some(existingSearchScope => {
                     return !Range.equalsRange(existingSearchScope, newSearchScope);
                 });
-            })) {
+            }))) {
                 this._searchScope = newState.searchScope;
                 changeEvent.searchScope = true;
                 somethingChanged = true;
@@ -205,10 +207,10 @@ export class FindReplaceState extends Disposable {
             somethingChanged = true;
         }
         // Overrides get set when they explicitly come in and get reset anytime something else changes
-        this._isRegexOverride = (typeof newState.isRegexOverride !== 'undefined' ? newState.isRegexOverride : 0 /* FindOptionOverride.NotSet */);
-        this._wholeWordOverride = (typeof newState.wholeWordOverride !== 'undefined' ? newState.wholeWordOverride : 0 /* FindOptionOverride.NotSet */);
-        this._matchCaseOverride = (typeof newState.matchCaseOverride !== 'undefined' ? newState.matchCaseOverride : 0 /* FindOptionOverride.NotSet */);
-        this._preserveCaseOverride = (typeof newState.preserveCaseOverride !== 'undefined' ? newState.preserveCaseOverride : 0 /* FindOptionOverride.NotSet */);
+        this._isRegexOverride = (typeof newState.isRegexOverride !== 'undefined' ? newState.isRegexOverride : 0 /* NotSet */);
+        this._wholeWordOverride = (typeof newState.wholeWordOverride !== 'undefined' ? newState.wholeWordOverride : 0 /* NotSet */);
+        this._matchCaseOverride = (typeof newState.matchCaseOverride !== 'undefined' ? newState.matchCaseOverride : 0 /* NotSet */);
+        this._preserveCaseOverride = (typeof newState.preserveCaseOverride !== 'undefined' ? newState.preserveCaseOverride : 0 /* NotSet */);
         if (oldEffectiveIsRegex !== this.isRegex) {
             somethingChanged = true;
             changeEvent.isRegex = true;
@@ -239,4 +241,3 @@ export class FindReplaceState extends Disposable {
         return this._loop || (this.matchesCount >= MATCHES_LIMIT);
     }
 }
-//# sourceMappingURL=findState.js.map

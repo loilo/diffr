@@ -7,4 +7,3 @@ export class ListError extends Error {
         super(`ListError [${user}] ${message}`);
     }
 }
-//# sourceMappingURL=list.js.map

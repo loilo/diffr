@@ -1,8 +1,9 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-import { assert } from './assert.js';
+/**
+ * @returns whether the provided parameter is a JavaScript Array or not.
+ */
+export function isArray(array) {
+    return Array.isArray(array);
+}
 /**
  * @returns whether the provided parameter is a JavaScript String or not.
  */
@@ -10,6 +11,7 @@ export function isString(str) {
     return (typeof str === 'string');
 }
 /**
+ *
  * @returns whether the provided parameter is of type `object` but **not**
  *	`null`, an `array`, a `regexp`, nor a `date`.
  */
@@ -24,25 +26,11 @@ export function isObject(obj) {
         && !(obj instanceof Date);
 }
 /**
- * @returns whether the provided parameter is of type `Buffer` or Uint8Array dervived type
- */
-export function isTypedArray(obj) {
-    const TypedArray = Object.getPrototypeOf(Uint8Array);
-    return typeof obj === 'object'
-        && obj instanceof TypedArray;
-}
-/**
  * In **contrast** to just checking `typeof` this will return `false` for `NaN`.
  * @returns whether the provided parameter is a JavaScript Number or not.
  */
 export function isNumber(obj) {
     return (typeof obj === 'number' && !isNaN(obj));
-}
-/**
- * @returns whether the provided parameter is an Iterable, casting to the given generic
- */
-export function isIterable(obj) {
-    return !!obj && typeof obj[Symbol.iterator] === 'function';
 }
 /**
  * @returns whether the provided parameter is a JavaScript Boolean or not.
@@ -75,41 +63,13 @@ export function assertType(condition, type) {
 }
 /**
  * Asserts that the argument passed in is neither undefined nor null.
- *
- * @see {@link assertDefined} for a similar utility that leverages TS assertion functions to narrow down the type of `arg` to be non-nullable.
  */
-export function assertReturnsDefined(arg) {
-    assert(arg !== null && arg !== undefined, 'Argument is `undefined` or `null`.');
+export function assertIsDefined(arg) {
+    if (isUndefinedOrNull(arg)) {
+        throw new Error('Assertion Failed: argument is undefined or null');
+    }
     return arg;
 }
-/**
- * Checks if the provided value is one of the vales in the provided list.
- *
- * ## Examples
- *
- * ```typescript
- * // note! item type is a `subset of string`
- * type TItem = ':' | '.' | '/';
- *
- * // note! item is type of `string` here
- * const item: string = ':';
- * // list of the items to check against
- * const list: TItem[] = [':', '.'];
- *
- * // ok
- * assert(
- *   isOneOf(item, list),
- *   'Must succeed.',
- * );
- *
- * // `item` is of `TItem` type now
- * ```
- */
-export const isOneOf = (value, validValues) => {
-    // note! it is OK to type cast here, because we rely on the includes
-    //       utility to check if the value is present in the provided list
-    return validValues.includes(value);
-};
 /**
  * @returns whether the provided parameter is a JavaScript Function or not.
  */
@@ -134,7 +94,7 @@ export function validateConstraint(arg, constraint) {
                 return;
             }
         }
-        catch {
+        catch (_a) {
             // ignore
         }
         if (!isUndefinedOrNull(arg) && arg.constructor === constraint) {
@@ -146,13 +106,43 @@ export function validateConstraint(arg, constraint) {
         throw new Error(`argument does not match one of these constraints: arg instanceof constraint, arg.constructor === constraint, nor constraint(arg) === true`);
     }
 }
-/**
- * Helper type assertion that safely upcasts a type to a supertype.
- *
- * This can be used to make sure the argument correctly conforms to the subtype while still being able to pass it
- * to contexts that expects the supertype.
- */
-export function upcast(x) {
-    return x;
+export function getAllPropertyNames(obj) {
+    let res = [];
+    let proto = Object.getPrototypeOf(obj);
+    while (Object.prototype !== proto) {
+        res = res.concat(Object.getOwnPropertyNames(proto));
+        proto = Object.getPrototypeOf(proto);
+    }
+    return res;
 }
-//# sourceMappingURL=types.js.map
+export function getAllMethodNames(obj) {
+    const methods = [];
+    for (const prop of getAllPropertyNames(obj)) {
+        if (typeof obj[prop] === 'function') {
+            methods.push(prop);
+        }
+    }
+    return methods;
+}
+export function createProxyObject(methodNames, invoke) {
+    const createProxyMethod = (method) => {
+        return function () {
+            const args = Array.prototype.slice.call(arguments, 0);
+            return invoke(method, args);
+        };
+    };
+    let result = {};
+    for (const methodName of methodNames) {
+        result[methodName] = createProxyMethod(methodName);
+    }
+    return result;
+}
+/**
+ * Converts null to undefined, passes all other values through.
+ */
+export function withNullAsUndefined(x) {
+    return x === null ? undefined : x;
+}
+export function assertNever(value, message = 'Unreachable') {
+    throw new Error(message);
+}

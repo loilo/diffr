@@ -26,7 +26,18 @@ export function getPlatformTextDecoder() {
     }
     return _platformTextDecoder;
 }
-export function decodeUTF16LE(source, offset, len) {
+export const hasTextDecoder = (typeof TextDecoder !== 'undefined');
+export let createStringBuilder;
+export let decodeUTF16LE;
+if (hasTextDecoder) {
+    createStringBuilder = (capacity) => new StringBuilder(capacity);
+    decodeUTF16LE = standardDecodeUTF16LE;
+}
+else {
+    createStringBuilder = (capacity) => new CompatStringBuilder();
+    decodeUTF16LE = compatDecodeUTF16LE;
+}
+function standardDecodeUTF16LE(source, offset, len) {
     const view = new Uint16Array(source.buffer, offset, len);
     if (len > 0 && (view[0] === 0xFEFF || view[0] === 0xFFFE)) {
         // UTF16 sometimes starts with a BOM https://de.wikipedia.org/wiki/Byte_Order_Mark
@@ -47,7 +58,7 @@ function compatDecodeUTF16LE(source, offset, len) {
     }
     return result.join('');
 }
-export class StringBuilder {
+class StringBuilder {
     constructor(capacity) {
         this._capacity = capacity | 0;
         this._buffer = new Uint16Array(this._capacity);
@@ -82,10 +93,7 @@ export class StringBuilder {
             this._completedStrings[this._completedStrings.length] = bufferString;
         }
     }
-    /**
-     * Append a char code (<2^16)
-     */
-    appendCharCode(charCode) {
+    write1(charCode) {
         const remainingSpace = this._capacity - this._bufferLength;
         if (remainingSpace <= 1) {
             if (remainingSpace === 0 || strings.isHighSurrogate(charCode)) {
@@ -94,17 +102,14 @@ export class StringBuilder {
         }
         this._buffer[this._bufferLength++] = charCode;
     }
-    /**
-     * Append an ASCII char code (<2^8)
-     */
-    appendASCIICharCode(charCode) {
+    appendASCII(charCode) {
         if (this._bufferLength === this._capacity) {
             // buffer is full
             this._flushBuffer();
         }
         this._buffer[this._bufferLength++] = charCode;
     }
-    appendString(str) {
+    appendASCIIString(str) {
         const strLen = str.length;
         if (this._bufferLength + strLen >= this._capacity) {
             // This string does not fit in the remaining buffer space
@@ -117,4 +122,25 @@ export class StringBuilder {
         }
     }
 }
-//# sourceMappingURL=stringBuilder.js.map
+class CompatStringBuilder {
+    constructor() {
+        this._pieces = [];
+        this._piecesLen = 0;
+    }
+    reset() {
+        this._pieces = [];
+        this._piecesLen = 0;
+    }
+    build() {
+        return this._pieces.join('');
+    }
+    write1(charCode) {
+        this._pieces[this._piecesLen++] = String.fromCharCode(charCode);
+    }
+    appendASCII(charCode) {
+        this._pieces[this._piecesLen++] = String.fromCharCode(charCode);
+    }
+    appendASCIIString(str) {
+        this._pieces[this._piecesLen++] = str;
+    }
+}

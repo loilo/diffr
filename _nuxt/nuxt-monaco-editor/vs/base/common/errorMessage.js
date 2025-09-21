@@ -7,7 +7,7 @@ import * as types from './types.js';
 import * as nls from '../../nls.js';
 function exceptionToErrorMessage(exception, verbose) {
     if (verbose && (exception.stack || exception.stacktrace)) {
-        return nls.localize(29, "{0}: {1}", detectSystemErrorMessage(exception), stackToString(exception.stack) || stackToString(exception.stacktrace));
+        return nls.localize('stackTrace.format', "{0}: {1}", detectSystemErrorMessage(exception), stackToString(exception.stack) || stackToString(exception.stacktrace));
     }
     return detectSystemErrorMessage(exception);
 }
@@ -18,15 +18,11 @@ function stackToString(stack) {
     return stack;
 }
 function detectSystemErrorMessage(exception) {
-    // Custom node.js error from us
-    if (exception.code === 'ERR_UNC_HOST_NOT_ALLOWED') {
-        return `${exception.message}. Please update the 'security.allowedUNCHosts' setting if you want to allow this host.`;
-    }
     // See https://nodejs.org/api/errors.html#errors_class_system_error
     if (typeof exception.code === 'string' && typeof exception.errno === 'number' && typeof exception.syscall === 'string') {
-        return nls.localize(30, "A system error occurred ({0})", exception.message);
+        return nls.localize('nodeExceptionMessage', "A system error occurred ({0})", exception.message);
     }
-    return exception.message || nls.localize(31, "An unknown error occurred. Please consult the log for more details.");
+    return exception.message || nls.localize('error.defaultMessage', "An unknown error occurred. Please consult the log for more details.");
 }
 /**
  * Tries to generate a human readable error message out of the error. If the verbose parameter
@@ -36,13 +32,13 @@ function detectSystemErrorMessage(exception) {
  */
 export function toErrorMessage(error = null, verbose = false) {
     if (!error) {
-        return nls.localize(32, "An unknown error occurred. Please consult the log for more details.");
+        return nls.localize('error.defaultMessage', "An unknown error occurred. Please consult the log for more details.");
     }
     if (Array.isArray(error)) {
         const errors = arrays.coalesce(error);
         const msg = toErrorMessage(errors[0], verbose);
         if (errors.length > 1) {
-            return nls.localize(33, "{0} ({1} errors in total)", msg, errors.length);
+            return nls.localize('error.moreErrors', "{0} ({1} errors in total)", msg, errors.length);
         }
         return msg;
     }
@@ -64,6 +60,5 @@ export function toErrorMessage(error = null, verbose = false) {
     if (error.message) {
         return error.message;
     }
-    return nls.localize(34, "An unknown error occurred. Please consult the log for more details.");
+    return nls.localize('error.defaultMessage', "An unknown error occurred. Please consult the log for more details.");
 }
-//# sourceMappingURL=errorMessage.js.map

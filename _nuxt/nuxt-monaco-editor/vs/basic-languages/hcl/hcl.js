@@ -1,10 +1,9 @@
 /*!-----------------------------------------------------------------------------
  * Copyright (c) Microsoft Corporation. All rights reserved.
- * Version: 0.53.0(4e45ba0c5ff45fc61c0ccac61c0987369df04a6e)
+ * Version: 0.32.1(29a273516805a852aa8edc5e05059f119b13eff0)
  * Released under the MIT license
  * https://github.com/microsoft/monaco-editor/blob/main/LICENSE.txt
  *-----------------------------------------------------------------------------*/
-
 
 // src/basic-languages/hcl/hcl.ts
 var conf = {
@@ -78,31 +77,24 @@ var language = {
   terraformMainBlocks: /(module|data|terraform|resource|provider|variable|output|locals)/,
   tokenizer: {
     root: [
-      // highlight main blocks
       [
         /^@terraformMainBlocks([ \t]*)([\w-]+|"[\w-]+"|)([ \t]*)([\w-]+|"[\w-]+"|)([ \t]*)(\{)/,
         ["type", "", "string", "", "string", "", "@brackets"]
       ],
-      // highlight all the remaining blocks
       [
         /(\w+[ \t]+)([ \t]*)([\w-]+|"[\w-]+"|)([ \t]*)([\w-]+|"[\w-]+"|)([ \t]*)(\{)/,
         ["identifier", "", "string", "", "string", "", "@brackets"]
       ],
-      // highlight block
       [
         /(\w+[ \t]+)([ \t]*)([\w-]+|"[\w-]+"|)([ \t]*)([\w-]+|"[\w-]+"|)(=)(\{)/,
         ["identifier", "", "string", "", "operator", "", "@brackets"]
       ],
-      // terraform general highlight - shared with expressions
       { include: "@terraform" }
     ],
     terraform: [
-      // highlight terraform functions
       [/@terraformFunctions(\()/, ["type", "@brackets"]],
-      // all other words are variables or keywords
       [
         /[a-zA-Z_]\w*-*/,
-        // must work with variables such as foo-bar and also with negative numbers
         {
           cases: {
             "@keywords": { token: "keyword.$0" },
@@ -112,7 +104,6 @@ var language = {
       ],
       { include: "@whitespace" },
       { include: "@heredoc" },
-      // delimiters and operators
       [/[{}()\[\]]/, "@brackets"],
       [/[<>](?!@symbols)/, "@brackets"],
       [
@@ -124,16 +115,12 @@ var language = {
           }
         }
       ],
-      // numbers
       [/\d*\d+[eE]([\-+]?\d+)?/, "number.float"],
       [/\d*\.\d+([eE][\-+]?\d+)?/, "number.float"],
       [/\d[\d']*/, "number"],
       [/\d/, "number"],
       [/[;,.]/, "delimiter"],
-      // delimiter: after number because of .\d floats
-      // strings
       [/"/, "string", "@string"],
-      // this will include expressions
       [/'/, "invalid"]
     ],
     heredoc: [

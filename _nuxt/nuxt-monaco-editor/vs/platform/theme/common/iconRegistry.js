@@ -3,17 +3,12 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 import { RunOnceScheduler } from '../../../base/common/async.js';
-import { Codicon } from '../../../base/common/codicons.js';
-import { getCodiconFontCharacters } from '../../../base/common/codiconsUtil.js';
-import { ThemeIcon } from '../../../base/common/themables.js';
+import { Codicon, CSSIcon } from '../../../base/common/codicons.js';
 import { Emitter } from '../../../base/common/event.js';
-import { isString } from '../../../base/common/types.js';
-import { URI } from '../../../base/common/uri.js';
 import { localize } from '../../../nls.js';
 import { Extensions as JSONExtensions } from '../../jsonschemas/common/jsonContributionRegistry.js';
 import * as platform from '../../registry/common/platform.js';
-import { Disposable } from '../../../base/common/lifecycle.js';
-//  ------ API types
+import { ThemeIcon } from './themeService.js';
 // icon registry
 export const Extensions = {
     IconContribution: 'base.contributions.icons'
@@ -33,44 +28,17 @@ export var IconContribution;
     }
     IconContribution.getDefinition = getDefinition;
 })(IconContribution || (IconContribution = {}));
-export var IconFontDefinition;
-(function (IconFontDefinition) {
-    function toJSONObject(iconFont) {
-        return {
-            weight: iconFont.weight,
-            style: iconFont.style,
-            src: iconFont.src.map(s => ({ format: s.format, location: s.location.toString() }))
-        };
-    }
-    IconFontDefinition.toJSONObject = toJSONObject;
-    function fromJSONObject(json) {
-        const stringOrUndef = (s) => isString(s) ? s : undefined;
-        if (json && Array.isArray(json.src) && json.src.every((s) => isString(s.format) && isString(s.location))) {
-            return {
-                weight: stringOrUndef(json.weight),
-                style: stringOrUndef(json.style),
-                src: json.src.map((s) => ({ format: s.format, location: URI.parse(s.location) }))
-            };
-        }
-        return undefined;
-    }
-    IconFontDefinition.fromJSONObject = fromJSONObject;
-})(IconFontDefinition || (IconFontDefinition = {}));
-// regexes for validation of font properties
-export const fontIdRegex = /^([\w_-]+)$/;
-export const fontIdErrorMessage = localize(2002, 'The font ID must only contain letters, numbers, underscores and dashes.');
-class IconRegistry extends Disposable {
+class IconRegistry {
     constructor() {
-        super();
-        this._onDidChange = this._register(new Emitter());
+        this._onDidChange = new Emitter();
         this.onDidChange = this._onDidChange.event;
         this.iconSchema = {
             definitions: {
                 icons: {
                     type: 'object',
                     properties: {
-                        fontId: { type: 'string', description: localize(2003, 'The id of the font to use. If not set, the font that is defined first is used.'), pattern: fontIdRegex.source, patternErrorMessage: fontIdErrorMessage },
-                        fontCharacter: { type: 'string', description: localize(2004, 'The font character associated with the icon definition.') }
+                        fontId: { type: 'string', description: localize('iconDefintion.fontId', 'The id of the font to use. If not set, the font that is defined first is used.') },
+                        fontCharacter: { type: 'string', description: localize('iconDefintion.fontCharacter', 'The font character associated with the icon definition.') }
                     },
                     additionalProperties: false,
                     defaultSnippets: [{ body: { fontCharacter: '\\\\e030' } }]
@@ -79,7 +47,7 @@ class IconRegistry extends Disposable {
             type: 'object',
             properties: {}
         };
-        this.iconReferenceSchema = { type: 'string', pattern: `^${ThemeIcon.iconNameExpression}$`, enum: [], enumDescriptions: [] };
+        this.iconReferenceSchema = { type: 'string', pattern: `^${CSSIcon.iconNameExpression}$`, enum: [], enumDescriptions: [] };
         this.iconsById = {};
         this.iconFontsById = {};
     }
@@ -97,9 +65,9 @@ class IconRegistry extends Disposable {
             }
             return existing;
         }
-        const iconContribution = { id, description, defaults, deprecationMessage };
+        let iconContribution = { id, description, defaults, deprecationMessage };
         this.iconsById[id] = iconContribution;
-        const propertySchema = { $ref: '#/definitions/icons' };
+        let propertySchema = { $ref: '#/definitions/icons' };
         if (deprecationMessage) {
             propertySchema.deprecationMessage = deprecationMessage;
         }
@@ -131,7 +99,7 @@ class IconRegistry extends Disposable {
             }
             return `codicon codicon-${i ? i.id : ''}`;
         };
-        const reference = [];
+        let reference = [];
         reference.push(`| preview     | identifier                        | default codicon ID                | description`);
         reference.push(`| ----------- | --------------------------------- | --------------------------------- | --------------------------------- |`);
         const contributions = Object.keys(this.iconsById).map(key => this.iconsById[key]);
@@ -155,15 +123,13 @@ export function getIconRegistry() {
     return iconRegistry;
 }
 function initialize() {
-    const codiconFontCharacters = getCodiconFontCharacters();
-    for (const icon in codiconFontCharacters) {
-        const fontCharacter = '\\' + codiconFontCharacters[icon].toString(16);
-        iconRegistry.registerIcon(icon, { fontCharacter });
+    for (const icon of Codicon.getAll()) {
+        iconRegistry.registerIcon(icon.id, icon.definition, icon.description);
     }
 }
 initialize();
 export const iconsSchemaId = 'vscode://schemas/icons';
-const schemaRegistry = platform.Registry.as(JSONExtensions.JSONContribution);
+let schemaRegistry = platform.Registry.as(JSONExtensions.JSONContribution);
 schemaRegistry.registerSchema(iconsSchemaId, iconRegistry.getIconSchema());
 const delayer = new RunOnceScheduler(() => schemaRegistry.notifySchemaChanged(iconsSchemaId), 200);
 iconRegistry.onDidChange(() => {
@@ -173,9 +139,8 @@ iconRegistry.onDidChange(() => {
 });
 //setTimeout(_ => console.log(iconRegistry.toString()), 5000);
 // common icons
-export const widgetClose = registerIcon('widget-close', Codicon.close, localize(2005, 'Icon for the close action in widgets.'));
-export const gotoPreviousLocation = registerIcon('goto-previous-location', Codicon.arrowUp, localize(2006, 'Icon for goto previous editor location.'));
-export const gotoNextLocation = registerIcon('goto-next-location', Codicon.arrowDown, localize(2007, 'Icon for goto next editor location.'));
+export const widgetClose = registerIcon('widget-close', Codicon.close, localize('widgetClose', 'Icon for the close action in widgets.'));
+export const gotoPreviousLocation = registerIcon('goto-previous-location', Codicon.arrowUp, localize('previousChangeIcon', 'Icon for goto previous editor location.'));
+export const gotoNextLocation = registerIcon('goto-next-location', Codicon.arrowDown, localize('nextChangeIcon', 'Icon for goto next editor location.'));
 export const syncing = ThemeIcon.modify(Codicon.sync, 'spin');
 export const spinningLoading = ThemeIcon.modify(Codicon.loading, 'spin');
-//# sourceMappingURL=iconRegistry.js.map

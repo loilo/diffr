@@ -1,14 +1,12 @@
 /*!-----------------------------------------------------------------------------
  * Copyright (c) Microsoft Corporation. All rights reserved.
- * Version: 0.53.0(4e45ba0c5ff45fc61c0ccac61c0987369df04a6e)
+ * Version: 0.32.1(29a273516805a852aa8edc5e05059f119b13eff0)
  * Released under the MIT license
  * https://github.com/microsoft/monaco-editor/blob/main/LICENSE.txt
  *-----------------------------------------------------------------------------*/
 
-
 // src/basic-languages/powershell/powershell.ts
 var conf = {
-  // the default separators except `$-`
   wordPattern: /(-?\d*\.\d\w*)|([^\`\~\!\@\#%\^\&\*\(\)\=\+\[\{\]\}\\\|\;\:\'\"\,\.\<\>\/\?\s]+)/g,
   comments: {
     lineComment: "#",
@@ -89,13 +87,10 @@ var language = {
     "configuration"
   ],
   helpKeywords: /SYNOPSIS|DESCRIPTION|PARAMETER|EXAMPLE|INPUTS|OUTPUTS|NOTES|LINK|COMPONENT|ROLE|FUNCTIONALITY|FORWARDHELPTARGETNAME|FORWARDHELPCATEGORY|REMOTEHELPRUNSPACE|EXTERNALHELP/,
-  // we include these common regular expressions
   symbols: /[=><!~?&%|+\-*\/\^;\.,]+/,
   escapes: /`(?:[abfnrtv\\"'$]|x[0-9A-Fa-f]{1,4}|u[0-9A-Fa-f]{4}|U[0-9A-Fa-f]{8})/,
-  // The main tokenizer for our languages
   tokenizer: {
     root: [
-      // commands and keywords
       [
         /[a-zA-Z_][\w-]*/,
         {
@@ -105,28 +100,20 @@ var language = {
           }
         }
       ],
-      // whitespace
       [/[ \t\r\n]+/, ""],
-      // labels
       [/^:\w*/, "metatag"],
-      // variables
       [
         /\$(\{((global|local|private|script|using):)?[\w]+\}|((global|local|private|script|using):)?[\w]+)/,
         "variable"
       ],
-      // Comments
       [/<#/, "comment", "@comment"],
       [/#.*$/, "comment"],
-      // delimiters
       [/[{}()\[\]]/, "@brackets"],
       [/@symbols/, "delimiter"],
-      // numbers
       [/\d*\.\d+([eE][\-+]?\d+)?/, "number.float"],
       [/0[xX][0-9a-fA-F_]*[0-9a-fA-F]/, "number.hex"],
       [/\d+?/, "number"],
-      // delimiter: after number because of .\d floats
       [/[;,.]/, "delimiter"],
-      // strings:
       [/\@"/, "string", '@herestring."'],
       [/\@'/, "string", "@herestring.'"],
       [

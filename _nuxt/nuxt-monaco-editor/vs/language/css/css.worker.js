@@ -1,22 +1,12 @@
 /*!-----------------------------------------------------------------------------
  * Copyright (c) Microsoft Corporation. All rights reserved.
- * Version: 0.53.0(4e45ba0c5ff45fc61c0ccac61c0987369df04a6e)
+ * Version: 0.32.1(29a273516805a852aa8edc5e05059f119b13eff0)
  * Released under the MIT license
  * https://github.com/microsoft/monaco-editor/blob/main/LICENSE.txt
  *-----------------------------------------------------------------------------*/
 
-
-// src/common/initialize.ts
-import * as worker from "../../editor/editor.worker.start.js";
-var initialized = false;
-function initialize(callback) {
-  initialized = true;
-  self.onmessage = (m) => {
-    worker.start((ctx) => {
-      return callback(ctx, m.data);
-    });
-  };
-}
+// src/language/css/css.worker.ts
+import * as worker from "../../editor/editor.worker.js";
 
 // node_modules/vscode-css-languageservice/lib/esm/parser/cssScanner.js
 var TokenType;
@@ -63,54 +53,62 @@ var TokenType;
   TokenType2[TokenType2["Comment"] = 39] = "Comment";
   TokenType2[TokenType2["SingleLineComment"] = 40] = "SingleLineComment";
   TokenType2[TokenType2["EOF"] = 41] = "EOF";
-  TokenType2[TokenType2["ContainerQueryLength"] = 42] = "ContainerQueryLength";
-  TokenType2[TokenType2["CustomToken"] = 43] = "CustomToken";
+  TokenType2[TokenType2["CustomToken"] = 42] = "CustomToken";
 })(TokenType || (TokenType = {}));
-var MultiLineStream = class {
-  constructor(source) {
+var MultiLineStream = function() {
+  function MultiLineStream2(source) {
     this.source = source;
     this.len = source.length;
     this.position = 0;
   }
-  substring(from, to = this.position) {
+  MultiLineStream2.prototype.substring = function(from, to) {
+    if (to === void 0) {
+      to = this.position;
+    }
     return this.source.substring(from, to);
-  }
-  eos() {
+  };
+  MultiLineStream2.prototype.eos = function() {
     return this.len <= this.position;
-  }
-  pos() {
+  };
+  MultiLineStream2.prototype.pos = function() {
     return this.position;
-  }
-  goBackTo(pos) {
+  };
+  MultiLineStream2.prototype.goBackTo = function(pos) {
     this.position = pos;
-  }
-  goBack(n) {
+  };
+  MultiLineStream2.prototype.goBack = function(n) {
     this.position -= n;
-  }
-  advance(n) {
+  };
+  MultiLineStream2.prototype.advance = function(n) {
     this.position += n;
-  }
-  nextChar() {
+  };
+  MultiLineStream2.prototype.nextChar = function() {
     return this.source.charCodeAt(this.position++) || 0;
-  }
-  peekChar(n = 0) {
+  };
+  MultiLineStream2.prototype.peekChar = function(n) {
+    if (n === void 0) {
+      n = 0;
+    }
     return this.source.charCodeAt(this.position + n) || 0;
-  }
-  lookbackChar(n = 0) {
+  };
+  MultiLineStream2.prototype.lookbackChar = function(n) {
+    if (n === void 0) {
+      n = 0;
+    }
     return this.source.charCodeAt(this.position - n) || 0;
-  }
-  advanceIfChar(ch) {
+  };
+  MultiLineStream2.prototype.advanceIfChar = function(ch) {
     if (ch === this.source.charCodeAt(this.position)) {
       this.position++;
       return true;
     }
     return false;
-  }
-  advanceIfChars(ch) {
+  };
+  MultiLineStream2.prototype.advanceIfChars = function(ch) {
     if (this.position + ch.length > this.source.length) {
       return false;
     }
-    let i = 0;
+    var i = 0;
     for (; i < ch.length; i++) {
       if (this.source.charCodeAt(this.position + i) !== ch[i]) {
         return false;
@@ -118,19 +116,19 @@ var MultiLineStream = class {
     }
     this.advance(i);
     return true;
-  }
-  advanceWhileChar(condition) {
-    const posNow = this.position;
+  };
+  MultiLineStream2.prototype.advanceWhileChar = function(condition) {
+    var posNow = this.position;
     while (this.position < this.len && condition(this.source.charCodeAt(this.position))) {
       this.position++;
     }
     return this.position - posNow;
-  }
-};
+  };
+  return MultiLineStream2;
+}();
 var _a = "a".charCodeAt(0);
 var _f = "f".charCodeAt(0);
 var _z = "z".charCodeAt(0);
-var _u = "u".charCodeAt(0);
 var _A = "A".charCodeAt(0);
 var _F = "F".charCodeAt(0);
 var _Z = "Z".charCodeAt(0);
@@ -169,8 +167,6 @@ var _BRR = "]".charCodeAt(0);
 var _CMA = ",".charCodeAt(0);
 var _DOT = ".".charCodeAt(0);
 var _BNG = "!".charCodeAt(0);
-var _QSM = "?".charCodeAt(0);
-var _PLS = "+".charCodeAt(0);
 var staticTokenTable = {};
 staticTokenTable[_SEM] = TokenType.SemiColon;
 staticTokenTable[_COL] = TokenType.Colon;
@@ -201,86 +197,67 @@ staticUnitTable["%"] = TokenType.Percentage;
 staticUnitTable["fr"] = TokenType.Percentage;
 staticUnitTable["dpi"] = TokenType.Resolution;
 staticUnitTable["dpcm"] = TokenType.Resolution;
-staticUnitTable["cqw"] = TokenType.ContainerQueryLength;
-staticUnitTable["cqh"] = TokenType.ContainerQueryLength;
-staticUnitTable["cqi"] = TokenType.ContainerQueryLength;
-staticUnitTable["cqb"] = TokenType.ContainerQueryLength;
-staticUnitTable["cqmin"] = TokenType.ContainerQueryLength;
-staticUnitTable["cqmax"] = TokenType.ContainerQueryLength;
-var Scanner = class {
-  constructor() {
+var Scanner = function() {
+  function Scanner2() {
     this.stream = new MultiLineStream("");
     this.ignoreComment = true;
     this.ignoreWhitespace = true;
     this.inURL = false;
   }
-  setSource(input) {
+  Scanner2.prototype.setSource = function(input) {
     this.stream = new MultiLineStream(input);
-  }
-  finishToken(offset, type, text) {
+  };
+  Scanner2.prototype.finishToken = function(offset, type, text) {
     return {
       offset,
       len: this.stream.pos() - offset,
       type,
       text: text || this.stream.substring(offset)
     };
-  }
-  substring(offset, len) {
+  };
+  Scanner2.prototype.substring = function(offset, len) {
     return this.stream.substring(offset, offset + len);
-  }
-  pos() {
+  };
+  Scanner2.prototype.pos = function() {
     return this.stream.pos();
-  }
-  goBackTo(pos) {
+  };
+  Scanner2.prototype.goBackTo = function(pos) {
     this.stream.goBackTo(pos);
-  }
-  scanUnquotedString() {
-    const offset = this.stream.pos();
-    const content = [];
+  };
+  Scanner2.prototype.scanUnquotedString = function() {
+    var offset = this.stream.pos();
+    var content = [];
     if (this._unquotedString(content)) {
       return this.finishToken(offset, TokenType.UnquotedString, content.join(""));
     }
     return null;
-  }
-  scan() {
-    const triviaToken = this.trivia();
+  };
+  Scanner2.prototype.scan = function() {
+    var triviaToken = this.trivia();
     if (triviaToken !== null) {
       return triviaToken;
     }
-    const offset = this.stream.pos();
+    var offset = this.stream.pos();
     if (this.stream.eos()) {
       return this.finishToken(offset, TokenType.EOF);
     }
     return this.scanNext(offset);
-  }
-  /**
-   * Read the range as described in https://www.w3.org/TR/CSS21/syndata.html#tokenization
-   * Assume the `u` has aleady been consumed
-   * @returns if reading the unicode was successful
-   */
-  tryScanUnicode() {
-    const offset = this.stream.pos();
-    if (!this.stream.eos() && this._unicodeRange()) {
-      return this.finishToken(offset, TokenType.UnicodeRange);
-    }
-    this.stream.goBackTo(offset);
-    return void 0;
-  }
-  scanNext(offset) {
+  };
+  Scanner2.prototype.scanNext = function(offset) {
     if (this.stream.advanceIfChars([_LAN, _BNG, _MIN, _MIN])) {
       return this.finishToken(offset, TokenType.CDO);
     }
     if (this.stream.advanceIfChars([_MIN, _MIN, _RAN])) {
       return this.finishToken(offset, TokenType.CDC);
     }
-    let content = [];
+    var content = [];
     if (this.ident(content)) {
       return this.finishToken(offset, TokenType.Ident, content.join(""));
     }
     if (this.stream.advanceIfChar(_ATS)) {
       content = ["@"];
       if (this._name(content)) {
-        const keywordText = content.join("");
+        var keywordText = content.join("");
         if (keywordText === "@charset") {
           return this.finishToken(offset, TokenType.Charset, keywordText);
         }
@@ -301,15 +278,15 @@ var Scanner = class {
       return this.finishToken(offset, TokenType.Exclamation);
     }
     if (this._number()) {
-      const pos = this.stream.pos();
+      var pos = this.stream.pos();
       content = [this.stream.substring(offset, pos)];
       if (this.stream.advanceIfChar(_PRC)) {
         return this.finishToken(offset, TokenType.Percentage);
       } else if (this.ident(content)) {
-        const dim = this.stream.substring(pos).toLowerCase();
-        const tokenType2 = staticUnitTable[dim];
-        if (typeof tokenType2 !== "undefined") {
-          return this.finishToken(offset, tokenType2, content.join(""));
+        var dim = this.stream.substring(pos).toLowerCase();
+        var tokenType_1 = staticUnitTable[dim];
+        if (typeof tokenType_1 !== "undefined") {
+          return this.finishToken(offset, tokenType_1, content.join(""));
         } else {
           return this.finishToken(offset, TokenType.Dimension, content.join(""));
         }
@@ -317,7 +294,7 @@ var Scanner = class {
       return this.finishToken(offset, TokenType.Num);
     }
     content = [];
-    let tokenType = this._string(content);
+    var tokenType = this._string(content);
     if (tokenType !== null) {
       return this.finishToken(offset, tokenType, content.join(""));
     }
@@ -348,10 +325,10 @@ var Scanner = class {
     }
     this.stream.nextChar();
     return this.finishToken(offset, TokenType.Delim);
-  }
-  trivia() {
+  };
+  Scanner2.prototype.trivia = function() {
     while (true) {
-      const offset = this.stream.pos();
+      var offset = this.stream.pos();
       if (this._whitespace()) {
         if (!this.ignoreWhitespace) {
           return this.finishToken(offset, TokenType.Whitespace);
@@ -364,42 +341,42 @@ var Scanner = class {
         return null;
       }
     }
-  }
-  comment() {
+  };
+  Scanner2.prototype.comment = function() {
     if (this.stream.advanceIfChars([_FSL, _MUL])) {
-      let success = false, hot = false;
-      this.stream.advanceWhileChar((ch) => {
-        if (hot && ch === _FSL) {
-          success = true;
+      var success_1 = false, hot_1 = false;
+      this.stream.advanceWhileChar(function(ch) {
+        if (hot_1 && ch === _FSL) {
+          success_1 = true;
           return false;
         }
-        hot = ch === _MUL;
+        hot_1 = ch === _MUL;
         return true;
       });
-      if (success) {
+      if (success_1) {
         this.stream.advance(1);
       }
       return true;
     }
     return false;
-  }
-  _number() {
-    let npeek = 0, ch;
+  };
+  Scanner2.prototype._number = function() {
+    var npeek = 0, ch;
     if (this.stream.peekChar() === _DOT) {
       npeek = 1;
     }
     ch = this.stream.peekChar(npeek);
     if (ch >= _0 && ch <= _9) {
       this.stream.advance(npeek + 1);
-      this.stream.advanceWhileChar((ch2) => {
+      this.stream.advanceWhileChar(function(ch2) {
         return ch2 >= _0 && ch2 <= _9 || npeek === 0 && ch2 === _DOT;
       });
       return true;
     }
     return false;
-  }
-  _newline(result) {
-    const ch = this.stream.peekChar();
+  };
+  Scanner2.prototype._newline = function(result) {
+    var ch = this.stream.peekChar();
     switch (ch) {
       case _CAR:
       case _LFD:
@@ -412,13 +389,13 @@ var Scanner = class {
         return true;
     }
     return false;
-  }
-  _escape(result, includeNewLines) {
-    let ch = this.stream.peekChar();
+  };
+  Scanner2.prototype._escape = function(result, includeNewLines) {
+    var ch = this.stream.peekChar();
     if (ch === _BSL) {
       this.stream.advance(1);
       ch = this.stream.peekChar();
-      let hexNumCount = 0;
+      var hexNumCount = 0;
       while (hexNumCount < 6 && (ch >= _0 && ch <= _9 || ch >= _a && ch <= _f || ch >= _A && ch <= _F)) {
         this.stream.advance(1);
         ch = this.stream.peekChar();
@@ -426,7 +403,7 @@ var Scanner = class {
       }
       if (hexNumCount > 0) {
         try {
-          const hexVal = parseInt(this.stream.substring(this.stream.pos() - hexNumCount), 16);
+          var hexVal = parseInt(this.stream.substring(this.stream.pos() - hexNumCount), 16);
           if (hexVal) {
             result.push(String.fromCharCode(hexVal));
           }
@@ -448,19 +425,19 @@ var Scanner = class {
       }
     }
     return false;
-  }
-  _stringChar(closeQuote, result) {
-    const ch = this.stream.peekChar();
+  };
+  Scanner2.prototype._stringChar = function(closeQuote, result) {
+    var ch = this.stream.peekChar();
     if (ch !== 0 && ch !== closeQuote && ch !== _BSL && ch !== _CAR && ch !== _LFD && ch !== _NWL) {
       this.stream.advance(1);
       result.push(String.fromCharCode(ch));
       return true;
     }
     return false;
-  }
-  _string(result) {
+  };
+  Scanner2.prototype._string = function(result) {
     if (this.stream.peekChar() === _SQO || this.stream.peekChar() === _DQO) {
-      const closeQuote = this.stream.nextChar();
+      var closeQuote = this.stream.nextChar();
       result.push(String.fromCharCode(closeQuote));
       while (this._stringChar(closeQuote, result) || this._escape(result, true)) {
       }
@@ -473,39 +450,39 @@ var Scanner = class {
       }
     }
     return null;
-  }
-  _unquotedChar(result) {
-    const ch = this.stream.peekChar();
+  };
+  Scanner2.prototype._unquotedChar = function(result) {
+    var ch = this.stream.peekChar();
     if (ch !== 0 && ch !== _BSL && ch !== _SQO && ch !== _DQO && ch !== _LPA && ch !== _RPA && ch !== _WSP && ch !== _TAB && ch !== _NWL && ch !== _LFD && ch !== _CAR) {
       this.stream.advance(1);
       result.push(String.fromCharCode(ch));
       return true;
     }
     return false;
-  }
-  _unquotedString(result) {
-    let hasContent = false;
+  };
+  Scanner2.prototype._unquotedString = function(result) {
+    var hasContent = false;
     while (this._unquotedChar(result) || this._escape(result)) {
       hasContent = true;
     }
     return hasContent;
-  }
-  _whitespace() {
-    const n = this.stream.advanceWhileChar((ch) => {
+  };
+  Scanner2.prototype._whitespace = function() {
+    var n = this.stream.advanceWhileChar(function(ch) {
       return ch === _WSP || ch === _TAB || ch === _NWL || ch === _LFD || ch === _CAR;
     });
     return n > 0;
-  }
-  _name(result) {
-    let matched = false;
+  };
+  Scanner2.prototype._name = function(result) {
+    var matched = false;
     while (this._identChar(result) || this._escape(result)) {
       matched = true;
     }
     return matched;
-  }
-  ident(result) {
-    const pos = this.stream.pos();
-    const hasMinus = this._minus(result);
+  };
+  Scanner2.prototype.ident = function(result) {
+    var pos = this.stream.pos();
+    var hasMinus = this._minus(result);
     if (hasMinus) {
       if (this._minus(result) || this._identFirstChar(result) || this._escape(result)) {
         while (this._identChar(result) || this._escape(result)) {
@@ -519,67 +496,43 @@ var Scanner = class {
     }
     this.stream.goBackTo(pos);
     return false;
-  }
-  _identFirstChar(result) {
-    const ch = this.stream.peekChar();
-    if (ch === _USC || // _
-    ch >= _a && ch <= _z || // a-z
-    ch >= _A && ch <= _Z || // A-Z
-    ch >= 128 && ch <= 65535) {
+  };
+  Scanner2.prototype._identFirstChar = function(result) {
+    var ch = this.stream.peekChar();
+    if (ch === _USC || ch >= _a && ch <= _z || ch >= _A && ch <= _Z || ch >= 128 && ch <= 65535) {
       this.stream.advance(1);
       result.push(String.fromCharCode(ch));
       return true;
     }
     return false;
-  }
-  _minus(result) {
-    const ch = this.stream.peekChar();
+  };
+  Scanner2.prototype._minus = function(result) {
+    var ch = this.stream.peekChar();
     if (ch === _MIN) {
       this.stream.advance(1);
       result.push(String.fromCharCode(ch));
       return true;
     }
     return false;
-  }
-  _identChar(result) {
-    const ch = this.stream.peekChar();
-    if (ch === _USC || // _
-    ch === _MIN || // -
-    ch >= _a && ch <= _z || // a-z
-    ch >= _A && ch <= _Z || // A-Z
-    ch >= _0 && ch <= _9 || // 0/9
-    ch >= 128 && ch <= 65535) {
+  };
+  Scanner2.prototype._identChar = function(result) {
+    var ch = this.stream.peekChar();
+    if (ch === _USC || ch === _MIN || ch >= _a && ch <= _z || ch >= _A && ch <= _Z || ch >= _0 && ch <= _9 || ch >= 128 && ch <= 65535) {
       this.stream.advance(1);
       result.push(String.fromCharCode(ch));
       return true;
     }
     return false;
-  }
-  _unicodeRange() {
-    if (this.stream.advanceIfChar(_PLS)) {
-      const isHexDigit = (ch) => ch >= _0 && ch <= _9 || ch >= _a && ch <= _f || ch >= _A && ch <= _F;
-      const codePoints = this.stream.advanceWhileChar(isHexDigit) + this.stream.advanceWhileChar((ch) => ch === _QSM);
-      if (codePoints >= 1 && codePoints <= 6) {
-        if (this.stream.advanceIfChar(_MIN)) {
-          const digits = this.stream.advanceWhileChar(isHexDigit);
-          if (digits >= 1 && digits <= 6) {
-            return true;
-          }
-        } else {
-          return true;
-        }
-      }
-    }
-    return false;
-  }
-};
+  };
+  return Scanner2;
+}();
 
 // node_modules/vscode-css-languageservice/lib/esm/utils/strings.js
 function startsWith(haystack, needle) {
   if (haystack.length < needle.length) {
     return false;
   }
-  for (let i = 0; i < needle.length; i++) {
+  for (var i = 0; i < needle.length; i++) {
     if (haystack[i] !== needle[i]) {
       return false;
     }
@@ -587,7 +540,7 @@ function startsWith(haystack, needle) {
   return true;
 }
 function endsWith(haystack, needle) {
-  let diff = haystack.length - needle.length;
+  var diff = haystack.length - needle.length;
   if (diff > 0) {
     return haystack.lastIndexOf(needle) === diff;
   } else if (diff === 0) {
@@ -596,14 +549,17 @@ function endsWith(haystack, needle) {
     return false;
   }
 }
-function difference(first, second, maxLenDelta = 4) {
-  let lengthDifference = Math.abs(first.length - second.length);
+function difference(first, second, maxLenDelta) {
+  if (maxLenDelta === void 0) {
+    maxLenDelta = 4;
+  }
+  var lengthDifference = Math.abs(first.length - second.length);
   if (lengthDifference > maxLenDelta) {
     return 0;
   }
-  let LCS = [];
-  let zeroArray = [];
-  let i, j;
+  var LCS = [];
+  var zeroArray = [];
+  var i, j;
   for (i = 0; i < second.length + 1; ++i) {
     zeroArray.push(0);
   }
@@ -621,7 +577,10 @@ function difference(first, second, maxLenDelta = 4) {
   }
   return LCS[first.length][second.length] - Math.sqrt(lengthDifference);
 }
-function getLimitedString(str, ellipsis = true) {
+function getLimitedString(str, ellipsis) {
+  if (ellipsis === void 0) {
+    ellipsis = true;
+  }
   if (!str) {
     return "";
   }
@@ -631,25 +590,35 @@ function getLimitedString(str, ellipsis = true) {
   return str.slice(0, 140) + (ellipsis ? "\u2026" : "");
 }
 function trim(str, regexp) {
-  const m = regexp.exec(str);
+  var m = regexp.exec(str);
   if (m && m[0].length) {
     return str.substr(0, str.length - m[0].length);
   }
   return str;
 }
-function repeat(value, count) {
-  let s = "";
-  while (count > 0) {
-    if ((count & 1) === 1) {
-      s += value;
-    }
-    value += value;
-    count = count >>> 1;
-  }
-  return s;
-}
 
 // node_modules/vscode-css-languageservice/lib/esm/parser/cssNodes.js
+var __extends = function() {
+  var extendStatics = function(d, b) {
+    extendStatics = Object.setPrototypeOf || { __proto__: [] } instanceof Array && function(d2, b2) {
+      d2.__proto__ = b2;
+    } || function(d2, b2) {
+      for (var p in b2)
+        if (Object.prototype.hasOwnProperty.call(b2, p))
+          d2[p] = b2[p];
+    };
+    return extendStatics(d, b);
+  };
+  return function(d, b) {
+    if (typeof b !== "function" && b !== null)
+      throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
+    extendStatics(d, b);
+    function __() {
+      this.constructor = d;
+    }
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+  };
+}();
 var NodeType;
 (function(NodeType2) {
   NodeType2[NodeType2["Undefined"] = 0] = "Undefined";
@@ -734,12 +703,6 @@ var NodeType;
   NodeType2[NodeType2["Forward"] = 79] = "Forward";
   NodeType2[NodeType2["ForwardVisibility"] = 80] = "ForwardVisibility";
   NodeType2[NodeType2["Module"] = 81] = "Module";
-  NodeType2[NodeType2["UnicodeRange"] = 82] = "UnicodeRange";
-  NodeType2[NodeType2["Layer"] = 83] = "Layer";
-  NodeType2[NodeType2["LayerNameList"] = 84] = "LayerNameList";
-  NodeType2[NodeType2["LayerName"] = 85] = "LayerName";
-  NodeType2[NodeType2["PropertyAtRule"] = 86] = "PropertyAtRule";
-  NodeType2[NodeType2["Container"] = 87] = "Container";
 })(NodeType || (NodeType = {}));
 var ReferenceType;
 (function(ReferenceType2) {
@@ -752,14 +715,13 @@ var ReferenceType;
   ReferenceType2[ReferenceType2["Module"] = 6] = "Module";
   ReferenceType2[ReferenceType2["Forward"] = 7] = "Forward";
   ReferenceType2[ReferenceType2["ForwardVisibility"] = 8] = "ForwardVisibility";
-  ReferenceType2[ReferenceType2["Property"] = 9] = "Property";
 })(ReferenceType || (ReferenceType = {}));
 function getNodeAtOffset(node, offset) {
-  let candidate = null;
+  var candidate = null;
   if (!node || offset < node.offset || offset > node.end) {
     return null;
   }
-  node.accept((node2) => {
+  node.accept(function(node2) {
     if (node2.offset === -1 && node2.length === -1) {
       return true;
     }
@@ -776,8 +738,8 @@ function getNodeAtOffset(node, offset) {
   return candidate;
 }
 function getNodePath(node, offset) {
-  let candidate = getNodeAtOffset(node, offset);
-  const path = [];
+  var candidate = getNodeAtOffset(node, offset);
+  var path = [];
   while (candidate) {
     path.unshift(candidate);
     candidate = candidate.parent;
@@ -785,18 +747,21 @@ function getNodePath(node, offset) {
   return path;
 }
 function getParentDeclaration(node) {
-  const decl = node.findParent(NodeType.Declaration);
-  const value = decl && decl.getValue();
+  var decl = node.findParent(NodeType.Declaration);
+  var value = decl && decl.getValue();
   if (value && value.encloses(node)) {
     return decl;
   }
   return null;
 }
-var Node = class {
-  get end() {
-    return this.offset + this.length;
-  }
-  constructor(offset = -1, len = -1, nodeType) {
+var Node = function() {
+  function Node2(offset, len, nodeType) {
+    if (offset === void 0) {
+      offset = -1;
+    }
+    if (len === void 0) {
+      len = -1;
+    }
     this.parent = null;
     this.offset = offset;
     this.length = len;
@@ -804,55 +769,70 @@ var Node = class {
       this.nodeType = nodeType;
     }
   }
-  set type(type) {
-    this.nodeType = type;
-  }
-  get type() {
-    return this.nodeType || NodeType.Undefined;
-  }
-  getTextProvider() {
-    let node = this;
+  Object.defineProperty(Node2.prototype, "end", {
+    get: function() {
+      return this.offset + this.length;
+    },
+    enumerable: false,
+    configurable: true
+  });
+  Object.defineProperty(Node2.prototype, "type", {
+    get: function() {
+      return this.nodeType || NodeType.Undefined;
+    },
+    set: function(type) {
+      this.nodeType = type;
+    },
+    enumerable: false,
+    configurable: true
+  });
+  Node2.prototype.getTextProvider = function() {
+    var node = this;
     while (node && !node.textProvider) {
       node = node.parent;
     }
     if (node) {
       return node.textProvider;
     }
-    return () => {
+    return function() {
       return "unknown";
     };
-  }
-  getText() {
+  };
+  Node2.prototype.getText = function() {
     return this.getTextProvider()(this.offset, this.length);
-  }
-  matches(str) {
+  };
+  Node2.prototype.matches = function(str) {
     return this.length === str.length && this.getTextProvider()(this.offset, this.length) === str;
-  }
-  startsWith(str) {
+  };
+  Node2.prototype.startsWith = function(str) {
     return this.length >= str.length && this.getTextProvider()(this.offset, str.length) === str;
-  }
-  endsWith(str) {
+  };
+  Node2.prototype.endsWith = function(str) {
     return this.length >= str.length && this.getTextProvider()(this.end - str.length, str.length) === str;
-  }
-  accept(visitor) {
+  };
+  Node2.prototype.accept = function(visitor) {
     if (visitor(this) && this.children) {
-      for (const child of this.children) {
+      for (var _i = 0, _a2 = this.children; _i < _a2.length; _i++) {
+        var child = _a2[_i];
         child.accept(visitor);
       }
     }
-  }
-  acceptVisitor(visitor) {
+  };
+  Node2.prototype.acceptVisitor = function(visitor) {
     this.accept(visitor.visitNode.bind(visitor));
-  }
-  adoptChild(node, index = -1) {
+  };
+  Node2.prototype.adoptChild = function(node, index) {
+    if (index === void 0) {
+      index = -1;
+    }
     if (node.parent && node.parent.children) {
-      const idx = node.parent.children.indexOf(node);
+      var idx = node.parent.children.indexOf(node);
       if (idx >= 0) {
         node.parent.children.splice(idx, 1);
       }
     }
     node.parent = this;
-    let children = this.children;
+    var children = this.children;
     if (!children) {
       children = this.children = [];
     }
@@ -862,42 +842,55 @@ var Node = class {
       children.push(node);
     }
     return node;
-  }
-  attachTo(parent, index = -1) {
+  };
+  Node2.prototype.attachTo = function(parent, index) {
+    if (index === void 0) {
+      index = -1;
+    }
     if (parent) {
       parent.adoptChild(this, index);
     }
     return this;
-  }
-  collectIssues(results) {
+  };
+  Node2.prototype.collectIssues = function(results) {
     if (this.issues) {
       results.push.apply(results, this.issues);
     }
-  }
-  addIssue(issue) {
+  };
+  Node2.prototype.addIssue = function(issue) {
     if (!this.issues) {
       this.issues = [];
     }
     this.issues.push(issue);
-  }
-  hasIssue(rule) {
-    return Array.isArray(this.issues) && this.issues.some((i) => i.getRule() === rule);
-  }
-  isErroneous(recursive = false) {
+  };
+  Node2.prototype.hasIssue = function(rule) {
+    return Array.isArray(this.issues) && this.issues.some(function(i) {
+      return i.getRule() === rule;
+    });
+  };
+  Node2.prototype.isErroneous = function(recursive) {
+    if (recursive === void 0) {
+      recursive = false;
+    }
     if (this.issues && this.issues.length > 0) {
       return true;
     }
-    return recursive && Array.isArray(this.children) && this.children.some((c) => c.isErroneous(true));
-  }
-  setNode(field, node, index = -1) {
+    return recursive && Array.isArray(this.children) && this.children.some(function(c) {
+      return c.isErroneous(true);
+    });
+  };
+  Node2.prototype.setNode = function(field, node, index) {
+    if (index === void 0) {
+      index = -1;
+    }
     if (node) {
       node.attachTo(this, index);
       this[field] = node;
       return true;
     }
     return false;
-  }
-  addChild(node) {
+  };
+  Node2.prototype.addChild = function(node) {
     if (node) {
       if (!this.children) {
         this.children = [];
@@ -907,37 +900,38 @@ var Node = class {
       return true;
     }
     return false;
-  }
-  updateOffsetAndLength(node) {
+  };
+  Node2.prototype.updateOffsetAndLength = function(node) {
     if (node.offset < this.offset || this.offset === -1) {
       this.offset = node.offset;
     }
-    const nodeEnd = node.end;
+    var nodeEnd = node.end;
     if (nodeEnd > this.end || this.length === -1) {
       this.length = nodeEnd - this.offset;
     }
-  }
-  hasChildren() {
+  };
+  Node2.prototype.hasChildren = function() {
     return !!this.children && this.children.length > 0;
-  }
-  getChildren() {
+  };
+  Node2.prototype.getChildren = function() {
     return this.children ? this.children.slice(0) : [];
-  }
-  getChild(index) {
+  };
+  Node2.prototype.getChild = function(index) {
     if (this.children && index < this.children.length) {
       return this.children[index];
     }
     return null;
-  }
-  addChildren(nodes) {
-    for (const node of nodes) {
+  };
+  Node2.prototype.addChildren = function(nodes) {
+    for (var _i = 0, nodes_1 = nodes; _i < nodes_1.length; _i++) {
+      var node = nodes_1[_i];
       this.addChild(node);
     }
-  }
-  findFirstChildBeforeOffset(offset) {
+  };
+  Node2.prototype.findFirstChildBeforeOffset = function(offset) {
     if (this.children) {
-      let current = null;
-      for (let i = this.children.length - 1; i >= 0; i--) {
+      var current = null;
+      for (var i = this.children.length - 1; i >= 0; i--) {
         current = this.children[i];
         if (current.offset <= offset) {
           return current;
@@ -945,9 +939,9 @@ var Node = class {
       }
     }
     return null;
-  }
-  findChildAtOffset(offset, goDeep) {
-    const current = this.findFirstChildBeforeOffset(offset);
+  };
+  Node2.prototype.findChildAtOffset = function(offset, goDeep) {
+    var current = this.findFirstChildBeforeOffset(offset);
     if (current && current.end >= offset) {
       if (goDeep) {
         return current.findChildAtOffset(offset, true) || current;
@@ -955,777 +949,1073 @@ var Node = class {
       return current;
     }
     return null;
-  }
-  encloses(candidate) {
+  };
+  Node2.prototype.encloses = function(candidate) {
     return this.offset <= candidate.offset && this.offset + this.length >= candidate.offset + candidate.length;
-  }
-  getParent() {
-    let result = this.parent;
+  };
+  Node2.prototype.getParent = function() {
+    var result = this.parent;
     while (result instanceof Nodelist) {
       result = result.parent;
     }
     return result;
-  }
-  findParent(type) {
-    let result = this;
+  };
+  Node2.prototype.findParent = function(type) {
+    var result = this;
     while (result && result.type !== type) {
       result = result.parent;
     }
     return result;
-  }
-  findAParent(...types) {
-    let result = this;
-    while (result && !types.some((t2) => result.type === t2)) {
+  };
+  Node2.prototype.findAParent = function() {
+    var types = [];
+    for (var _i = 0; _i < arguments.length; _i++) {
+      types[_i] = arguments[_i];
+    }
+    var result = this;
+    while (result && !types.some(function(t) {
+      return result.type === t;
+    })) {
       result = result.parent;
     }
     return result;
-  }
-  setData(key, value) {
+  };
+  Node2.prototype.setData = function(key, value) {
     if (!this.options) {
       this.options = {};
     }
     this.options[key] = value;
-  }
-  getData(key) {
+  };
+  Node2.prototype.getData = function(key) {
     if (!this.options || !this.options.hasOwnProperty(key)) {
       return null;
     }
     return this.options[key];
+  };
+  return Node2;
+}();
+var Nodelist = function(_super) {
+  __extends(Nodelist2, _super);
+  function Nodelist2(parent, index) {
+    if (index === void 0) {
+      index = -1;
+    }
+    var _this = _super.call(this, -1, -1) || this;
+    _this.attachTo(parent, index);
+    _this.offset = -1;
+    _this.length = -1;
+    return _this;
   }
-};
-var Nodelist = class extends Node {
-  constructor(parent, index = -1) {
-    super(-1, -1);
-    this.attachTo(parent, index);
-    this.offset = -1;
-    this.length = -1;
+  return Nodelist2;
+}(Node);
+var Identifier = function(_super) {
+  __extends(Identifier2, _super);
+  function Identifier2(offset, length) {
+    var _this = _super.call(this, offset, length) || this;
+    _this.isCustomProperty = false;
+    return _this;
   }
-};
-var UnicodeRange = class extends Node {
-  constructor(offset, length) {
-    super(offset, length);
-  }
-  get type() {
-    return NodeType.UnicodeRange;
-  }
-  setRangeStart(rangeStart) {
-    return this.setNode("rangeStart", rangeStart);
-  }
-  getRangeStart() {
-    return this.rangeStart;
-  }
-  setRangeEnd(rangeEnd) {
-    return this.setNode("rangeEnd", rangeEnd);
-  }
-  getRangeEnd() {
-    return this.rangeEnd;
-  }
-};
-var Identifier = class extends Node {
-  constructor(offset, length) {
-    super(offset, length);
-    this.isCustomProperty = false;
-  }
-  get type() {
-    return NodeType.Identifier;
-  }
-  containsInterpolation() {
+  Object.defineProperty(Identifier2.prototype, "type", {
+    get: function() {
+      return NodeType.Identifier;
+    },
+    enumerable: false,
+    configurable: true
+  });
+  Identifier2.prototype.containsInterpolation = function() {
     return this.hasChildren();
+  };
+  return Identifier2;
+}(Node);
+var Stylesheet = function(_super) {
+  __extends(Stylesheet2, _super);
+  function Stylesheet2(offset, length) {
+    return _super.call(this, offset, length) || this;
   }
-};
-var Stylesheet = class extends Node {
-  constructor(offset, length) {
-    super(offset, length);
+  Object.defineProperty(Stylesheet2.prototype, "type", {
+    get: function() {
+      return NodeType.Stylesheet;
+    },
+    enumerable: false,
+    configurable: true
+  });
+  return Stylesheet2;
+}(Node);
+var Declarations = function(_super) {
+  __extends(Declarations2, _super);
+  function Declarations2(offset, length) {
+    return _super.call(this, offset, length) || this;
   }
-  get type() {
-    return NodeType.Stylesheet;
+  Object.defineProperty(Declarations2.prototype, "type", {
+    get: function() {
+      return NodeType.Declarations;
+    },
+    enumerable: false,
+    configurable: true
+  });
+  return Declarations2;
+}(Node);
+var BodyDeclaration = function(_super) {
+  __extends(BodyDeclaration2, _super);
+  function BodyDeclaration2(offset, length) {
+    return _super.call(this, offset, length) || this;
   }
-};
-var Declarations = class extends Node {
-  constructor(offset, length) {
-    super(offset, length);
-  }
-  get type() {
-    return NodeType.Declarations;
-  }
-};
-var BodyDeclaration = class extends Node {
-  constructor(offset, length) {
-    super(offset, length);
-  }
-  getDeclarations() {
+  BodyDeclaration2.prototype.getDeclarations = function() {
     return this.declarations;
-  }
-  setDeclarations(decls) {
+  };
+  BodyDeclaration2.prototype.setDeclarations = function(decls) {
     return this.setNode("declarations", decls);
+  };
+  return BodyDeclaration2;
+}(Node);
+var RuleSet = function(_super) {
+  __extends(RuleSet2, _super);
+  function RuleSet2(offset, length) {
+    return _super.call(this, offset, length) || this;
   }
-};
-var RuleSet = class extends BodyDeclaration {
-  constructor(offset, length) {
-    super(offset, length);
-  }
-  get type() {
-    return NodeType.Ruleset;
-  }
-  getSelectors() {
+  Object.defineProperty(RuleSet2.prototype, "type", {
+    get: function() {
+      return NodeType.Ruleset;
+    },
+    enumerable: false,
+    configurable: true
+  });
+  RuleSet2.prototype.getSelectors = function() {
     if (!this.selectors) {
       this.selectors = new Nodelist(this);
     }
     return this.selectors;
-  }
-  isNested() {
+  };
+  RuleSet2.prototype.isNested = function() {
     return !!this.parent && this.parent.findParent(NodeType.Declarations) !== null;
+  };
+  return RuleSet2;
+}(BodyDeclaration);
+var Selector = function(_super) {
+  __extends(Selector2, _super);
+  function Selector2(offset, length) {
+    return _super.call(this, offset, length) || this;
   }
-};
-var Selector = class extends Node {
-  constructor(offset, length) {
-    super(offset, length);
+  Object.defineProperty(Selector2.prototype, "type", {
+    get: function() {
+      return NodeType.Selector;
+    },
+    enumerable: false,
+    configurable: true
+  });
+  return Selector2;
+}(Node);
+var SimpleSelector = function(_super) {
+  __extends(SimpleSelector2, _super);
+  function SimpleSelector2(offset, length) {
+    return _super.call(this, offset, length) || this;
   }
-  get type() {
-    return NodeType.Selector;
+  Object.defineProperty(SimpleSelector2.prototype, "type", {
+    get: function() {
+      return NodeType.SimpleSelector;
+    },
+    enumerable: false,
+    configurable: true
+  });
+  return SimpleSelector2;
+}(Node);
+var AtApplyRule = function(_super) {
+  __extends(AtApplyRule2, _super);
+  function AtApplyRule2(offset, length) {
+    return _super.call(this, offset, length) || this;
   }
-};
-var SimpleSelector = class extends Node {
-  constructor(offset, length) {
-    super(offset, length);
+  Object.defineProperty(AtApplyRule2.prototype, "type", {
+    get: function() {
+      return NodeType.AtApplyRule;
+    },
+    enumerable: false,
+    configurable: true
+  });
+  AtApplyRule2.prototype.setIdentifier = function(node) {
+    return this.setNode("identifier", node, 0);
+  };
+  AtApplyRule2.prototype.getIdentifier = function() {
+    return this.identifier;
+  };
+  AtApplyRule2.prototype.getName = function() {
+    return this.identifier ? this.identifier.getText() : "";
+  };
+  return AtApplyRule2;
+}(Node);
+var AbstractDeclaration = function(_super) {
+  __extends(AbstractDeclaration2, _super);
+  function AbstractDeclaration2(offset, length) {
+    return _super.call(this, offset, length) || this;
   }
-  get type() {
-    return NodeType.SimpleSelector;
+  return AbstractDeclaration2;
+}(Node);
+var CustomPropertySet = function(_super) {
+  __extends(CustomPropertySet2, _super);
+  function CustomPropertySet2(offset, length) {
+    return _super.call(this, offset, length) || this;
   }
-};
-var AbstractDeclaration = class extends Node {
-  constructor(offset, length) {
-    super(offset, length);
+  Object.defineProperty(CustomPropertySet2.prototype, "type", {
+    get: function() {
+      return NodeType.CustomPropertySet;
+    },
+    enumerable: false,
+    configurable: true
+  });
+  return CustomPropertySet2;
+}(BodyDeclaration);
+var Declaration = function(_super) {
+  __extends(Declaration2, _super);
+  function Declaration2(offset, length) {
+    var _this = _super.call(this, offset, length) || this;
+    _this.property = null;
+    return _this;
   }
-};
-var CustomPropertySet = class extends BodyDeclaration {
-  constructor(offset, length) {
-    super(offset, length);
-  }
-  get type() {
-    return NodeType.CustomPropertySet;
-  }
-};
-var Declaration = class _Declaration extends AbstractDeclaration {
-  constructor(offset, length) {
-    super(offset, length);
-    this.property = null;
-  }
-  get type() {
-    return NodeType.Declaration;
-  }
-  setProperty(node) {
+  Object.defineProperty(Declaration2.prototype, "type", {
+    get: function() {
+      return NodeType.Declaration;
+    },
+    enumerable: false,
+    configurable: true
+  });
+  Declaration2.prototype.setProperty = function(node) {
     return this.setNode("property", node);
-  }
-  getProperty() {
+  };
+  Declaration2.prototype.getProperty = function() {
     return this.property;
-  }
-  getFullPropertyName() {
-    const propertyName = this.property ? this.property.getName() : "unknown";
+  };
+  Declaration2.prototype.getFullPropertyName = function() {
+    var propertyName = this.property ? this.property.getName() : "unknown";
     if (this.parent instanceof Declarations && this.parent.getParent() instanceof NestedProperties) {
-      const parentDecl = this.parent.getParent().getParent();
-      if (parentDecl instanceof _Declaration) {
+      var parentDecl = this.parent.getParent().getParent();
+      if (parentDecl instanceof Declaration2) {
         return parentDecl.getFullPropertyName() + propertyName;
       }
     }
     return propertyName;
-  }
-  getNonPrefixedPropertyName() {
-    const propertyName = this.getFullPropertyName();
+  };
+  Declaration2.prototype.getNonPrefixedPropertyName = function() {
+    var propertyName = this.getFullPropertyName();
     if (propertyName && propertyName.charAt(0) === "-") {
-      const vendorPrefixEnd = propertyName.indexOf("-", 1);
+      var vendorPrefixEnd = propertyName.indexOf("-", 1);
       if (vendorPrefixEnd !== -1) {
         return propertyName.substring(vendorPrefixEnd + 1);
       }
     }
     return propertyName;
-  }
-  setValue(value) {
+  };
+  Declaration2.prototype.setValue = function(value) {
     return this.setNode("value", value);
-  }
-  getValue() {
+  };
+  Declaration2.prototype.getValue = function() {
     return this.value;
-  }
-  setNestedProperties(value) {
+  };
+  Declaration2.prototype.setNestedProperties = function(value) {
     return this.setNode("nestedProperties", value);
-  }
-  getNestedProperties() {
+  };
+  Declaration2.prototype.getNestedProperties = function() {
     return this.nestedProperties;
+  };
+  return Declaration2;
+}(AbstractDeclaration);
+var CustomPropertyDeclaration = function(_super) {
+  __extends(CustomPropertyDeclaration2, _super);
+  function CustomPropertyDeclaration2(offset, length) {
+    return _super.call(this, offset, length) || this;
   }
-};
-var CustomPropertyDeclaration = class extends Declaration {
-  constructor(offset, length) {
-    super(offset, length);
-  }
-  get type() {
-    return NodeType.CustomPropertyDeclaration;
-  }
-  setPropertySet(value) {
+  Object.defineProperty(CustomPropertyDeclaration2.prototype, "type", {
+    get: function() {
+      return NodeType.CustomPropertyDeclaration;
+    },
+    enumerable: false,
+    configurable: true
+  });
+  CustomPropertyDeclaration2.prototype.setPropertySet = function(value) {
     return this.setNode("propertySet", value);
-  }
-  getPropertySet() {
+  };
+  CustomPropertyDeclaration2.prototype.getPropertySet = function() {
     return this.propertySet;
+  };
+  return CustomPropertyDeclaration2;
+}(Declaration);
+var Property = function(_super) {
+  __extends(Property2, _super);
+  function Property2(offset, length) {
+    return _super.call(this, offset, length) || this;
   }
-};
-var Property = class extends Node {
-  constructor(offset, length) {
-    super(offset, length);
-  }
-  get type() {
-    return NodeType.Property;
-  }
-  setIdentifier(value) {
+  Object.defineProperty(Property2.prototype, "type", {
+    get: function() {
+      return NodeType.Property;
+    },
+    enumerable: false,
+    configurable: true
+  });
+  Property2.prototype.setIdentifier = function(value) {
     return this.setNode("identifier", value);
-  }
-  getIdentifier() {
+  };
+  Property2.prototype.getIdentifier = function() {
     return this.identifier;
-  }
-  getName() {
+  };
+  Property2.prototype.getName = function() {
     return trim(this.getText(), /[_\+]+$/);
-  }
-  isCustomProperty() {
+  };
+  Property2.prototype.isCustomProperty = function() {
     return !!this.identifier && this.identifier.isCustomProperty;
+  };
+  return Property2;
+}(Node);
+var Invocation = function(_super) {
+  __extends(Invocation2, _super);
+  function Invocation2(offset, length) {
+    return _super.call(this, offset, length) || this;
   }
-};
-var Invocation = class extends Node {
-  constructor(offset, length) {
-    super(offset, length);
-  }
-  get type() {
-    return NodeType.Invocation;
-  }
-  getArguments() {
+  Object.defineProperty(Invocation2.prototype, "type", {
+    get: function() {
+      return NodeType.Invocation;
+    },
+    enumerable: false,
+    configurable: true
+  });
+  Invocation2.prototype.getArguments = function() {
     if (!this.arguments) {
       this.arguments = new Nodelist(this);
     }
     return this.arguments;
+  };
+  return Invocation2;
+}(Node);
+var Function = function(_super) {
+  __extends(Function2, _super);
+  function Function2(offset, length) {
+    return _super.call(this, offset, length) || this;
   }
-};
-var Function = class extends Invocation {
-  constructor(offset, length) {
-    super(offset, length);
-  }
-  get type() {
-    return NodeType.Function;
-  }
-  setIdentifier(node) {
+  Object.defineProperty(Function2.prototype, "type", {
+    get: function() {
+      return NodeType.Function;
+    },
+    enumerable: false,
+    configurable: true
+  });
+  Function2.prototype.setIdentifier = function(node) {
     return this.setNode("identifier", node, 0);
-  }
-  getIdentifier() {
+  };
+  Function2.prototype.getIdentifier = function() {
     return this.identifier;
-  }
-  getName() {
+  };
+  Function2.prototype.getName = function() {
     return this.identifier ? this.identifier.getText() : "";
+  };
+  return Function2;
+}(Invocation);
+var FunctionParameter = function(_super) {
+  __extends(FunctionParameter2, _super);
+  function FunctionParameter2(offset, length) {
+    return _super.call(this, offset, length) || this;
   }
-};
-var FunctionParameter = class extends Node {
-  constructor(offset, length) {
-    super(offset, length);
-  }
-  get type() {
-    return NodeType.FunctionParameter;
-  }
-  setIdentifier(node) {
+  Object.defineProperty(FunctionParameter2.prototype, "type", {
+    get: function() {
+      return NodeType.FunctionParameter;
+    },
+    enumerable: false,
+    configurable: true
+  });
+  FunctionParameter2.prototype.setIdentifier = function(node) {
     return this.setNode("identifier", node, 0);
-  }
-  getIdentifier() {
+  };
+  FunctionParameter2.prototype.getIdentifier = function() {
     return this.identifier;
-  }
-  getName() {
+  };
+  FunctionParameter2.prototype.getName = function() {
     return this.identifier ? this.identifier.getText() : "";
-  }
-  setDefaultValue(node) {
+  };
+  FunctionParameter2.prototype.setDefaultValue = function(node) {
     return this.setNode("defaultValue", node, 0);
-  }
-  getDefaultValue() {
+  };
+  FunctionParameter2.prototype.getDefaultValue = function() {
     return this.defaultValue;
+  };
+  return FunctionParameter2;
+}(Node);
+var FunctionArgument = function(_super) {
+  __extends(FunctionArgument2, _super);
+  function FunctionArgument2(offset, length) {
+    return _super.call(this, offset, length) || this;
   }
-};
-var FunctionArgument = class extends Node {
-  constructor(offset, length) {
-    super(offset, length);
-  }
-  get type() {
-    return NodeType.FunctionArgument;
-  }
-  setIdentifier(node) {
+  Object.defineProperty(FunctionArgument2.prototype, "type", {
+    get: function() {
+      return NodeType.FunctionArgument;
+    },
+    enumerable: false,
+    configurable: true
+  });
+  FunctionArgument2.prototype.setIdentifier = function(node) {
     return this.setNode("identifier", node, 0);
-  }
-  getIdentifier() {
+  };
+  FunctionArgument2.prototype.getIdentifier = function() {
     return this.identifier;
-  }
-  getName() {
+  };
+  FunctionArgument2.prototype.getName = function() {
     return this.identifier ? this.identifier.getText() : "";
-  }
-  setValue(node) {
+  };
+  FunctionArgument2.prototype.setValue = function(node) {
     return this.setNode("value", node, 0);
-  }
-  getValue() {
+  };
+  FunctionArgument2.prototype.getValue = function() {
     return this.value;
+  };
+  return FunctionArgument2;
+}(Node);
+var IfStatement = function(_super) {
+  __extends(IfStatement2, _super);
+  function IfStatement2(offset, length) {
+    return _super.call(this, offset, length) || this;
   }
-};
-var IfStatement = class extends BodyDeclaration {
-  constructor(offset, length) {
-    super(offset, length);
-  }
-  get type() {
-    return NodeType.If;
-  }
-  setExpression(node) {
+  Object.defineProperty(IfStatement2.prototype, "type", {
+    get: function() {
+      return NodeType.If;
+    },
+    enumerable: false,
+    configurable: true
+  });
+  IfStatement2.prototype.setExpression = function(node) {
     return this.setNode("expression", node, 0);
-  }
-  setElseClause(elseClause) {
+  };
+  IfStatement2.prototype.setElseClause = function(elseClause) {
     return this.setNode("elseClause", elseClause);
+  };
+  return IfStatement2;
+}(BodyDeclaration);
+var ForStatement = function(_super) {
+  __extends(ForStatement2, _super);
+  function ForStatement2(offset, length) {
+    return _super.call(this, offset, length) || this;
   }
-};
-var ForStatement = class extends BodyDeclaration {
-  constructor(offset, length) {
-    super(offset, length);
-  }
-  get type() {
-    return NodeType.For;
-  }
-  setVariable(node) {
+  Object.defineProperty(ForStatement2.prototype, "type", {
+    get: function() {
+      return NodeType.For;
+    },
+    enumerable: false,
+    configurable: true
+  });
+  ForStatement2.prototype.setVariable = function(node) {
     return this.setNode("variable", node, 0);
+  };
+  return ForStatement2;
+}(BodyDeclaration);
+var EachStatement = function(_super) {
+  __extends(EachStatement2, _super);
+  function EachStatement2(offset, length) {
+    return _super.call(this, offset, length) || this;
   }
-};
-var EachStatement = class extends BodyDeclaration {
-  constructor(offset, length) {
-    super(offset, length);
-  }
-  get type() {
-    return NodeType.Each;
-  }
-  getVariables() {
+  Object.defineProperty(EachStatement2.prototype, "type", {
+    get: function() {
+      return NodeType.Each;
+    },
+    enumerable: false,
+    configurable: true
+  });
+  EachStatement2.prototype.getVariables = function() {
     if (!this.variables) {
       this.variables = new Nodelist(this);
     }
     return this.variables;
+  };
+  return EachStatement2;
+}(BodyDeclaration);
+var WhileStatement = function(_super) {
+  __extends(WhileStatement2, _super);
+  function WhileStatement2(offset, length) {
+    return _super.call(this, offset, length) || this;
   }
-};
-var WhileStatement = class extends BodyDeclaration {
-  constructor(offset, length) {
-    super(offset, length);
+  Object.defineProperty(WhileStatement2.prototype, "type", {
+    get: function() {
+      return NodeType.While;
+    },
+    enumerable: false,
+    configurable: true
+  });
+  return WhileStatement2;
+}(BodyDeclaration);
+var ElseStatement = function(_super) {
+  __extends(ElseStatement2, _super);
+  function ElseStatement2(offset, length) {
+    return _super.call(this, offset, length) || this;
   }
-  get type() {
-    return NodeType.While;
+  Object.defineProperty(ElseStatement2.prototype, "type", {
+    get: function() {
+      return NodeType.Else;
+    },
+    enumerable: false,
+    configurable: true
+  });
+  return ElseStatement2;
+}(BodyDeclaration);
+var FunctionDeclaration = function(_super) {
+  __extends(FunctionDeclaration2, _super);
+  function FunctionDeclaration2(offset, length) {
+    return _super.call(this, offset, length) || this;
   }
-};
-var ElseStatement = class extends BodyDeclaration {
-  constructor(offset, length) {
-    super(offset, length);
-  }
-  get type() {
-    return NodeType.Else;
-  }
-};
-var FunctionDeclaration = class extends BodyDeclaration {
-  constructor(offset, length) {
-    super(offset, length);
-  }
-  get type() {
-    return NodeType.FunctionDeclaration;
-  }
-  setIdentifier(node) {
+  Object.defineProperty(FunctionDeclaration2.prototype, "type", {
+    get: function() {
+      return NodeType.FunctionDeclaration;
+    },
+    enumerable: false,
+    configurable: true
+  });
+  FunctionDeclaration2.prototype.setIdentifier = function(node) {
     return this.setNode("identifier", node, 0);
-  }
-  getIdentifier() {
+  };
+  FunctionDeclaration2.prototype.getIdentifier = function() {
     return this.identifier;
-  }
-  getName() {
+  };
+  FunctionDeclaration2.prototype.getName = function() {
     return this.identifier ? this.identifier.getText() : "";
-  }
-  getParameters() {
+  };
+  FunctionDeclaration2.prototype.getParameters = function() {
     if (!this.parameters) {
       this.parameters = new Nodelist(this);
     }
     return this.parameters;
+  };
+  return FunctionDeclaration2;
+}(BodyDeclaration);
+var ViewPort = function(_super) {
+  __extends(ViewPort2, _super);
+  function ViewPort2(offset, length) {
+    return _super.call(this, offset, length) || this;
   }
-};
-var ViewPort = class extends BodyDeclaration {
-  constructor(offset, length) {
-    super(offset, length);
+  Object.defineProperty(ViewPort2.prototype, "type", {
+    get: function() {
+      return NodeType.ViewPort;
+    },
+    enumerable: false,
+    configurable: true
+  });
+  return ViewPort2;
+}(BodyDeclaration);
+var FontFace = function(_super) {
+  __extends(FontFace2, _super);
+  function FontFace2(offset, length) {
+    return _super.call(this, offset, length) || this;
   }
-  get type() {
-    return NodeType.ViewPort;
+  Object.defineProperty(FontFace2.prototype, "type", {
+    get: function() {
+      return NodeType.FontFace;
+    },
+    enumerable: false,
+    configurable: true
+  });
+  return FontFace2;
+}(BodyDeclaration);
+var NestedProperties = function(_super) {
+  __extends(NestedProperties2, _super);
+  function NestedProperties2(offset, length) {
+    return _super.call(this, offset, length) || this;
   }
-};
-var FontFace = class extends BodyDeclaration {
-  constructor(offset, length) {
-    super(offset, length);
+  Object.defineProperty(NestedProperties2.prototype, "type", {
+    get: function() {
+      return NodeType.NestedProperties;
+    },
+    enumerable: false,
+    configurable: true
+  });
+  return NestedProperties2;
+}(BodyDeclaration);
+var Keyframe = function(_super) {
+  __extends(Keyframe2, _super);
+  function Keyframe2(offset, length) {
+    return _super.call(this, offset, length) || this;
   }
-  get type() {
-    return NodeType.FontFace;
-  }
-};
-var NestedProperties = class extends BodyDeclaration {
-  constructor(offset, length) {
-    super(offset, length);
-  }
-  get type() {
-    return NodeType.NestedProperties;
-  }
-};
-var Keyframe = class extends BodyDeclaration {
-  constructor(offset, length) {
-    super(offset, length);
-  }
-  get type() {
-    return NodeType.Keyframe;
-  }
-  setKeyword(keyword) {
+  Object.defineProperty(Keyframe2.prototype, "type", {
+    get: function() {
+      return NodeType.Keyframe;
+    },
+    enumerable: false,
+    configurable: true
+  });
+  Keyframe2.prototype.setKeyword = function(keyword) {
     return this.setNode("keyword", keyword, 0);
-  }
-  getKeyword() {
+  };
+  Keyframe2.prototype.getKeyword = function() {
     return this.keyword;
-  }
-  setIdentifier(node) {
+  };
+  Keyframe2.prototype.setIdentifier = function(node) {
     return this.setNode("identifier", node, 0);
-  }
-  getIdentifier() {
+  };
+  Keyframe2.prototype.getIdentifier = function() {
     return this.identifier;
-  }
-  getName() {
+  };
+  Keyframe2.prototype.getName = function() {
     return this.identifier ? this.identifier.getText() : "";
+  };
+  return Keyframe2;
+}(BodyDeclaration);
+var KeyframeSelector = function(_super) {
+  __extends(KeyframeSelector2, _super);
+  function KeyframeSelector2(offset, length) {
+    return _super.call(this, offset, length) || this;
   }
-};
-var KeyframeSelector = class extends BodyDeclaration {
-  constructor(offset, length) {
-    super(offset, length);
+  Object.defineProperty(KeyframeSelector2.prototype, "type", {
+    get: function() {
+      return NodeType.KeyframeSelector;
+    },
+    enumerable: false,
+    configurable: true
+  });
+  return KeyframeSelector2;
+}(BodyDeclaration);
+var Import = function(_super) {
+  __extends(Import2, _super);
+  function Import2(offset, length) {
+    return _super.call(this, offset, length) || this;
   }
-  get type() {
-    return NodeType.KeyframeSelector;
-  }
-};
-var Import = class extends Node {
-  constructor(offset, length) {
-    super(offset, length);
-  }
-  get type() {
-    return NodeType.Import;
-  }
-  setMedialist(node) {
+  Object.defineProperty(Import2.prototype, "type", {
+    get: function() {
+      return NodeType.Import;
+    },
+    enumerable: false,
+    configurable: true
+  });
+  Import2.prototype.setMedialist = function(node) {
     if (node) {
       node.attachTo(this);
       return true;
     }
     return false;
+  };
+  return Import2;
+}(Node);
+var Use = function(_super) {
+  __extends(Use2, _super);
+  function Use2() {
+    return _super !== null && _super.apply(this, arguments) || this;
   }
-};
-var Use = class extends Node {
-  get type() {
-    return NodeType.Use;
-  }
-  getParameters() {
+  Object.defineProperty(Use2.prototype, "type", {
+    get: function() {
+      return NodeType.Use;
+    },
+    enumerable: false,
+    configurable: true
+  });
+  Use2.prototype.getParameters = function() {
     if (!this.parameters) {
       this.parameters = new Nodelist(this);
     }
     return this.parameters;
-  }
-  setIdentifier(node) {
+  };
+  Use2.prototype.setIdentifier = function(node) {
     return this.setNode("identifier", node, 0);
-  }
-  getIdentifier() {
+  };
+  Use2.prototype.getIdentifier = function() {
     return this.identifier;
+  };
+  return Use2;
+}(Node);
+var ModuleConfiguration = function(_super) {
+  __extends(ModuleConfiguration2, _super);
+  function ModuleConfiguration2() {
+    return _super !== null && _super.apply(this, arguments) || this;
   }
-};
-var ModuleConfiguration = class extends Node {
-  get type() {
-    return NodeType.ModuleConfiguration;
-  }
-  setIdentifier(node) {
+  Object.defineProperty(ModuleConfiguration2.prototype, "type", {
+    get: function() {
+      return NodeType.ModuleConfiguration;
+    },
+    enumerable: false,
+    configurable: true
+  });
+  ModuleConfiguration2.prototype.setIdentifier = function(node) {
     return this.setNode("identifier", node, 0);
-  }
-  getIdentifier() {
+  };
+  ModuleConfiguration2.prototype.getIdentifier = function() {
     return this.identifier;
-  }
-  getName() {
+  };
+  ModuleConfiguration2.prototype.getName = function() {
     return this.identifier ? this.identifier.getText() : "";
-  }
-  setValue(node) {
+  };
+  ModuleConfiguration2.prototype.setValue = function(node) {
     return this.setNode("value", node, 0);
-  }
-  getValue() {
+  };
+  ModuleConfiguration2.prototype.getValue = function() {
     return this.value;
+  };
+  return ModuleConfiguration2;
+}(Node);
+var Forward = function(_super) {
+  __extends(Forward2, _super);
+  function Forward2() {
+    return _super !== null && _super.apply(this, arguments) || this;
   }
-};
-var Forward = class extends Node {
-  get type() {
-    return NodeType.Forward;
-  }
-  setIdentifier(node) {
+  Object.defineProperty(Forward2.prototype, "type", {
+    get: function() {
+      return NodeType.Forward;
+    },
+    enumerable: false,
+    configurable: true
+  });
+  Forward2.prototype.setIdentifier = function(node) {
     return this.setNode("identifier", node, 0);
-  }
-  getIdentifier() {
+  };
+  Forward2.prototype.getIdentifier = function() {
     return this.identifier;
-  }
-  getMembers() {
+  };
+  Forward2.prototype.getMembers = function() {
     if (!this.members) {
       this.members = new Nodelist(this);
     }
     return this.members;
-  }
-  getParameters() {
+  };
+  Forward2.prototype.getParameters = function() {
     if (!this.parameters) {
       this.parameters = new Nodelist(this);
     }
     return this.parameters;
+  };
+  return Forward2;
+}(Node);
+var ForwardVisibility = function(_super) {
+  __extends(ForwardVisibility2, _super);
+  function ForwardVisibility2() {
+    return _super !== null && _super.apply(this, arguments) || this;
   }
-};
-var ForwardVisibility = class extends Node {
-  get type() {
-    return NodeType.ForwardVisibility;
-  }
-  setIdentifier(node) {
+  Object.defineProperty(ForwardVisibility2.prototype, "type", {
+    get: function() {
+      return NodeType.ForwardVisibility;
+    },
+    enumerable: false,
+    configurable: true
+  });
+  ForwardVisibility2.prototype.setIdentifier = function(node) {
     return this.setNode("identifier", node, 0);
-  }
-  getIdentifier() {
+  };
+  ForwardVisibility2.prototype.getIdentifier = function() {
     return this.identifier;
+  };
+  return ForwardVisibility2;
+}(Node);
+var Namespace = function(_super) {
+  __extends(Namespace2, _super);
+  function Namespace2(offset, length) {
+    return _super.call(this, offset, length) || this;
   }
-};
-var Namespace = class extends Node {
-  constructor(offset, length) {
-    super(offset, length);
+  Object.defineProperty(Namespace2.prototype, "type", {
+    get: function() {
+      return NodeType.Namespace;
+    },
+    enumerable: false,
+    configurable: true
+  });
+  return Namespace2;
+}(Node);
+var Media = function(_super) {
+  __extends(Media2, _super);
+  function Media2(offset, length) {
+    return _super.call(this, offset, length) || this;
   }
-  get type() {
-    return NodeType.Namespace;
+  Object.defineProperty(Media2.prototype, "type", {
+    get: function() {
+      return NodeType.Media;
+    },
+    enumerable: false,
+    configurable: true
+  });
+  return Media2;
+}(BodyDeclaration);
+var Supports = function(_super) {
+  __extends(Supports2, _super);
+  function Supports2(offset, length) {
+    return _super.call(this, offset, length) || this;
   }
-};
-var Media = class extends BodyDeclaration {
-  constructor(offset, length) {
-    super(offset, length);
+  Object.defineProperty(Supports2.prototype, "type", {
+    get: function() {
+      return NodeType.Supports;
+    },
+    enumerable: false,
+    configurable: true
+  });
+  return Supports2;
+}(BodyDeclaration);
+var Document = function(_super) {
+  __extends(Document2, _super);
+  function Document2(offset, length) {
+    return _super.call(this, offset, length) || this;
   }
-  get type() {
-    return NodeType.Media;
+  Object.defineProperty(Document2.prototype, "type", {
+    get: function() {
+      return NodeType.Document;
+    },
+    enumerable: false,
+    configurable: true
+  });
+  return Document2;
+}(BodyDeclaration);
+var Medialist = function(_super) {
+  __extends(Medialist2, _super);
+  function Medialist2(offset, length) {
+    return _super.call(this, offset, length) || this;
   }
-};
-var Supports = class extends BodyDeclaration {
-  constructor(offset, length) {
-    super(offset, length);
-  }
-  get type() {
-    return NodeType.Supports;
-  }
-};
-var Layer = class extends BodyDeclaration {
-  constructor(offset, length) {
-    super(offset, length);
-  }
-  get type() {
-    return NodeType.Layer;
-  }
-  setNames(names) {
-    return this.setNode("names", names);
-  }
-  getNames() {
-    return this.names;
-  }
-};
-var PropertyAtRule = class extends BodyDeclaration {
-  constructor(offset, length) {
-    super(offset, length);
-  }
-  get type() {
-    return NodeType.PropertyAtRule;
-  }
-  setName(node) {
-    if (node) {
-      node.attachTo(this);
-      this.name = node;
-      return true;
+  Medialist2.prototype.getMediums = function() {
+    if (!this.mediums) {
+      this.mediums = new Nodelist(this);
     }
-    return false;
+    return this.mediums;
+  };
+  return Medialist2;
+}(Node);
+var MediaQuery = function(_super) {
+  __extends(MediaQuery2, _super);
+  function MediaQuery2(offset, length) {
+    return _super.call(this, offset, length) || this;
   }
-  getName() {
-    return this.name;
+  Object.defineProperty(MediaQuery2.prototype, "type", {
+    get: function() {
+      return NodeType.MediaQuery;
+    },
+    enumerable: false,
+    configurable: true
+  });
+  return MediaQuery2;
+}(Node);
+var MediaCondition = function(_super) {
+  __extends(MediaCondition2, _super);
+  function MediaCondition2(offset, length) {
+    return _super.call(this, offset, length) || this;
   }
-};
-var Document = class extends BodyDeclaration {
-  constructor(offset, length) {
-    super(offset, length);
+  Object.defineProperty(MediaCondition2.prototype, "type", {
+    get: function() {
+      return NodeType.MediaCondition;
+    },
+    enumerable: false,
+    configurable: true
+  });
+  return MediaCondition2;
+}(Node);
+var MediaFeature = function(_super) {
+  __extends(MediaFeature2, _super);
+  function MediaFeature2(offset, length) {
+    return _super.call(this, offset, length) || this;
   }
-  get type() {
-    return NodeType.Document;
+  Object.defineProperty(MediaFeature2.prototype, "type", {
+    get: function() {
+      return NodeType.MediaFeature;
+    },
+    enumerable: false,
+    configurable: true
+  });
+  return MediaFeature2;
+}(Node);
+var SupportsCondition = function(_super) {
+  __extends(SupportsCondition2, _super);
+  function SupportsCondition2(offset, length) {
+    return _super.call(this, offset, length) || this;
   }
-};
-var Container = class extends BodyDeclaration {
-  constructor(offset, length) {
-    super(offset, length);
+  Object.defineProperty(SupportsCondition2.prototype, "type", {
+    get: function() {
+      return NodeType.SupportsCondition;
+    },
+    enumerable: false,
+    configurable: true
+  });
+  return SupportsCondition2;
+}(Node);
+var Page = function(_super) {
+  __extends(Page2, _super);
+  function Page2(offset, length) {
+    return _super.call(this, offset, length) || this;
   }
-  get type() {
-    return NodeType.Container;
+  Object.defineProperty(Page2.prototype, "type", {
+    get: function() {
+      return NodeType.Page;
+    },
+    enumerable: false,
+    configurable: true
+  });
+  return Page2;
+}(BodyDeclaration);
+var PageBoxMarginBox = function(_super) {
+  __extends(PageBoxMarginBox2, _super);
+  function PageBoxMarginBox2(offset, length) {
+    return _super.call(this, offset, length) || this;
   }
-};
-var Medialist = class extends Node {
-  constructor(offset, length) {
-    super(offset, length);
+  Object.defineProperty(PageBoxMarginBox2.prototype, "type", {
+    get: function() {
+      return NodeType.PageBoxMarginBox;
+    },
+    enumerable: false,
+    configurable: true
+  });
+  return PageBoxMarginBox2;
+}(BodyDeclaration);
+var Expression = function(_super) {
+  __extends(Expression2, _super);
+  function Expression2(offset, length) {
+    return _super.call(this, offset, length) || this;
   }
-};
-var MediaQuery = class extends Node {
-  constructor(offset, length) {
-    super(offset, length);
+  Object.defineProperty(Expression2.prototype, "type", {
+    get: function() {
+      return NodeType.Expression;
+    },
+    enumerable: false,
+    configurable: true
+  });
+  return Expression2;
+}(Node);
+var BinaryExpression = function(_super) {
+  __extends(BinaryExpression2, _super);
+  function BinaryExpression2(offset, length) {
+    return _super.call(this, offset, length) || this;
   }
-  get type() {
-    return NodeType.MediaQuery;
-  }
-};
-var MediaCondition = class extends Node {
-  constructor(offset, length) {
-    super(offset, length);
-  }
-  get type() {
-    return NodeType.MediaCondition;
-  }
-};
-var MediaFeature = class extends Node {
-  constructor(offset, length) {
-    super(offset, length);
-  }
-  get type() {
-    return NodeType.MediaFeature;
-  }
-};
-var SupportsCondition = class extends Node {
-  constructor(offset, length) {
-    super(offset, length);
-  }
-  get type() {
-    return NodeType.SupportsCondition;
-  }
-};
-var Page = class extends BodyDeclaration {
-  constructor(offset, length) {
-    super(offset, length);
-  }
-  get type() {
-    return NodeType.Page;
-  }
-};
-var PageBoxMarginBox = class extends BodyDeclaration {
-  constructor(offset, length) {
-    super(offset, length);
-  }
-  get type() {
-    return NodeType.PageBoxMarginBox;
-  }
-};
-var Expression = class extends Node {
-  constructor(offset, length) {
-    super(offset, length);
-  }
-  get type() {
-    return NodeType.Expression;
-  }
-};
-var BinaryExpression = class extends Node {
-  constructor(offset, length) {
-    super(offset, length);
-  }
-  get type() {
-    return NodeType.BinaryExpression;
-  }
-  setLeft(left) {
+  Object.defineProperty(BinaryExpression2.prototype, "type", {
+    get: function() {
+      return NodeType.BinaryExpression;
+    },
+    enumerable: false,
+    configurable: true
+  });
+  BinaryExpression2.prototype.setLeft = function(left) {
     return this.setNode("left", left);
-  }
-  getLeft() {
+  };
+  BinaryExpression2.prototype.getLeft = function() {
     return this.left;
-  }
-  setRight(right) {
+  };
+  BinaryExpression2.prototype.setRight = function(right) {
     return this.setNode("right", right);
-  }
-  getRight() {
+  };
+  BinaryExpression2.prototype.getRight = function() {
     return this.right;
-  }
-  setOperator(value) {
+  };
+  BinaryExpression2.prototype.setOperator = function(value) {
     return this.setNode("operator", value);
-  }
-  getOperator() {
+  };
+  BinaryExpression2.prototype.getOperator = function() {
     return this.operator;
+  };
+  return BinaryExpression2;
+}(Node);
+var Term = function(_super) {
+  __extends(Term2, _super);
+  function Term2(offset, length) {
+    return _super.call(this, offset, length) || this;
   }
-};
-var Term = class extends Node {
-  constructor(offset, length) {
-    super(offset, length);
-  }
-  get type() {
-    return NodeType.Term;
-  }
-  setOperator(value) {
+  Object.defineProperty(Term2.prototype, "type", {
+    get: function() {
+      return NodeType.Term;
+    },
+    enumerable: false,
+    configurable: true
+  });
+  Term2.prototype.setOperator = function(value) {
     return this.setNode("operator", value);
-  }
-  getOperator() {
+  };
+  Term2.prototype.getOperator = function() {
     return this.operator;
-  }
-  setExpression(value) {
+  };
+  Term2.prototype.setExpression = function(value) {
     return this.setNode("expression", value);
-  }
-  getExpression() {
+  };
+  Term2.prototype.getExpression = function() {
     return this.expression;
+  };
+  return Term2;
+}(Node);
+var AttributeSelector = function(_super) {
+  __extends(AttributeSelector2, _super);
+  function AttributeSelector2(offset, length) {
+    return _super.call(this, offset, length) || this;
   }
-};
-var AttributeSelector = class extends Node {
-  constructor(offset, length) {
-    super(offset, length);
-  }
-  get type() {
-    return NodeType.AttributeSelector;
-  }
-  setNamespacePrefix(value) {
+  Object.defineProperty(AttributeSelector2.prototype, "type", {
+    get: function() {
+      return NodeType.AttributeSelector;
+    },
+    enumerable: false,
+    configurable: true
+  });
+  AttributeSelector2.prototype.setNamespacePrefix = function(value) {
     return this.setNode("namespacePrefix", value);
-  }
-  getNamespacePrefix() {
+  };
+  AttributeSelector2.prototype.getNamespacePrefix = function() {
     return this.namespacePrefix;
-  }
-  setIdentifier(value) {
+  };
+  AttributeSelector2.prototype.setIdentifier = function(value) {
     return this.setNode("identifier", value);
-  }
-  getIdentifier() {
+  };
+  AttributeSelector2.prototype.getIdentifier = function() {
     return this.identifier;
-  }
-  setOperator(operator) {
+  };
+  AttributeSelector2.prototype.setOperator = function(operator) {
     return this.setNode("operator", operator);
-  }
-  getOperator() {
+  };
+  AttributeSelector2.prototype.getOperator = function() {
     return this.operator;
-  }
-  setValue(value) {
+  };
+  AttributeSelector2.prototype.setValue = function(value) {
     return this.setNode("value", value);
-  }
-  getValue() {
+  };
+  AttributeSelector2.prototype.getValue = function() {
     return this.value;
+  };
+  return AttributeSelector2;
+}(Node);
+var Operator = function(_super) {
+  __extends(Operator2, _super);
+  function Operator2(offset, length) {
+    return _super.call(this, offset, length) || this;
   }
-};
-var HexColorValue = class extends Node {
-  constructor(offset, length) {
-    super(offset, length);
+  Object.defineProperty(Operator2.prototype, "type", {
+    get: function() {
+      return NodeType.Operator;
+    },
+    enumerable: false,
+    configurable: true
+  });
+  return Operator2;
+}(Node);
+var HexColorValue = function(_super) {
+  __extends(HexColorValue2, _super);
+  function HexColorValue2(offset, length) {
+    return _super.call(this, offset, length) || this;
   }
-  get type() {
-    return NodeType.HexColorValue;
+  Object.defineProperty(HexColorValue2.prototype, "type", {
+    get: function() {
+      return NodeType.HexColorValue;
+    },
+    enumerable: false,
+    configurable: true
+  });
+  return HexColorValue2;
+}(Node);
+var RatioValue = function(_super) {
+  __extends(RatioValue2, _super);
+  function RatioValue2(offset, length) {
+    return _super.call(this, offset, length) || this;
   }
-};
-var RatioValue = class extends Node {
-  constructor(offset, length) {
-    super(offset, length);
-  }
-  get type() {
-    return NodeType.RatioValue;
-  }
-};
+  Object.defineProperty(RatioValue2.prototype, "type", {
+    get: function() {
+      return NodeType.RatioValue;
+    },
+    enumerable: false,
+    configurable: true
+  });
+  return RatioValue2;
+}(Node);
 var _dot = ".".charCodeAt(0);
 var _02 = "0".charCodeAt(0);
 var _92 = "9".charCodeAt(0);
-var NumericValue = class extends Node {
-  constructor(offset, length) {
-    super(offset, length);
+var NumericValue = function(_super) {
+  __extends(NumericValue2, _super);
+  function NumericValue2(offset, length) {
+    return _super.call(this, offset, length) || this;
   }
-  get type() {
-    return NodeType.NumericValue;
-  }
-  getValue() {
-    const raw = this.getText();
-    let unitIdx = 0;
-    let code;
-    for (let i = 0, len = raw.length; i < len; i++) {
+  Object.defineProperty(NumericValue2.prototype, "type", {
+    get: function() {
+      return NodeType.NumericValue;
+    },
+    enumerable: false,
+    configurable: true
+  });
+  NumericValue2.prototype.getValue = function() {
+    var raw = this.getText();
+    var unitIdx = 0;
+    var code;
+    for (var i = 0, len = raw.length; i < len; i++) {
       code = raw.charCodeAt(i);
       if (!(_02 <= code && code <= _92 || code === _dot)) {
         break;
@@ -1736,226 +2026,317 @@ var NumericValue = class extends Node {
       value: raw.substring(0, unitIdx),
       unit: unitIdx < raw.length ? raw.substring(unitIdx) : void 0
     };
+  };
+  return NumericValue2;
+}(Node);
+var VariableDeclaration = function(_super) {
+  __extends(VariableDeclaration2, _super);
+  function VariableDeclaration2(offset, length) {
+    var _this = _super.call(this, offset, length) || this;
+    _this.variable = null;
+    _this.value = null;
+    _this.needsSemicolon = true;
+    return _this;
   }
-};
-var VariableDeclaration = class extends AbstractDeclaration {
-  constructor(offset, length) {
-    super(offset, length);
-    this.needsSemicolon = true;
-  }
-  get type() {
-    return NodeType.VariableDeclaration;
-  }
-  setVariable(node) {
+  Object.defineProperty(VariableDeclaration2.prototype, "type", {
+    get: function() {
+      return NodeType.VariableDeclaration;
+    },
+    enumerable: false,
+    configurable: true
+  });
+  VariableDeclaration2.prototype.setVariable = function(node) {
     if (node) {
       node.attachTo(this);
       this.variable = node;
       return true;
     }
     return false;
-  }
-  getVariable() {
+  };
+  VariableDeclaration2.prototype.getVariable = function() {
     return this.variable;
-  }
-  getName() {
+  };
+  VariableDeclaration2.prototype.getName = function() {
     return this.variable ? this.variable.getName() : "";
-  }
-  setValue(node) {
+  };
+  VariableDeclaration2.prototype.setValue = function(node) {
     if (node) {
       node.attachTo(this);
       this.value = node;
       return true;
     }
     return false;
-  }
-  getValue() {
+  };
+  VariableDeclaration2.prototype.getValue = function() {
     return this.value;
+  };
+  return VariableDeclaration2;
+}(AbstractDeclaration);
+var Interpolation = function(_super) {
+  __extends(Interpolation2, _super);
+  function Interpolation2(offset, length) {
+    return _super.call(this, offset, length) || this;
   }
-};
-var Interpolation = class extends Node {
-  // private _interpolations: void; // workaround for https://github.com/Microsoft/TypeScript/issues/18276
-  constructor(offset, length) {
-    super(offset, length);
+  Object.defineProperty(Interpolation2.prototype, "type", {
+    get: function() {
+      return NodeType.Interpolation;
+    },
+    enumerable: false,
+    configurable: true
+  });
+  return Interpolation2;
+}(Node);
+var Variable = function(_super) {
+  __extends(Variable2, _super);
+  function Variable2(offset, length) {
+    return _super.call(this, offset, length) || this;
   }
-  get type() {
-    return NodeType.Interpolation;
-  }
-};
-var Variable = class extends Node {
-  constructor(offset, length) {
-    super(offset, length);
-  }
-  get type() {
-    return NodeType.VariableName;
-  }
-  getName() {
+  Object.defineProperty(Variable2.prototype, "type", {
+    get: function() {
+      return NodeType.VariableName;
+    },
+    enumerable: false,
+    configurable: true
+  });
+  Variable2.prototype.getName = function() {
     return this.getText();
+  };
+  return Variable2;
+}(Node);
+var ExtendsReference = function(_super) {
+  __extends(ExtendsReference2, _super);
+  function ExtendsReference2(offset, length) {
+    return _super.call(this, offset, length) || this;
   }
-};
-var ExtendsReference = class extends Node {
-  constructor(offset, length) {
-    super(offset, length);
-  }
-  get type() {
-    return NodeType.ExtendsReference;
-  }
-  getSelectors() {
+  Object.defineProperty(ExtendsReference2.prototype, "type", {
+    get: function() {
+      return NodeType.ExtendsReference;
+    },
+    enumerable: false,
+    configurable: true
+  });
+  ExtendsReference2.prototype.getSelectors = function() {
     if (!this.selectors) {
       this.selectors = new Nodelist(this);
     }
     return this.selectors;
+  };
+  return ExtendsReference2;
+}(Node);
+var MixinContentReference = function(_super) {
+  __extends(MixinContentReference2, _super);
+  function MixinContentReference2(offset, length) {
+    return _super.call(this, offset, length) || this;
   }
-};
-var MixinContentReference = class extends Node {
-  constructor(offset, length) {
-    super(offset, length);
-  }
-  get type() {
-    return NodeType.MixinContentReference;
-  }
-  getArguments() {
+  Object.defineProperty(MixinContentReference2.prototype, "type", {
+    get: function() {
+      return NodeType.MixinContentReference;
+    },
+    enumerable: false,
+    configurable: true
+  });
+  MixinContentReference2.prototype.getArguments = function() {
     if (!this.arguments) {
       this.arguments = new Nodelist(this);
     }
     return this.arguments;
+  };
+  return MixinContentReference2;
+}(Node);
+var MixinContentDeclaration = function(_super) {
+  __extends(MixinContentDeclaration2, _super);
+  function MixinContentDeclaration2(offset, length) {
+    return _super.call(this, offset, length) || this;
   }
-};
-var MixinContentDeclaration = class extends BodyDeclaration {
-  constructor(offset, length) {
-    super(offset, length);
-  }
-  get type() {
-    return NodeType.MixinContentDeclaration;
-  }
-  getParameters() {
+  Object.defineProperty(MixinContentDeclaration2.prototype, "type", {
+    get: function() {
+      return NodeType.MixinContentReference;
+    },
+    enumerable: false,
+    configurable: true
+  });
+  MixinContentDeclaration2.prototype.getParameters = function() {
     if (!this.parameters) {
       this.parameters = new Nodelist(this);
     }
     return this.parameters;
+  };
+  return MixinContentDeclaration2;
+}(BodyDeclaration);
+var MixinReference = function(_super) {
+  __extends(MixinReference2, _super);
+  function MixinReference2(offset, length) {
+    return _super.call(this, offset, length) || this;
   }
-};
-var MixinReference = class extends Node {
-  constructor(offset, length) {
-    super(offset, length);
-  }
-  get type() {
-    return NodeType.MixinReference;
-  }
-  getNamespaces() {
+  Object.defineProperty(MixinReference2.prototype, "type", {
+    get: function() {
+      return NodeType.MixinReference;
+    },
+    enumerable: false,
+    configurable: true
+  });
+  MixinReference2.prototype.getNamespaces = function() {
     if (!this.namespaces) {
       this.namespaces = new Nodelist(this);
     }
     return this.namespaces;
-  }
-  setIdentifier(node) {
+  };
+  MixinReference2.prototype.setIdentifier = function(node) {
     return this.setNode("identifier", node, 0);
-  }
-  getIdentifier() {
+  };
+  MixinReference2.prototype.getIdentifier = function() {
     return this.identifier;
-  }
-  getName() {
+  };
+  MixinReference2.prototype.getName = function() {
     return this.identifier ? this.identifier.getText() : "";
-  }
-  getArguments() {
+  };
+  MixinReference2.prototype.getArguments = function() {
     if (!this.arguments) {
       this.arguments = new Nodelist(this);
     }
     return this.arguments;
-  }
-  setContent(node) {
+  };
+  MixinReference2.prototype.setContent = function(node) {
     return this.setNode("content", node);
-  }
-  getContent() {
+  };
+  MixinReference2.prototype.getContent = function() {
     return this.content;
+  };
+  return MixinReference2;
+}(Node);
+var MixinDeclaration = function(_super) {
+  __extends(MixinDeclaration2, _super);
+  function MixinDeclaration2(offset, length) {
+    return _super.call(this, offset, length) || this;
   }
-};
-var MixinDeclaration = class extends BodyDeclaration {
-  constructor(offset, length) {
-    super(offset, length);
-  }
-  get type() {
-    return NodeType.MixinDeclaration;
-  }
-  setIdentifier(node) {
+  Object.defineProperty(MixinDeclaration2.prototype, "type", {
+    get: function() {
+      return NodeType.MixinDeclaration;
+    },
+    enumerable: false,
+    configurable: true
+  });
+  MixinDeclaration2.prototype.setIdentifier = function(node) {
     return this.setNode("identifier", node, 0);
-  }
-  getIdentifier() {
+  };
+  MixinDeclaration2.prototype.getIdentifier = function() {
     return this.identifier;
-  }
-  getName() {
+  };
+  MixinDeclaration2.prototype.getName = function() {
     return this.identifier ? this.identifier.getText() : "";
-  }
-  getParameters() {
+  };
+  MixinDeclaration2.prototype.getParameters = function() {
     if (!this.parameters) {
       this.parameters = new Nodelist(this);
     }
     return this.parameters;
-  }
-  setGuard(node) {
+  };
+  MixinDeclaration2.prototype.setGuard = function(node) {
     if (node) {
       node.attachTo(this);
       this.guard = node;
     }
     return false;
+  };
+  return MixinDeclaration2;
+}(BodyDeclaration);
+var UnknownAtRule = function(_super) {
+  __extends(UnknownAtRule2, _super);
+  function UnknownAtRule2(offset, length) {
+    return _super.call(this, offset, length) || this;
   }
-};
-var UnknownAtRule = class extends BodyDeclaration {
-  constructor(offset, length) {
-    super(offset, length);
-  }
-  get type() {
-    return NodeType.UnknownAtRule;
-  }
-  setAtRuleName(atRuleName) {
+  Object.defineProperty(UnknownAtRule2.prototype, "type", {
+    get: function() {
+      return NodeType.UnknownAtRule;
+    },
+    enumerable: false,
+    configurable: true
+  });
+  UnknownAtRule2.prototype.setAtRuleName = function(atRuleName) {
     this.atRuleName = atRuleName;
-  }
-  getAtRuleName() {
+  };
+  UnknownAtRule2.prototype.getAtRuleName = function() {
     return this.atRuleName;
+  };
+  return UnknownAtRule2;
+}(BodyDeclaration);
+var ListEntry = function(_super) {
+  __extends(ListEntry2, _super);
+  function ListEntry2() {
+    return _super !== null && _super.apply(this, arguments) || this;
   }
-};
-var ListEntry = class extends Node {
-  get type() {
-    return NodeType.ListEntry;
-  }
-  setKey(node) {
+  Object.defineProperty(ListEntry2.prototype, "type", {
+    get: function() {
+      return NodeType.ListEntry;
+    },
+    enumerable: false,
+    configurable: true
+  });
+  ListEntry2.prototype.setKey = function(node) {
     return this.setNode("key", node, 0);
-  }
-  setValue(node) {
+  };
+  ListEntry2.prototype.setValue = function(node) {
     return this.setNode("value", node, 1);
+  };
+  return ListEntry2;
+}(Node);
+var LessGuard = function(_super) {
+  __extends(LessGuard2, _super);
+  function LessGuard2() {
+    return _super !== null && _super.apply(this, arguments) || this;
   }
-};
-var LessGuard = class extends Node {
-  getConditions() {
+  LessGuard2.prototype.getConditions = function() {
     if (!this.conditions) {
       this.conditions = new Nodelist(this);
     }
     return this.conditions;
+  };
+  return LessGuard2;
+}(Node);
+var GuardCondition = function(_super) {
+  __extends(GuardCondition2, _super);
+  function GuardCondition2() {
+    return _super !== null && _super.apply(this, arguments) || this;
   }
-};
-var GuardCondition = class extends Node {
-  setVariable(node) {
+  GuardCondition2.prototype.setVariable = function(node) {
     return this.setNode("variable", node);
+  };
+  return GuardCondition2;
+}(Node);
+var Module = function(_super) {
+  __extends(Module3, _super);
+  function Module3() {
+    return _super !== null && _super.apply(this, arguments) || this;
   }
-};
-var Module = class extends Node {
-  get type() {
-    return NodeType.Module;
-  }
-  setIdentifier(node) {
+  Object.defineProperty(Module3.prototype, "type", {
+    get: function() {
+      return NodeType.Module;
+    },
+    enumerable: false,
+    configurable: true
+  });
+  Module3.prototype.setIdentifier = function(node) {
     return this.setNode("identifier", node, 0);
-  }
-  getIdentifier() {
+  };
+  Module3.prototype.getIdentifier = function() {
     return this.identifier;
-  }
-};
+  };
+  return Module3;
+}(Node);
 var Level;
 (function(Level2) {
   Level2[Level2["Ignore"] = 1] = "Ignore";
   Level2[Level2["Warning"] = 2] = "Warning";
   Level2[Level2["Error"] = 4] = "Error";
 })(Level || (Level = {}));
-var Marker = class {
-  constructor(node, rule, level, message, offset = node.offset, length = node.length) {
+var Marker = function() {
+  function Marker2(node, rule, level, message, offset, length) {
+    if (offset === void 0) {
+      offset = node.offset;
+    }
+    if (length === void 0) {
+      length = node.length;
+    }
     this.node = node;
     this.rule = rule;
     this.level = level;
@@ -1963,167 +2344,119 @@ var Marker = class {
     this.offset = offset;
     this.length = length;
   }
-  getRule() {
+  Marker2.prototype.getRule = function() {
     return this.rule;
-  }
-  getLevel() {
+  };
+  Marker2.prototype.getLevel = function() {
     return this.level;
-  }
-  getOffset() {
+  };
+  Marker2.prototype.getOffset = function() {
     return this.offset;
-  }
-  getLength() {
+  };
+  Marker2.prototype.getLength = function() {
     return this.length;
-  }
-  getNode() {
+  };
+  Marker2.prototype.getNode = function() {
     return this.node;
-  }
-  getMessage() {
+  };
+  Marker2.prototype.getMessage = function() {
     return this.message;
-  }
-};
-var ParseErrorCollector = class _ParseErrorCollector {
-  static entries(node) {
-    const visitor = new _ParseErrorCollector();
-    node.acceptVisitor(visitor);
-    return visitor.entries;
-  }
-  constructor() {
+  };
+  return Marker2;
+}();
+var ParseErrorCollector = function() {
+  function ParseErrorCollector2() {
     this.entries = [];
   }
-  visitNode(node) {
+  ParseErrorCollector2.entries = function(node) {
+    var visitor = new ParseErrorCollector2();
+    node.acceptVisitor(visitor);
+    return visitor.entries;
+  };
+  ParseErrorCollector2.prototype.visitNode = function(node) {
     if (node.isErroneous()) {
       node.collectIssues(this.entries);
     }
     return true;
-  }
-};
+  };
+  return ParseErrorCollector2;
+}();
 
-// node_modules/@vscode/l10n/dist/browser.js
-var bundle;
-function t(...args) {
-  const firstArg = args[0];
-  let key;
-  let message;
-  let formatArgs;
-  if (typeof firstArg === "string") {
-    key = firstArg;
-    message = firstArg;
-    args.splice(0, 1);
-    formatArgs = !args || typeof args[0] !== "object" ? args : args[0];
-  } else if (firstArg instanceof Array) {
-    const replacements = args.slice(1);
-    if (firstArg.length !== replacements.length + 1) {
-      throw new Error("expected a string as the first argument to l10n.t");
-    }
-    let str = firstArg[0];
-    for (let i = 1; i < firstArg.length; i++) {
-      str += `{${i - 1}}` + firstArg[i];
-    }
-    return t(str, ...replacements);
+// build/fillers/vscode-nls.ts
+function format(message, args) {
+  let result;
+  if (args.length === 0) {
+    result = message;
   } else {
-    message = firstArg.message;
-    key = message;
-    if (firstArg.comment && firstArg.comment.length > 0) {
-      key += `/${Array.isArray(firstArg.comment) ? firstArg.comment.join("") : firstArg.comment}`;
-    }
-    formatArgs = firstArg.args ?? {};
+    result = message.replace(/\{(\d+)\}/g, (match, rest) => {
+      let index = rest[0];
+      return typeof args[index] !== "undefined" ? args[index] : match;
+    });
   }
-  const messageFromBundle = bundle?.[key];
-  if (!messageFromBundle) {
-    return format(message, formatArgs);
-  }
-  if (typeof messageFromBundle === "string") {
-    return format(messageFromBundle, formatArgs);
-  }
-  if (messageFromBundle.comment) {
-    return format(messageFromBundle.message, formatArgs);
-  }
-  return format(message, formatArgs);
+  return result;
 }
-var _format2Regexp = /{([^}]+)}/g;
-function format(template, values2) {
-  if (Object.keys(values2).length === 0) {
-    return template;
-  }
-  return template.replace(_format2Regexp, (match, group) => values2[group] ?? match);
+function localize(key, message, ...args) {
+  return format(message, args);
+}
+function loadMessageBundle(file) {
+  return localize;
 }
 
 // node_modules/vscode-css-languageservice/lib/esm/parser/cssErrors.js
-var CSSIssueType = class {
-  constructor(id, message) {
+var localize2 = loadMessageBundle();
+var CSSIssueType = function() {
+  function CSSIssueType2(id, message) {
     this.id = id;
     this.message = message;
   }
-};
+  return CSSIssueType2;
+}();
 var ParseError = {
-  NumberExpected: new CSSIssueType("css-numberexpected", t("number expected")),
-  ConditionExpected: new CSSIssueType("css-conditionexpected", t("condition expected")),
-  RuleOrSelectorExpected: new CSSIssueType("css-ruleorselectorexpected", t("at-rule or selector expected")),
-  DotExpected: new CSSIssueType("css-dotexpected", t("dot expected")),
-  ColonExpected: new CSSIssueType("css-colonexpected", t("colon expected")),
-  SemiColonExpected: new CSSIssueType("css-semicolonexpected", t("semi-colon expected")),
-  TermExpected: new CSSIssueType("css-termexpected", t("term expected")),
-  ExpressionExpected: new CSSIssueType("css-expressionexpected", t("expression expected")),
-  OperatorExpected: new CSSIssueType("css-operatorexpected", t("operator expected")),
-  IdentifierExpected: new CSSIssueType("css-identifierexpected", t("identifier expected")),
-  PercentageExpected: new CSSIssueType("css-percentageexpected", t("percentage expected")),
-  URIOrStringExpected: new CSSIssueType("css-uriorstringexpected", t("uri or string expected")),
-  URIExpected: new CSSIssueType("css-uriexpected", t("URI expected")),
-  VariableNameExpected: new CSSIssueType("css-varnameexpected", t("variable name expected")),
-  VariableValueExpected: new CSSIssueType("css-varvalueexpected", t("variable value expected")),
-  PropertyValueExpected: new CSSIssueType("css-propertyvalueexpected", t("property value expected")),
-  LeftCurlyExpected: new CSSIssueType("css-lcurlyexpected", t("{ expected")),
-  RightCurlyExpected: new CSSIssueType("css-rcurlyexpected", t("} expected")),
-  LeftSquareBracketExpected: new CSSIssueType("css-rbracketexpected", t("[ expected")),
-  RightSquareBracketExpected: new CSSIssueType("css-lbracketexpected", t("] expected")),
-  LeftParenthesisExpected: new CSSIssueType("css-lparentexpected", t("( expected")),
-  RightParenthesisExpected: new CSSIssueType("css-rparentexpected", t(") expected")),
-  CommaExpected: new CSSIssueType("css-commaexpected", t("comma expected")),
-  PageDirectiveOrDeclarationExpected: new CSSIssueType("css-pagedirordeclexpected", t("page directive or declaraton expected")),
-  UnknownAtRule: new CSSIssueType("css-unknownatrule", t("at-rule unknown")),
-  UnknownKeyword: new CSSIssueType("css-unknownkeyword", t("unknown keyword")),
-  SelectorExpected: new CSSIssueType("css-selectorexpected", t("selector expected")),
-  StringLiteralExpected: new CSSIssueType("css-stringliteralexpected", t("string literal expected")),
-  WhitespaceExpected: new CSSIssueType("css-whitespaceexpected", t("whitespace expected")),
-  MediaQueryExpected: new CSSIssueType("css-mediaqueryexpected", t("media query expected")),
-  IdentifierOrWildcardExpected: new CSSIssueType("css-idorwildcardexpected", t("identifier or wildcard expected")),
-  WildcardExpected: new CSSIssueType("css-wildcardexpected", t("wildcard expected")),
-  IdentifierOrVariableExpected: new CSSIssueType("css-idorvarexpected", t("identifier or variable expected"))
+  NumberExpected: new CSSIssueType("css-numberexpected", localize2("expected.number", "number expected")),
+  ConditionExpected: new CSSIssueType("css-conditionexpected", localize2("expected.condt", "condition expected")),
+  RuleOrSelectorExpected: new CSSIssueType("css-ruleorselectorexpected", localize2("expected.ruleorselector", "at-rule or selector expected")),
+  DotExpected: new CSSIssueType("css-dotexpected", localize2("expected.dot", "dot expected")),
+  ColonExpected: new CSSIssueType("css-colonexpected", localize2("expected.colon", "colon expected")),
+  SemiColonExpected: new CSSIssueType("css-semicolonexpected", localize2("expected.semicolon", "semi-colon expected")),
+  TermExpected: new CSSIssueType("css-termexpected", localize2("expected.term", "term expected")),
+  ExpressionExpected: new CSSIssueType("css-expressionexpected", localize2("expected.expression", "expression expected")),
+  OperatorExpected: new CSSIssueType("css-operatorexpected", localize2("expected.operator", "operator expected")),
+  IdentifierExpected: new CSSIssueType("css-identifierexpected", localize2("expected.ident", "identifier expected")),
+  PercentageExpected: new CSSIssueType("css-percentageexpected", localize2("expected.percentage", "percentage expected")),
+  URIOrStringExpected: new CSSIssueType("css-uriorstringexpected", localize2("expected.uriorstring", "uri or string expected")),
+  URIExpected: new CSSIssueType("css-uriexpected", localize2("expected.uri", "URI expected")),
+  VariableNameExpected: new CSSIssueType("css-varnameexpected", localize2("expected.varname", "variable name expected")),
+  VariableValueExpected: new CSSIssueType("css-varvalueexpected", localize2("expected.varvalue", "variable value expected")),
+  PropertyValueExpected: new CSSIssueType("css-propertyvalueexpected", localize2("expected.propvalue", "property value expected")),
+  LeftCurlyExpected: new CSSIssueType("css-lcurlyexpected", localize2("expected.lcurly", "{ expected")),
+  RightCurlyExpected: new CSSIssueType("css-rcurlyexpected", localize2("expected.rcurly", "} expected")),
+  LeftSquareBracketExpected: new CSSIssueType("css-rbracketexpected", localize2("expected.lsquare", "[ expected")),
+  RightSquareBracketExpected: new CSSIssueType("css-lbracketexpected", localize2("expected.rsquare", "] expected")),
+  LeftParenthesisExpected: new CSSIssueType("css-lparentexpected", localize2("expected.lparen", "( expected")),
+  RightParenthesisExpected: new CSSIssueType("css-rparentexpected", localize2("expected.rparent", ") expected")),
+  CommaExpected: new CSSIssueType("css-commaexpected", localize2("expected.comma", "comma expected")),
+  PageDirectiveOrDeclarationExpected: new CSSIssueType("css-pagedirordeclexpected", localize2("expected.pagedirordecl", "page directive or declaraton expected")),
+  UnknownAtRule: new CSSIssueType("css-unknownatrule", localize2("unknown.atrule", "at-rule unknown")),
+  UnknownKeyword: new CSSIssueType("css-unknownkeyword", localize2("unknown.keyword", "unknown keyword")),
+  SelectorExpected: new CSSIssueType("css-selectorexpected", localize2("expected.selector", "selector expected")),
+  StringLiteralExpected: new CSSIssueType("css-stringliteralexpected", localize2("expected.stringliteral", "string literal expected")),
+  WhitespaceExpected: new CSSIssueType("css-whitespaceexpected", localize2("expected.whitespace", "whitespace expected")),
+  MediaQueryExpected: new CSSIssueType("css-mediaqueryexpected", localize2("expected.mediaquery", "media query expected")),
+  IdentifierOrWildcardExpected: new CSSIssueType("css-idorwildcardexpected", localize2("expected.idorwildcard", "identifier or wildcard expected")),
+  WildcardExpected: new CSSIssueType("css-wildcardexpected", localize2("expected.wildcard", "wildcard expected")),
+  IdentifierOrVariableExpected: new CSSIssueType("css-idorvarexpected", localize2("expected.idorvar", "identifier or variable expected"))
 };
 
 // node_modules/vscode-languageserver-types/lib/esm/main.js
-var DocumentUri;
-(function(DocumentUri2) {
-  function is(value) {
-    return typeof value === "string";
-  }
-  DocumentUri2.is = is;
-})(DocumentUri || (DocumentUri = {}));
-var URI;
-(function(URI3) {
-  function is(value) {
-    return typeof value === "string";
-  }
-  URI3.is = is;
-})(URI || (URI = {}));
 var integer;
 (function(integer2) {
   integer2.MIN_VALUE = -2147483648;
   integer2.MAX_VALUE = 2147483647;
-  function is(value) {
-    return typeof value === "number" && integer2.MIN_VALUE <= value && value <= integer2.MAX_VALUE;
-  }
-  integer2.is = is;
 })(integer || (integer = {}));
 var uinteger;
 (function(uinteger2) {
   uinteger2.MIN_VALUE = 0;
   uinteger2.MAX_VALUE = 2147483647;
-  function is(value) {
-    return typeof value === "number" && uinteger2.MIN_VALUE <= value && value <= uinteger2.MAX_VALUE;
-  }
-  uinteger2.is = is;
 })(uinteger || (uinteger = {}));
 var Position;
 (function(Position2) {
@@ -2138,7 +2471,7 @@ var Position;
   }
   Position2.create = create;
   function is(value) {
-    let candidate = value;
+    var candidate = value;
     return Is.objectLiteral(candidate) && Is.uinteger(candidate.line) && Is.uinteger(candidate.character);
   }
   Position2.is = is;
@@ -2151,12 +2484,12 @@ var Range;
     } else if (Position.is(one) && Position.is(two)) {
       return { start: one, end: two };
     } else {
-      throw new Error(`Range#create called with invalid arguments[${one}, ${two}, ${three}, ${four}]`);
+      throw new Error("Range#create called with invalid arguments[" + one + ", " + two + ", " + three + ", " + four + "]");
     }
   }
   Range2.create = create;
   function is(value) {
-    let candidate = value;
+    var candidate = value;
     return Is.objectLiteral(candidate) && Position.is(candidate.start) && Position.is(candidate.end);
   }
   Range2.is = is;
@@ -2168,8 +2501,8 @@ var Location;
   }
   Location2.create = create;
   function is(value) {
-    let candidate = value;
-    return Is.objectLiteral(candidate) && Range.is(candidate.range) && (Is.string(candidate.uri) || Is.undefined(candidate.uri));
+    var candidate = value;
+    return Is.defined(candidate) && Range.is(candidate.range) && (Is.string(candidate.uri) || Is.undefined(candidate.uri));
   }
   Location2.is = is;
 })(Location || (Location = {}));
@@ -2180,8 +2513,8 @@ var LocationLink;
   }
   LocationLink2.create = create;
   function is(value) {
-    let candidate = value;
-    return Is.objectLiteral(candidate) && Range.is(candidate.targetRange) && Is.string(candidate.targetUri) && Range.is(candidate.targetSelectionRange) && (Range.is(candidate.originSelectionRange) || Is.undefined(candidate.originSelectionRange));
+    var candidate = value;
+    return Is.defined(candidate) && Range.is(candidate.targetRange) && Is.string(candidate.targetUri) && (Range.is(candidate.targetSelectionRange) || Is.undefined(candidate.targetSelectionRange)) && (Range.is(candidate.originSelectionRange) || Is.undefined(candidate.originSelectionRange));
   }
   LocationLink2.is = is;
 })(LocationLink || (LocationLink = {}));
@@ -2197,8 +2530,8 @@ var Color;
   }
   Color2.create = create;
   function is(value) {
-    const candidate = value;
-    return Is.objectLiteral(candidate) && Is.numberRange(candidate.red, 0, 1) && Is.numberRange(candidate.green, 0, 1) && Is.numberRange(candidate.blue, 0, 1) && Is.numberRange(candidate.alpha, 0, 1);
+    var candidate = value;
+    return Is.numberRange(candidate.red, 0, 1) && Is.numberRange(candidate.green, 0, 1) && Is.numberRange(candidate.blue, 0, 1) && Is.numberRange(candidate.alpha, 0, 1);
   }
   Color2.is = is;
 })(Color || (Color = {}));
@@ -2212,8 +2545,8 @@ var ColorInformation;
   }
   ColorInformation2.create = create;
   function is(value) {
-    const candidate = value;
-    return Is.objectLiteral(candidate) && Range.is(candidate.range) && Color.is(candidate.color);
+    var candidate = value;
+    return Range.is(candidate.range) && Color.is(candidate.color);
   }
   ColorInformation2.is = is;
 })(ColorInformation || (ColorInformation = {}));
@@ -2228,21 +2561,21 @@ var ColorPresentation;
   }
   ColorPresentation2.create = create;
   function is(value) {
-    const candidate = value;
-    return Is.objectLiteral(candidate) && Is.string(candidate.label) && (Is.undefined(candidate.textEdit) || TextEdit.is(candidate)) && (Is.undefined(candidate.additionalTextEdits) || Is.typedArray(candidate.additionalTextEdits, TextEdit.is));
+    var candidate = value;
+    return Is.string(candidate.label) && (Is.undefined(candidate.textEdit) || TextEdit.is(candidate)) && (Is.undefined(candidate.additionalTextEdits) || Is.typedArray(candidate.additionalTextEdits, TextEdit.is));
   }
   ColorPresentation2.is = is;
 })(ColorPresentation || (ColorPresentation = {}));
 var FoldingRangeKind;
 (function(FoldingRangeKind2) {
-  FoldingRangeKind2.Comment = "comment";
-  FoldingRangeKind2.Imports = "imports";
-  FoldingRangeKind2.Region = "region";
+  FoldingRangeKind2["Comment"] = "comment";
+  FoldingRangeKind2["Imports"] = "imports";
+  FoldingRangeKind2["Region"] = "region";
 })(FoldingRangeKind || (FoldingRangeKind = {}));
 var FoldingRange;
 (function(FoldingRange2) {
-  function create(startLine, endLine, startCharacter, endCharacter, kind, collapsedText) {
-    const result = {
+  function create(startLine, endLine, startCharacter, endCharacter, kind) {
+    var result = {
       startLine,
       endLine
     };
@@ -2255,15 +2588,12 @@ var FoldingRange;
     if (Is.defined(kind)) {
       result.kind = kind;
     }
-    if (Is.defined(collapsedText)) {
-      result.collapsedText = collapsedText;
-    }
     return result;
   }
   FoldingRange2.create = create;
   function is(value) {
-    const candidate = value;
-    return Is.objectLiteral(candidate) && Is.uinteger(candidate.startLine) && Is.uinteger(candidate.startLine) && (Is.undefined(candidate.startCharacter) || Is.uinteger(candidate.startCharacter)) && (Is.undefined(candidate.endCharacter) || Is.uinteger(candidate.endCharacter)) && (Is.undefined(candidate.kind) || Is.string(candidate.kind));
+    var candidate = value;
+    return Is.uinteger(candidate.startLine) && Is.uinteger(candidate.startLine) && (Is.undefined(candidate.startCharacter) || Is.uinteger(candidate.startCharacter)) && (Is.undefined(candidate.endCharacter) || Is.uinteger(candidate.endCharacter)) && (Is.undefined(candidate.kind) || Is.string(candidate.kind));
   }
   FoldingRange2.is = is;
 })(FoldingRange || (FoldingRange = {}));
@@ -2277,7 +2607,7 @@ var DiagnosticRelatedInformation;
   }
   DiagnosticRelatedInformation2.create = create;
   function is(value) {
-    let candidate = value;
+    var candidate = value;
     return Is.defined(candidate) && Location.is(candidate.location) && Is.string(candidate.message);
   }
   DiagnosticRelatedInformation2.is = is;
@@ -2297,15 +2627,15 @@ var DiagnosticTag;
 var CodeDescription;
 (function(CodeDescription2) {
   function is(value) {
-    const candidate = value;
-    return Is.objectLiteral(candidate) && Is.string(candidate.href);
+    var candidate = value;
+    return candidate !== void 0 && candidate !== null && Is.string(candidate.href);
   }
   CodeDescription2.is = is;
 })(CodeDescription || (CodeDescription = {}));
 var Diagnostic;
 (function(Diagnostic2) {
   function create(range, message, severity, code, source, relatedInformation) {
-    let result = { range, message };
+    var result = { range, message };
     if (Is.defined(severity)) {
       result.severity = severity;
     }
@@ -2323,15 +2653,19 @@ var Diagnostic;
   Diagnostic2.create = create;
   function is(value) {
     var _a2;
-    let candidate = value;
+    var candidate = value;
     return Is.defined(candidate) && Range.is(candidate.range) && Is.string(candidate.message) && (Is.number(candidate.severity) || Is.undefined(candidate.severity)) && (Is.integer(candidate.code) || Is.string(candidate.code) || Is.undefined(candidate.code)) && (Is.undefined(candidate.codeDescription) || Is.string((_a2 = candidate.codeDescription) === null || _a2 === void 0 ? void 0 : _a2.href)) && (Is.string(candidate.source) || Is.undefined(candidate.source)) && (Is.undefined(candidate.relatedInformation) || Is.typedArray(candidate.relatedInformation, DiagnosticRelatedInformation.is));
   }
   Diagnostic2.is = is;
 })(Diagnostic || (Diagnostic = {}));
 var Command;
 (function(Command2) {
-  function create(title, command, ...args) {
-    let result = { title, command };
+  function create(title, command) {
+    var args = [];
+    for (var _i = 2; _i < arguments.length; _i++) {
+      args[_i - 2] = arguments[_i];
+    }
+    var result = { title, command };
     if (Is.defined(args) && args.length > 0) {
       result.arguments = args;
     }
@@ -2339,7 +2673,7 @@ var Command;
   }
   Command2.create = create;
   function is(value) {
-    let candidate = value;
+    var candidate = value;
     return Is.defined(candidate) && Is.string(candidate.title) && Is.string(candidate.command);
   }
   Command2.is = is;
@@ -2359,7 +2693,7 @@ var TextEdit;
   }
   TextEdit2.del = del;
   function is(value) {
-    const candidate = value;
+    var candidate = value;
     return Is.objectLiteral(candidate) && Is.string(candidate.newText) && Range.is(candidate.range);
   }
   TextEdit2.is = is;
@@ -2367,7 +2701,7 @@ var TextEdit;
 var ChangeAnnotation;
 (function(ChangeAnnotation2) {
   function create(label, needsConfirmation, description) {
-    const result = { label };
+    var result = { label };
     if (needsConfirmation !== void 0) {
       result.needsConfirmation = needsConfirmation;
     }
@@ -2378,16 +2712,16 @@ var ChangeAnnotation;
   }
   ChangeAnnotation2.create = create;
   function is(value) {
-    const candidate = value;
-    return Is.objectLiteral(candidate) && Is.string(candidate.label) && (Is.boolean(candidate.needsConfirmation) || candidate.needsConfirmation === void 0) && (Is.string(candidate.description) || candidate.description === void 0);
+    var candidate = value;
+    return candidate !== void 0 && Is.objectLiteral(candidate) && Is.string(candidate.label) && (Is.boolean(candidate.needsConfirmation) || candidate.needsConfirmation === void 0) && (Is.string(candidate.description) || candidate.description === void 0);
   }
   ChangeAnnotation2.is = is;
 })(ChangeAnnotation || (ChangeAnnotation = {}));
 var ChangeAnnotationIdentifier;
 (function(ChangeAnnotationIdentifier2) {
   function is(value) {
-    const candidate = value;
-    return Is.string(candidate);
+    var candidate = value;
+    return typeof candidate === "string";
   }
   ChangeAnnotationIdentifier2.is = is;
 })(ChangeAnnotationIdentifier || (ChangeAnnotationIdentifier = {}));
@@ -2406,7 +2740,7 @@ var AnnotatedTextEdit;
   }
   AnnotatedTextEdit2.del = del;
   function is(value) {
-    const candidate = value;
+    var candidate = value;
     return TextEdit.is(candidate) && (ChangeAnnotation.is(candidate.annotationId) || ChangeAnnotationIdentifier.is(candidate.annotationId));
   }
   AnnotatedTextEdit2.is = is;
@@ -2418,7 +2752,7 @@ var TextDocumentEdit;
   }
   TextDocumentEdit2.create = create;
   function is(value) {
-    let candidate = value;
+    var candidate = value;
     return Is.defined(candidate) && OptionalVersionedTextDocumentIdentifier.is(candidate.textDocument) && Array.isArray(candidate.edits);
   }
   TextDocumentEdit2.is = is;
@@ -2426,7 +2760,7 @@ var TextDocumentEdit;
 var CreateFile;
 (function(CreateFile2) {
   function create(uri, options, annotation) {
-    let result = {
+    var result = {
       kind: "create",
       uri
     };
@@ -2440,7 +2774,7 @@ var CreateFile;
   }
   CreateFile2.create = create;
   function is(value) {
-    let candidate = value;
+    var candidate = value;
     return candidate && candidate.kind === "create" && Is.string(candidate.uri) && (candidate.options === void 0 || (candidate.options.overwrite === void 0 || Is.boolean(candidate.options.overwrite)) && (candidate.options.ignoreIfExists === void 0 || Is.boolean(candidate.options.ignoreIfExists))) && (candidate.annotationId === void 0 || ChangeAnnotationIdentifier.is(candidate.annotationId));
   }
   CreateFile2.is = is;
@@ -2448,7 +2782,7 @@ var CreateFile;
 var RenameFile;
 (function(RenameFile2) {
   function create(oldUri, newUri, options, annotation) {
-    let result = {
+    var result = {
       kind: "rename",
       oldUri,
       newUri
@@ -2463,7 +2797,7 @@ var RenameFile;
   }
   RenameFile2.create = create;
   function is(value) {
-    let candidate = value;
+    var candidate = value;
     return candidate && candidate.kind === "rename" && Is.string(candidate.oldUri) && Is.string(candidate.newUri) && (candidate.options === void 0 || (candidate.options.overwrite === void 0 || Is.boolean(candidate.options.overwrite)) && (candidate.options.ignoreIfExists === void 0 || Is.boolean(candidate.options.ignoreIfExists))) && (candidate.annotationId === void 0 || ChangeAnnotationIdentifier.is(candidate.annotationId));
   }
   RenameFile2.is = is;
@@ -2471,7 +2805,7 @@ var RenameFile;
 var DeleteFile;
 (function(DeleteFile2) {
   function create(uri, options, annotation) {
-    let result = {
+    var result = {
       kind: "delete",
       uri
     };
@@ -2485,7 +2819,7 @@ var DeleteFile;
   }
   DeleteFile2.create = create;
   function is(value) {
-    let candidate = value;
+    var candidate = value;
     return candidate && candidate.kind === "delete" && Is.string(candidate.uri) && (candidate.options === void 0 || (candidate.options.recursive === void 0 || Is.boolean(candidate.options.recursive)) && (candidate.options.ignoreIfNotExists === void 0 || Is.boolean(candidate.options.ignoreIfNotExists))) && (candidate.annotationId === void 0 || ChangeAnnotationIdentifier.is(candidate.annotationId));
   }
   DeleteFile2.is = is;
@@ -2493,8 +2827,8 @@ var DeleteFile;
 var WorkspaceEdit;
 (function(WorkspaceEdit2) {
   function is(value) {
-    let candidate = value;
-    return candidate && (candidate.changes !== void 0 || candidate.documentChanges !== void 0) && (candidate.documentChanges === void 0 || candidate.documentChanges.every((change) => {
+    var candidate = value;
+    return candidate && (candidate.changes !== void 0 || candidate.documentChanges !== void 0) && (candidate.documentChanges === void 0 || candidate.documentChanges.every(function(change) {
       if (Is.string(change.kind)) {
         return CreateFile.is(change) || RenameFile.is(change) || DeleteFile.is(change);
       } else {
@@ -2504,6 +2838,281 @@ var WorkspaceEdit;
   }
   WorkspaceEdit2.is = is;
 })(WorkspaceEdit || (WorkspaceEdit = {}));
+var TextEditChangeImpl = function() {
+  function TextEditChangeImpl2(edits, changeAnnotations) {
+    this.edits = edits;
+    this.changeAnnotations = changeAnnotations;
+  }
+  TextEditChangeImpl2.prototype.insert = function(position, newText, annotation) {
+    var edit;
+    var id;
+    if (annotation === void 0) {
+      edit = TextEdit.insert(position, newText);
+    } else if (ChangeAnnotationIdentifier.is(annotation)) {
+      id = annotation;
+      edit = AnnotatedTextEdit.insert(position, newText, annotation);
+    } else {
+      this.assertChangeAnnotations(this.changeAnnotations);
+      id = this.changeAnnotations.manage(annotation);
+      edit = AnnotatedTextEdit.insert(position, newText, id);
+    }
+    this.edits.push(edit);
+    if (id !== void 0) {
+      return id;
+    }
+  };
+  TextEditChangeImpl2.prototype.replace = function(range, newText, annotation) {
+    var edit;
+    var id;
+    if (annotation === void 0) {
+      edit = TextEdit.replace(range, newText);
+    } else if (ChangeAnnotationIdentifier.is(annotation)) {
+      id = annotation;
+      edit = AnnotatedTextEdit.replace(range, newText, annotation);
+    } else {
+      this.assertChangeAnnotations(this.changeAnnotations);
+      id = this.changeAnnotations.manage(annotation);
+      edit = AnnotatedTextEdit.replace(range, newText, id);
+    }
+    this.edits.push(edit);
+    if (id !== void 0) {
+      return id;
+    }
+  };
+  TextEditChangeImpl2.prototype.delete = function(range, annotation) {
+    var edit;
+    var id;
+    if (annotation === void 0) {
+      edit = TextEdit.del(range);
+    } else if (ChangeAnnotationIdentifier.is(annotation)) {
+      id = annotation;
+      edit = AnnotatedTextEdit.del(range, annotation);
+    } else {
+      this.assertChangeAnnotations(this.changeAnnotations);
+      id = this.changeAnnotations.manage(annotation);
+      edit = AnnotatedTextEdit.del(range, id);
+    }
+    this.edits.push(edit);
+    if (id !== void 0) {
+      return id;
+    }
+  };
+  TextEditChangeImpl2.prototype.add = function(edit) {
+    this.edits.push(edit);
+  };
+  TextEditChangeImpl2.prototype.all = function() {
+    return this.edits;
+  };
+  TextEditChangeImpl2.prototype.clear = function() {
+    this.edits.splice(0, this.edits.length);
+  };
+  TextEditChangeImpl2.prototype.assertChangeAnnotations = function(value) {
+    if (value === void 0) {
+      throw new Error("Text edit change is not configured to manage change annotations.");
+    }
+  };
+  return TextEditChangeImpl2;
+}();
+var ChangeAnnotations = function() {
+  function ChangeAnnotations2(annotations) {
+    this._annotations = annotations === void 0 ? /* @__PURE__ */ Object.create(null) : annotations;
+    this._counter = 0;
+    this._size = 0;
+  }
+  ChangeAnnotations2.prototype.all = function() {
+    return this._annotations;
+  };
+  Object.defineProperty(ChangeAnnotations2.prototype, "size", {
+    get: function() {
+      return this._size;
+    },
+    enumerable: false,
+    configurable: true
+  });
+  ChangeAnnotations2.prototype.manage = function(idOrAnnotation, annotation) {
+    var id;
+    if (ChangeAnnotationIdentifier.is(idOrAnnotation)) {
+      id = idOrAnnotation;
+    } else {
+      id = this.nextId();
+      annotation = idOrAnnotation;
+    }
+    if (this._annotations[id] !== void 0) {
+      throw new Error("Id " + id + " is already in use.");
+    }
+    if (annotation === void 0) {
+      throw new Error("No annotation provided for id " + id);
+    }
+    this._annotations[id] = annotation;
+    this._size++;
+    return id;
+  };
+  ChangeAnnotations2.prototype.nextId = function() {
+    this._counter++;
+    return this._counter.toString();
+  };
+  return ChangeAnnotations2;
+}();
+var WorkspaceChange = function() {
+  function WorkspaceChange2(workspaceEdit) {
+    var _this = this;
+    this._textEditChanges = /* @__PURE__ */ Object.create(null);
+    if (workspaceEdit !== void 0) {
+      this._workspaceEdit = workspaceEdit;
+      if (workspaceEdit.documentChanges) {
+        this._changeAnnotations = new ChangeAnnotations(workspaceEdit.changeAnnotations);
+        workspaceEdit.changeAnnotations = this._changeAnnotations.all();
+        workspaceEdit.documentChanges.forEach(function(change) {
+          if (TextDocumentEdit.is(change)) {
+            var textEditChange = new TextEditChangeImpl(change.edits, _this._changeAnnotations);
+            _this._textEditChanges[change.textDocument.uri] = textEditChange;
+          }
+        });
+      } else if (workspaceEdit.changes) {
+        Object.keys(workspaceEdit.changes).forEach(function(key) {
+          var textEditChange = new TextEditChangeImpl(workspaceEdit.changes[key]);
+          _this._textEditChanges[key] = textEditChange;
+        });
+      }
+    } else {
+      this._workspaceEdit = {};
+    }
+  }
+  Object.defineProperty(WorkspaceChange2.prototype, "edit", {
+    get: function() {
+      this.initDocumentChanges();
+      if (this._changeAnnotations !== void 0) {
+        if (this._changeAnnotations.size === 0) {
+          this._workspaceEdit.changeAnnotations = void 0;
+        } else {
+          this._workspaceEdit.changeAnnotations = this._changeAnnotations.all();
+        }
+      }
+      return this._workspaceEdit;
+    },
+    enumerable: false,
+    configurable: true
+  });
+  WorkspaceChange2.prototype.getTextEditChange = function(key) {
+    if (OptionalVersionedTextDocumentIdentifier.is(key)) {
+      this.initDocumentChanges();
+      if (this._workspaceEdit.documentChanges === void 0) {
+        throw new Error("Workspace edit is not configured for document changes.");
+      }
+      var textDocument = { uri: key.uri, version: key.version };
+      var result = this._textEditChanges[textDocument.uri];
+      if (!result) {
+        var edits = [];
+        var textDocumentEdit = {
+          textDocument,
+          edits
+        };
+        this._workspaceEdit.documentChanges.push(textDocumentEdit);
+        result = new TextEditChangeImpl(edits, this._changeAnnotations);
+        this._textEditChanges[textDocument.uri] = result;
+      }
+      return result;
+    } else {
+      this.initChanges();
+      if (this._workspaceEdit.changes === void 0) {
+        throw new Error("Workspace edit is not configured for normal text edit changes.");
+      }
+      var result = this._textEditChanges[key];
+      if (!result) {
+        var edits = [];
+        this._workspaceEdit.changes[key] = edits;
+        result = new TextEditChangeImpl(edits);
+        this._textEditChanges[key] = result;
+      }
+      return result;
+    }
+  };
+  WorkspaceChange2.prototype.initDocumentChanges = function() {
+    if (this._workspaceEdit.documentChanges === void 0 && this._workspaceEdit.changes === void 0) {
+      this._changeAnnotations = new ChangeAnnotations();
+      this._workspaceEdit.documentChanges = [];
+      this._workspaceEdit.changeAnnotations = this._changeAnnotations.all();
+    }
+  };
+  WorkspaceChange2.prototype.initChanges = function() {
+    if (this._workspaceEdit.documentChanges === void 0 && this._workspaceEdit.changes === void 0) {
+      this._workspaceEdit.changes = /* @__PURE__ */ Object.create(null);
+    }
+  };
+  WorkspaceChange2.prototype.createFile = function(uri, optionsOrAnnotation, options) {
+    this.initDocumentChanges();
+    if (this._workspaceEdit.documentChanges === void 0) {
+      throw new Error("Workspace edit is not configured for document changes.");
+    }
+    var annotation;
+    if (ChangeAnnotation.is(optionsOrAnnotation) || ChangeAnnotationIdentifier.is(optionsOrAnnotation)) {
+      annotation = optionsOrAnnotation;
+    } else {
+      options = optionsOrAnnotation;
+    }
+    var operation;
+    var id;
+    if (annotation === void 0) {
+      operation = CreateFile.create(uri, options);
+    } else {
+      id = ChangeAnnotationIdentifier.is(annotation) ? annotation : this._changeAnnotations.manage(annotation);
+      operation = CreateFile.create(uri, options, id);
+    }
+    this._workspaceEdit.documentChanges.push(operation);
+    if (id !== void 0) {
+      return id;
+    }
+  };
+  WorkspaceChange2.prototype.renameFile = function(oldUri, newUri, optionsOrAnnotation, options) {
+    this.initDocumentChanges();
+    if (this._workspaceEdit.documentChanges === void 0) {
+      throw new Error("Workspace edit is not configured for document changes.");
+    }
+    var annotation;
+    if (ChangeAnnotation.is(optionsOrAnnotation) || ChangeAnnotationIdentifier.is(optionsOrAnnotation)) {
+      annotation = optionsOrAnnotation;
+    } else {
+      options = optionsOrAnnotation;
+    }
+    var operation;
+    var id;
+    if (annotation === void 0) {
+      operation = RenameFile.create(oldUri, newUri, options);
+    } else {
+      id = ChangeAnnotationIdentifier.is(annotation) ? annotation : this._changeAnnotations.manage(annotation);
+      operation = RenameFile.create(oldUri, newUri, options, id);
+    }
+    this._workspaceEdit.documentChanges.push(operation);
+    if (id !== void 0) {
+      return id;
+    }
+  };
+  WorkspaceChange2.prototype.deleteFile = function(uri, optionsOrAnnotation, options) {
+    this.initDocumentChanges();
+    if (this._workspaceEdit.documentChanges === void 0) {
+      throw new Error("Workspace edit is not configured for document changes.");
+    }
+    var annotation;
+    if (ChangeAnnotation.is(optionsOrAnnotation) || ChangeAnnotationIdentifier.is(optionsOrAnnotation)) {
+      annotation = optionsOrAnnotation;
+    } else {
+      options = optionsOrAnnotation;
+    }
+    var operation;
+    var id;
+    if (annotation === void 0) {
+      operation = DeleteFile.create(uri, options);
+    } else {
+      id = ChangeAnnotationIdentifier.is(annotation) ? annotation : this._changeAnnotations.manage(annotation);
+      operation = DeleteFile.create(uri, options, id);
+    }
+    this._workspaceEdit.documentChanges.push(operation);
+    if (id !== void 0) {
+      return id;
+    }
+  };
+  return WorkspaceChange2;
+}();
 var TextDocumentIdentifier;
 (function(TextDocumentIdentifier2) {
   function create(uri) {
@@ -2511,7 +3120,7 @@ var TextDocumentIdentifier;
   }
   TextDocumentIdentifier2.create = create;
   function is(value) {
-    let candidate = value;
+    var candidate = value;
     return Is.defined(candidate) && Is.string(candidate.uri);
   }
   TextDocumentIdentifier2.is = is;
@@ -2523,7 +3132,7 @@ var VersionedTextDocumentIdentifier;
   }
   VersionedTextDocumentIdentifier2.create = create;
   function is(value) {
-    let candidate = value;
+    var candidate = value;
     return Is.defined(candidate) && Is.string(candidate.uri) && Is.integer(candidate.version);
   }
   VersionedTextDocumentIdentifier2.is = is;
@@ -2535,7 +3144,7 @@ var OptionalVersionedTextDocumentIdentifier;
   }
   OptionalVersionedTextDocumentIdentifier2.create = create;
   function is(value) {
-    let candidate = value;
+    var candidate = value;
     return Is.defined(candidate) && Is.string(candidate.uri) && (candidate.version === null || Is.integer(candidate.version));
   }
   OptionalVersionedTextDocumentIdentifier2.is = is;
@@ -2547,7 +3156,7 @@ var TextDocumentItem;
   }
   TextDocumentItem2.create = create;
   function is(value) {
-    let candidate = value;
+    var candidate = value;
     return Is.defined(candidate) && Is.string(candidate.uri) && Is.string(candidate.languageId) && Is.integer(candidate.version) && Is.string(candidate.text);
   }
   TextDocumentItem2.is = is;
@@ -2556,8 +3165,10 @@ var MarkupKind;
 (function(MarkupKind2) {
   MarkupKind2.PlainText = "plaintext";
   MarkupKind2.Markdown = "markdown";
+})(MarkupKind || (MarkupKind = {}));
+(function(MarkupKind2) {
   function is(value) {
-    const candidate = value;
+    var candidate = value;
     return candidate === MarkupKind2.PlainText || candidate === MarkupKind2.Markdown;
   }
   MarkupKind2.is = is;
@@ -2565,7 +3176,7 @@ var MarkupKind;
 var MarkupContent;
 (function(MarkupContent2) {
   function is(value) {
-    const candidate = value;
+    var candidate = value;
     return Is.objectLiteral(value) && MarkupKind.is(candidate.kind) && Is.string(candidate.value);
   }
   MarkupContent2.is = is;
@@ -2614,7 +3225,7 @@ var InsertReplaceEdit;
   }
   InsertReplaceEdit2.create = create;
   function is(value) {
-    const candidate = value;
+    var candidate = value;
     return candidate && Is.string(candidate.newText) && Range.is(candidate.insert) && Range.is(candidate.replace);
   }
   InsertReplaceEdit2.is = is;
@@ -2624,14 +3235,6 @@ var InsertTextMode;
   InsertTextMode2.asIs = 1;
   InsertTextMode2.adjustIndentation = 2;
 })(InsertTextMode || (InsertTextMode = {}));
-var CompletionItemLabelDetails;
-(function(CompletionItemLabelDetails2) {
-  function is(value) {
-    const candidate = value;
-    return candidate && (Is.string(candidate.detail) || candidate.detail === void 0) && (Is.string(candidate.description) || candidate.description === void 0);
-  }
-  CompletionItemLabelDetails2.is = is;
-})(CompletionItemLabelDetails || (CompletionItemLabelDetails = {}));
 var CompletionItem;
 (function(CompletionItem2) {
   function create(label) {
@@ -2653,7 +3256,7 @@ var MarkedString;
   }
   MarkedString2.fromPlainText = fromPlainText;
   function is(value) {
-    const candidate = value;
+    var candidate = value;
     return Is.string(candidate) || Is.objectLiteral(candidate) && Is.string(candidate.language) && Is.string(candidate.value);
   }
   MarkedString2.is = is;
@@ -2661,7 +3264,7 @@ var MarkedString;
 var Hover;
 (function(Hover2) {
   function is(value) {
-    let candidate = value;
+    var candidate = value;
     return !!candidate && Is.objectLiteral(candidate) && (MarkupContent.is(candidate.contents) || MarkedString.is(candidate.contents) || Is.typedArray(candidate.contents, MarkedString.is)) && (value.range === void 0 || Range.is(value.range));
   }
   Hover2.is = is;
@@ -2675,8 +3278,12 @@ var ParameterInformation;
 })(ParameterInformation || (ParameterInformation = {}));
 var SignatureInformation;
 (function(SignatureInformation2) {
-  function create(label, documentation, ...parameters) {
-    let result = { label };
+  function create(label, documentation) {
+    var parameters = [];
+    for (var _i = 2; _i < arguments.length; _i++) {
+      parameters[_i - 2] = arguments[_i];
+    }
+    var result = { label };
     if (Is.defined(documentation)) {
       result.documentation = documentation;
     }
@@ -2698,7 +3305,7 @@ var DocumentHighlightKind;
 var DocumentHighlight;
 (function(DocumentHighlight2) {
   function create(range, kind) {
-    let result = { range };
+    var result = { range };
     if (Is.number(kind)) {
       result.kind = kind;
     }
@@ -2742,7 +3349,7 @@ var SymbolTag;
 var SymbolInformation;
 (function(SymbolInformation2) {
   function create(name, kind, range, uri, containerName) {
-    let result = {
+    var result = {
       name,
       kind,
       location: { uri, range }
@@ -2754,17 +3361,10 @@ var SymbolInformation;
   }
   SymbolInformation2.create = create;
 })(SymbolInformation || (SymbolInformation = {}));
-var WorkspaceSymbol;
-(function(WorkspaceSymbol2) {
-  function create(name, kind, uri, range) {
-    return range !== void 0 ? { name, kind, location: { uri, range } } : { name, kind, location: { uri } };
-  }
-  WorkspaceSymbol2.create = create;
-})(WorkspaceSymbol || (WorkspaceSymbol = {}));
 var DocumentSymbol;
 (function(DocumentSymbol2) {
   function create(name, detail, kind, range, selectionRange, children) {
-    let result = {
+    var result = {
       name,
       detail,
       kind,
@@ -2778,7 +3378,7 @@ var DocumentSymbol;
   }
   DocumentSymbol2.create = create;
   function is(value) {
-    let candidate = value;
+    var candidate = value;
     return candidate && Is.string(candidate.name) && Is.number(candidate.kind) && Range.is(candidate.range) && Range.is(candidate.selectionRange) && (candidate.detail === void 0 || Is.string(candidate.detail)) && (candidate.deprecated === void 0 || Is.boolean(candidate.deprecated)) && (candidate.children === void 0 || Array.isArray(candidate.children)) && (candidate.tags === void 0 || Array.isArray(candidate.tags));
   }
   DocumentSymbol2.is = is;
@@ -2795,35 +3395,27 @@ var CodeActionKind;
   CodeActionKind2.SourceOrganizeImports = "source.organizeImports";
   CodeActionKind2.SourceFixAll = "source.fixAll";
 })(CodeActionKind || (CodeActionKind = {}));
-var CodeActionTriggerKind;
-(function(CodeActionTriggerKind2) {
-  CodeActionTriggerKind2.Invoked = 1;
-  CodeActionTriggerKind2.Automatic = 2;
-})(CodeActionTriggerKind || (CodeActionTriggerKind = {}));
 var CodeActionContext;
 (function(CodeActionContext2) {
-  function create(diagnostics, only, triggerKind) {
-    let result = { diagnostics };
+  function create(diagnostics, only) {
+    var result = { diagnostics };
     if (only !== void 0 && only !== null) {
       result.only = only;
-    }
-    if (triggerKind !== void 0 && triggerKind !== null) {
-      result.triggerKind = triggerKind;
     }
     return result;
   }
   CodeActionContext2.create = create;
   function is(value) {
-    let candidate = value;
-    return Is.defined(candidate) && Is.typedArray(candidate.diagnostics, Diagnostic.is) && (candidate.only === void 0 || Is.typedArray(candidate.only, Is.string)) && (candidate.triggerKind === void 0 || candidate.triggerKind === CodeActionTriggerKind.Invoked || candidate.triggerKind === CodeActionTriggerKind.Automatic);
+    var candidate = value;
+    return Is.defined(candidate) && Is.typedArray(candidate.diagnostics, Diagnostic.is) && (candidate.only === void 0 || Is.typedArray(candidate.only, Is.string));
   }
   CodeActionContext2.is = is;
 })(CodeActionContext || (CodeActionContext = {}));
 var CodeAction;
 (function(CodeAction2) {
   function create(title, kindOrCommandOrEdit, kind) {
-    let result = { title };
-    let checkKind = true;
+    var result = { title };
+    var checkKind = true;
     if (typeof kindOrCommandOrEdit === "string") {
       checkKind = false;
       result.kind = kindOrCommandOrEdit;
@@ -2839,7 +3431,7 @@ var CodeAction;
   }
   CodeAction2.create = create;
   function is(value) {
-    let candidate = value;
+    var candidate = value;
     return candidate && Is.string(candidate.title) && (candidate.diagnostics === void 0 || Is.typedArray(candidate.diagnostics, Diagnostic.is)) && (candidate.kind === void 0 || Is.string(candidate.kind)) && (candidate.edit !== void 0 || candidate.command !== void 0) && (candidate.command === void 0 || Command.is(candidate.command)) && (candidate.isPreferred === void 0 || Is.boolean(candidate.isPreferred)) && (candidate.edit === void 0 || WorkspaceEdit.is(candidate.edit));
   }
   CodeAction2.is = is;
@@ -2847,7 +3439,7 @@ var CodeAction;
 var CodeLens;
 (function(CodeLens2) {
   function create(range, data) {
-    let result = { range };
+    var result = { range };
     if (Is.defined(data)) {
       result.data = data;
     }
@@ -2855,7 +3447,7 @@ var CodeLens;
   }
   CodeLens2.create = create;
   function is(value) {
-    let candidate = value;
+    var candidate = value;
     return Is.defined(candidate) && Range.is(candidate.range) && (Is.undefined(candidate.command) || Command.is(candidate.command));
   }
   CodeLens2.is = is;
@@ -2867,7 +3459,7 @@ var FormattingOptions;
   }
   FormattingOptions2.create = create;
   function is(value) {
-    let candidate = value;
+    var candidate = value;
     return Is.defined(candidate) && Is.uinteger(candidate.tabSize) && Is.boolean(candidate.insertSpaces);
   }
   FormattingOptions2.is = is;
@@ -2879,7 +3471,7 @@ var DocumentLink;
   }
   DocumentLink2.create = create;
   function is(value) {
-    let candidate = value;
+    var candidate = value;
     return Is.defined(candidate) && Range.is(candidate.range) && (Is.undefined(candidate.target) || Is.string(candidate.target));
   }
   DocumentLink2.is = is;
@@ -2891,191 +3483,11 @@ var SelectionRange;
   }
   SelectionRange2.create = create;
   function is(value) {
-    let candidate = value;
-    return Is.objectLiteral(candidate) && Range.is(candidate.range) && (candidate.parent === void 0 || SelectionRange2.is(candidate.parent));
+    var candidate = value;
+    return candidate !== void 0 && Range.is(candidate.range) && (candidate.parent === void 0 || SelectionRange2.is(candidate.parent));
   }
   SelectionRange2.is = is;
 })(SelectionRange || (SelectionRange = {}));
-var SemanticTokenTypes;
-(function(SemanticTokenTypes2) {
-  SemanticTokenTypes2["namespace"] = "namespace";
-  SemanticTokenTypes2["type"] = "type";
-  SemanticTokenTypes2["class"] = "class";
-  SemanticTokenTypes2["enum"] = "enum";
-  SemanticTokenTypes2["interface"] = "interface";
-  SemanticTokenTypes2["struct"] = "struct";
-  SemanticTokenTypes2["typeParameter"] = "typeParameter";
-  SemanticTokenTypes2["parameter"] = "parameter";
-  SemanticTokenTypes2["variable"] = "variable";
-  SemanticTokenTypes2["property"] = "property";
-  SemanticTokenTypes2["enumMember"] = "enumMember";
-  SemanticTokenTypes2["event"] = "event";
-  SemanticTokenTypes2["function"] = "function";
-  SemanticTokenTypes2["method"] = "method";
-  SemanticTokenTypes2["macro"] = "macro";
-  SemanticTokenTypes2["keyword"] = "keyword";
-  SemanticTokenTypes2["modifier"] = "modifier";
-  SemanticTokenTypes2["comment"] = "comment";
-  SemanticTokenTypes2["string"] = "string";
-  SemanticTokenTypes2["number"] = "number";
-  SemanticTokenTypes2["regexp"] = "regexp";
-  SemanticTokenTypes2["operator"] = "operator";
-  SemanticTokenTypes2["decorator"] = "decorator";
-})(SemanticTokenTypes || (SemanticTokenTypes = {}));
-var SemanticTokenModifiers;
-(function(SemanticTokenModifiers2) {
-  SemanticTokenModifiers2["declaration"] = "declaration";
-  SemanticTokenModifiers2["definition"] = "definition";
-  SemanticTokenModifiers2["readonly"] = "readonly";
-  SemanticTokenModifiers2["static"] = "static";
-  SemanticTokenModifiers2["deprecated"] = "deprecated";
-  SemanticTokenModifiers2["abstract"] = "abstract";
-  SemanticTokenModifiers2["async"] = "async";
-  SemanticTokenModifiers2["modification"] = "modification";
-  SemanticTokenModifiers2["documentation"] = "documentation";
-  SemanticTokenModifiers2["defaultLibrary"] = "defaultLibrary";
-})(SemanticTokenModifiers || (SemanticTokenModifiers = {}));
-var SemanticTokens;
-(function(SemanticTokens2) {
-  function is(value) {
-    const candidate = value;
-    return Is.objectLiteral(candidate) && (candidate.resultId === void 0 || typeof candidate.resultId === "string") && Array.isArray(candidate.data) && (candidate.data.length === 0 || typeof candidate.data[0] === "number");
-  }
-  SemanticTokens2.is = is;
-})(SemanticTokens || (SemanticTokens = {}));
-var InlineValueText;
-(function(InlineValueText2) {
-  function create(range, text) {
-    return { range, text };
-  }
-  InlineValueText2.create = create;
-  function is(value) {
-    const candidate = value;
-    return candidate !== void 0 && candidate !== null && Range.is(candidate.range) && Is.string(candidate.text);
-  }
-  InlineValueText2.is = is;
-})(InlineValueText || (InlineValueText = {}));
-var InlineValueVariableLookup;
-(function(InlineValueVariableLookup2) {
-  function create(range, variableName, caseSensitiveLookup) {
-    return { range, variableName, caseSensitiveLookup };
-  }
-  InlineValueVariableLookup2.create = create;
-  function is(value) {
-    const candidate = value;
-    return candidate !== void 0 && candidate !== null && Range.is(candidate.range) && Is.boolean(candidate.caseSensitiveLookup) && (Is.string(candidate.variableName) || candidate.variableName === void 0);
-  }
-  InlineValueVariableLookup2.is = is;
-})(InlineValueVariableLookup || (InlineValueVariableLookup = {}));
-var InlineValueEvaluatableExpression;
-(function(InlineValueEvaluatableExpression2) {
-  function create(range, expression) {
-    return { range, expression };
-  }
-  InlineValueEvaluatableExpression2.create = create;
-  function is(value) {
-    const candidate = value;
-    return candidate !== void 0 && candidate !== null && Range.is(candidate.range) && (Is.string(candidate.expression) || candidate.expression === void 0);
-  }
-  InlineValueEvaluatableExpression2.is = is;
-})(InlineValueEvaluatableExpression || (InlineValueEvaluatableExpression = {}));
-var InlineValueContext;
-(function(InlineValueContext2) {
-  function create(frameId, stoppedLocation) {
-    return { frameId, stoppedLocation };
-  }
-  InlineValueContext2.create = create;
-  function is(value) {
-    const candidate = value;
-    return Is.defined(candidate) && Range.is(value.stoppedLocation);
-  }
-  InlineValueContext2.is = is;
-})(InlineValueContext || (InlineValueContext = {}));
-var InlayHintKind;
-(function(InlayHintKind2) {
-  InlayHintKind2.Type = 1;
-  InlayHintKind2.Parameter = 2;
-  function is(value) {
-    return value === 1 || value === 2;
-  }
-  InlayHintKind2.is = is;
-})(InlayHintKind || (InlayHintKind = {}));
-var InlayHintLabelPart;
-(function(InlayHintLabelPart2) {
-  function create(value) {
-    return { value };
-  }
-  InlayHintLabelPart2.create = create;
-  function is(value) {
-    const candidate = value;
-    return Is.objectLiteral(candidate) && (candidate.tooltip === void 0 || Is.string(candidate.tooltip) || MarkupContent.is(candidate.tooltip)) && (candidate.location === void 0 || Location.is(candidate.location)) && (candidate.command === void 0 || Command.is(candidate.command));
-  }
-  InlayHintLabelPart2.is = is;
-})(InlayHintLabelPart || (InlayHintLabelPart = {}));
-var InlayHint;
-(function(InlayHint2) {
-  function create(position, label, kind) {
-    const result = { position, label };
-    if (kind !== void 0) {
-      result.kind = kind;
-    }
-    return result;
-  }
-  InlayHint2.create = create;
-  function is(value) {
-    const candidate = value;
-    return Is.objectLiteral(candidate) && Position.is(candidate.position) && (Is.string(candidate.label) || Is.typedArray(candidate.label, InlayHintLabelPart.is)) && (candidate.kind === void 0 || InlayHintKind.is(candidate.kind)) && candidate.textEdits === void 0 || Is.typedArray(candidate.textEdits, TextEdit.is) && (candidate.tooltip === void 0 || Is.string(candidate.tooltip) || MarkupContent.is(candidate.tooltip)) && (candidate.paddingLeft === void 0 || Is.boolean(candidate.paddingLeft)) && (candidate.paddingRight === void 0 || Is.boolean(candidate.paddingRight));
-  }
-  InlayHint2.is = is;
-})(InlayHint || (InlayHint = {}));
-var StringValue;
-(function(StringValue2) {
-  function createSnippet(value) {
-    return { kind: "snippet", value };
-  }
-  StringValue2.createSnippet = createSnippet;
-})(StringValue || (StringValue = {}));
-var InlineCompletionItem;
-(function(InlineCompletionItem2) {
-  function create(insertText, filterText, range, command) {
-    return { insertText, filterText, range, command };
-  }
-  InlineCompletionItem2.create = create;
-})(InlineCompletionItem || (InlineCompletionItem = {}));
-var InlineCompletionList;
-(function(InlineCompletionList2) {
-  function create(items) {
-    return { items };
-  }
-  InlineCompletionList2.create = create;
-})(InlineCompletionList || (InlineCompletionList = {}));
-var InlineCompletionTriggerKind;
-(function(InlineCompletionTriggerKind2) {
-  InlineCompletionTriggerKind2.Invoked = 0;
-  InlineCompletionTriggerKind2.Automatic = 1;
-})(InlineCompletionTriggerKind || (InlineCompletionTriggerKind = {}));
-var SelectedCompletionInfo;
-(function(SelectedCompletionInfo2) {
-  function create(range, text) {
-    return { range, text };
-  }
-  SelectedCompletionInfo2.create = create;
-})(SelectedCompletionInfo || (SelectedCompletionInfo = {}));
-var InlineCompletionContext;
-(function(InlineCompletionContext2) {
-  function create(triggerKind, selectedCompletionInfo) {
-    return { triggerKind, selectedCompletionInfo };
-  }
-  InlineCompletionContext2.create = create;
-})(InlineCompletionContext || (InlineCompletionContext = {}));
-var WorkspaceFolder;
-(function(WorkspaceFolder2) {
-  function is(value) {
-    const candidate = value;
-    return Is.objectLiteral(candidate) && URI.is(candidate.uri) && Is.string(candidate.name);
-  }
-  WorkspaceFolder2.is = is;
-})(WorkspaceFolder || (WorkspaceFolder = {}));
 var TextDocument;
 (function(TextDocument3) {
   function create(uri, languageId, version, content) {
@@ -3083,24 +3495,24 @@ var TextDocument;
   }
   TextDocument3.create = create;
   function is(value) {
-    let candidate = value;
+    var candidate = value;
     return Is.defined(candidate) && Is.string(candidate.uri) && (Is.undefined(candidate.languageId) || Is.string(candidate.languageId)) && Is.uinteger(candidate.lineCount) && Is.func(candidate.getText) && Is.func(candidate.positionAt) && Is.func(candidate.offsetAt) ? true : false;
   }
   TextDocument3.is = is;
   function applyEdits(document, edits) {
-    let text = document.getText();
-    let sortedEdits = mergeSort2(edits, (a2, b) => {
-      let diff = a2.range.start.line - b.range.start.line;
+    var text = document.getText();
+    var sortedEdits = mergeSort2(edits, function(a2, b) {
+      var diff = a2.range.start.line - b.range.start.line;
       if (diff === 0) {
         return a2.range.start.character - b.range.start.character;
       }
       return diff;
     });
-    let lastModifiedOffset = text.length;
-    for (let i = sortedEdits.length - 1; i >= 0; i--) {
-      let e = sortedEdits[i];
-      let startOffset = document.offsetAt(e.range.start);
-      let endOffset = document.offsetAt(e.range.end);
+    var lastModifiedOffset = text.length;
+    for (var i = sortedEdits.length - 1; i >= 0; i--) {
+      var e = sortedEdits[i];
+      var startOffset = document.offsetAt(e.range.start);
+      var endOffset = document.offsetAt(e.range.end);
       if (endOffset <= lastModifiedOffset) {
         text = text.substring(0, startOffset) + e.newText + text.substring(endOffset, text.length);
       } else {
@@ -3115,16 +3527,16 @@ var TextDocument;
     if (data.length <= 1) {
       return data;
     }
-    const p = data.length / 2 | 0;
-    const left = data.slice(0, p);
-    const right = data.slice(p);
+    var p = data.length / 2 | 0;
+    var left = data.slice(0, p);
+    var right = data.slice(p);
     mergeSort2(left, compare);
     mergeSort2(right, compare);
-    let leftIdx = 0;
-    let rightIdx = 0;
-    let i = 0;
+    var leftIdx = 0;
+    var rightIdx = 0;
+    var i = 0;
     while (leftIdx < left.length && rightIdx < right.length) {
-      let ret = compare(left[leftIdx], right[rightIdx]);
+      var ret = compare(left[leftIdx], right[rightIdx]);
       if (ret <= 0) {
         data[i++] = left[leftIdx++];
       } else {
@@ -3140,47 +3552,59 @@ var TextDocument;
     return data;
   }
 })(TextDocument || (TextDocument = {}));
-var FullTextDocument = class {
-  constructor(uri, languageId, version, content) {
+var FullTextDocument = function() {
+  function FullTextDocument3(uri, languageId, version, content) {
     this._uri = uri;
     this._languageId = languageId;
     this._version = version;
     this._content = content;
     this._lineOffsets = void 0;
   }
-  get uri() {
-    return this._uri;
-  }
-  get languageId() {
-    return this._languageId;
-  }
-  get version() {
-    return this._version;
-  }
-  getText(range) {
+  Object.defineProperty(FullTextDocument3.prototype, "uri", {
+    get: function() {
+      return this._uri;
+    },
+    enumerable: false,
+    configurable: true
+  });
+  Object.defineProperty(FullTextDocument3.prototype, "languageId", {
+    get: function() {
+      return this._languageId;
+    },
+    enumerable: false,
+    configurable: true
+  });
+  Object.defineProperty(FullTextDocument3.prototype, "version", {
+    get: function() {
+      return this._version;
+    },
+    enumerable: false,
+    configurable: true
+  });
+  FullTextDocument3.prototype.getText = function(range) {
     if (range) {
-      let start2 = this.offsetAt(range.start);
-      let end = this.offsetAt(range.end);
-      return this._content.substring(start2, end);
+      var start = this.offsetAt(range.start);
+      var end = this.offsetAt(range.end);
+      return this._content.substring(start, end);
     }
     return this._content;
-  }
-  update(event, version) {
+  };
+  FullTextDocument3.prototype.update = function(event, version) {
     this._content = event.text;
     this._version = version;
     this._lineOffsets = void 0;
-  }
-  getLineOffsets() {
+  };
+  FullTextDocument3.prototype.getLineOffsets = function() {
     if (this._lineOffsets === void 0) {
-      let lineOffsets = [];
-      let text = this._content;
-      let isLineStart = true;
-      for (let i = 0; i < text.length; i++) {
+      var lineOffsets = [];
+      var text = this._content;
+      var isLineStart = true;
+      for (var i = 0; i < text.length; i++) {
         if (isLineStart) {
           lineOffsets.push(i);
           isLineStart = false;
         }
-        let ch = text.charAt(i);
+        var ch = text.charAt(i);
         isLineStart = ch === "\r" || ch === "\n";
         if (ch === "\r" && i + 1 < text.length && text.charAt(i + 1) === "\n") {
           i++;
@@ -3192,43 +3616,48 @@ var FullTextDocument = class {
       this._lineOffsets = lineOffsets;
     }
     return this._lineOffsets;
-  }
-  positionAt(offset) {
+  };
+  FullTextDocument3.prototype.positionAt = function(offset) {
     offset = Math.max(Math.min(offset, this._content.length), 0);
-    let lineOffsets = this.getLineOffsets();
-    let low = 0, high = lineOffsets.length;
+    var lineOffsets = this.getLineOffsets();
+    var low = 0, high = lineOffsets.length;
     if (high === 0) {
       return Position.create(0, offset);
     }
     while (low < high) {
-      let mid = Math.floor((low + high) / 2);
+      var mid = Math.floor((low + high) / 2);
       if (lineOffsets[mid] > offset) {
         high = mid;
       } else {
         low = mid + 1;
       }
     }
-    let line = low - 1;
+    var line = low - 1;
     return Position.create(line, offset - lineOffsets[line]);
-  }
-  offsetAt(position) {
-    let lineOffsets = this.getLineOffsets();
+  };
+  FullTextDocument3.prototype.offsetAt = function(position) {
+    var lineOffsets = this.getLineOffsets();
     if (position.line >= lineOffsets.length) {
       return this._content.length;
     } else if (position.line < 0) {
       return 0;
     }
-    let lineOffset = lineOffsets[position.line];
-    let nextLineOffset = position.line + 1 < lineOffsets.length ? lineOffsets[position.line + 1] : this._content.length;
+    var lineOffset = lineOffsets[position.line];
+    var nextLineOffset = position.line + 1 < lineOffsets.length ? lineOffsets[position.line + 1] : this._content.length;
     return Math.max(Math.min(lineOffset + position.character, nextLineOffset), lineOffset);
-  }
-  get lineCount() {
-    return this.getLineOffsets().length;
-  }
-};
+  };
+  Object.defineProperty(FullTextDocument3.prototype, "lineCount", {
+    get: function() {
+      return this.getLineOffsets().length;
+    },
+    enumerable: false,
+    configurable: true
+  });
+  return FullTextDocument3;
+}();
 var Is;
 (function(Is2) {
-  const toString = Object.prototype.toString;
+  var toString = Object.prototype.toString;
   function defined(value) {
     return typeof value !== "undefined";
   }
@@ -3276,7 +3705,7 @@ var Is;
 })(Is || (Is = {}));
 
 // node_modules/vscode-languageserver-textdocument/lib/esm/main.js
-var FullTextDocument2 = class _FullTextDocument {
+var FullTextDocument2 = class {
   constructor(uri, languageId, version, content) {
     this._uri = uri;
     this._languageId = languageId;
@@ -3295,15 +3724,15 @@ var FullTextDocument2 = class _FullTextDocument {
   }
   getText(range) {
     if (range) {
-      const start2 = this.offsetAt(range.start);
+      const start = this.offsetAt(range.start);
       const end = this.offsetAt(range.end);
-      return this._content.substring(start2, end);
+      return this._content.substring(start, end);
     }
     return this._content;
   }
   update(changes, version) {
     for (let change of changes) {
-      if (_FullTextDocument.isIncremental(change)) {
+      if (FullTextDocument2.isIncremental(change)) {
         const range = getWellformedRange(change.range);
         const startOffset = this.offsetAt(range.start);
         const endOffset = this.offsetAt(range.end);
@@ -3329,7 +3758,7 @@ var FullTextDocument2 = class _FullTextDocument {
             lineOffsets[i] = lineOffsets[i] + diff;
           }
         }
-      } else if (_FullTextDocument.isFull(change)) {
+      } else if (FullTextDocument2.isFull(change)) {
         this._content = change.text;
         this._lineOffsets = void 0;
       } else {
@@ -3470,10 +3899,10 @@ function computeLineOffsets(text, isAtLineStart, textOffset = 0) {
   return result;
 }
 function getWellformedRange(range) {
-  const start2 = range.start;
+  const start = range.start;
   const end = range.end;
-  if (start2.line > end.line || start2.line === end.line && start2.character > end.character) {
-    return { start: end, end: start2 };
+  if (start.line > end.line || start.line === end.line && start.character > end.character) {
+    return { start: end, end: start };
   }
   return range;
 }
@@ -3531,7 +3960,7 @@ function getEntryStatus(status) {
   }
 }
 function getEntryDescription(entry, doesSupportMarkdown, settings) {
-  let result;
+  var result;
   if (doesSupportMarkdown) {
     result = {
       kind: "markdown",
@@ -3559,28 +3988,26 @@ function getEntryStringDescription(entry, settings) {
   if (typeof entry.description !== "string") {
     return entry.description.value;
   }
-  let result = "";
-  if (settings?.documentation !== false) {
+  var result = "";
+  if ((settings === null || settings === void 0 ? void 0 : settings.documentation) !== false) {
     if (entry.status) {
       result += getEntryStatus(entry.status);
     }
     result += entry.description;
-    const browserLabel = getBrowserLabel(entry.browsers);
+    var browserLabel = getBrowserLabel(entry.browsers);
     if (browserLabel) {
       result += "\n(" + browserLabel + ")";
     }
     if ("syntax" in entry) {
-      result += `
-
-Syntax: ${entry.syntax}`;
+      result += "\n\nSyntax: ".concat(entry.syntax);
     }
   }
-  if (entry.references && entry.references.length > 0 && settings?.references !== false) {
+  if (entry.references && entry.references.length > 0 && (settings === null || settings === void 0 ? void 0 : settings.references) !== false) {
     if (result.length > 0) {
       result += "\n\n";
     }
-    result += entry.references.map((r) => {
-      return `${r.name}: ${r.url}`;
+    result += entry.references.map(function(r) {
+      return "".concat(r.name, ": ").concat(r.url);
     }).join(" | ");
   }
   return result;
@@ -3589,8 +4016,8 @@ function getEntryMarkdownDescription(entry, settings) {
   if (!entry.description || entry.description === "") {
     return "";
   }
-  let result = "";
-  if (settings?.documentation !== false) {
+  var result = "";
+  if ((settings === null || settings === void 0 ? void 0 : settings.documentation) !== false) {
     if (entry.status) {
       result += getEntryStatus(entry.status);
     }
@@ -3599,35 +4026,36 @@ function getEntryMarkdownDescription(entry, settings) {
     } else {
       result += entry.description.kind === MarkupKind.Markdown ? entry.description.value : textToMarkedString(entry.description.value);
     }
-    const browserLabel = getBrowserLabel(entry.browsers);
+    var browserLabel = getBrowserLabel(entry.browsers);
     if (browserLabel) {
       result += "\n\n(" + textToMarkedString(browserLabel) + ")";
     }
     if ("syntax" in entry && entry.syntax) {
-      result += `
-
-Syntax: ${textToMarkedString(entry.syntax)}`;
+      result += "\n\nSyntax: ".concat(textToMarkedString(entry.syntax));
     }
   }
-  if (entry.references && entry.references.length > 0 && settings?.references !== false) {
+  if (entry.references && entry.references.length > 0 && (settings === null || settings === void 0 ? void 0 : settings.references) !== false) {
     if (result.length > 0) {
       result += "\n\n";
     }
-    result += entry.references.map((r) => {
-      return `[${r.name}](${r.url})`;
+    result += entry.references.map(function(r) {
+      return "[".concat(r.name, "](").concat(r.url, ")");
     }).join(" | ");
   }
   return result;
 }
-function getBrowserLabel(browsers = []) {
+function getBrowserLabel(browsers) {
+  if (browsers === void 0) {
+    browsers = [];
+  }
   if (browsers.length === 0) {
     return null;
   }
-  return browsers.map((b) => {
-    let result = "";
-    const matches2 = b.match(/([A-Z]+)(\d+)?/);
-    const name = matches2[1];
-    const version = matches2[2];
+  return browsers.map(function(b) {
+    var result = "";
+    var matches2 = b.match(/([A-Z]+)(\d+)?/);
+    var name = matches2[1];
+    var version = matches2[2];
     if (name in browserNames) {
       result += browserNames[name];
     }
@@ -3639,130 +4067,13 @@ function getBrowserLabel(browsers = []) {
 }
 
 // node_modules/vscode-css-languageservice/lib/esm/languageFacts/colors.js
-var hexColorRegExp = /(^#([0-9A-F]{3}){1,2}$)|(^#([0-9A-F]{4}){1,2}$)/i;
+var localize3 = loadMessageBundle();
 var colorFunctions = [
-  {
-    label: "rgb",
-    func: "rgb($red, $green, $blue)",
-    insertText: "rgb(${1:red}, ${2:green}, ${3:blue})",
-    desc: t("Creates a Color from red, green, and blue values.")
-  },
-  {
-    label: "rgba",
-    func: "rgba($red, $green, $blue, $alpha)",
-    insertText: "rgba(${1:red}, ${2:green}, ${3:blue}, ${4:alpha})",
-    desc: t("Creates a Color from red, green, blue, and alpha values.")
-  },
-  {
-    label: "rgb relative",
-    func: "rgb(from $color $red $green $blue)",
-    insertText: "rgb(from ${1:color} ${2:r} ${3:g} ${4:b})",
-    desc: t("Creates a Color from the red, green, and blue values of another Color.")
-  },
-  {
-    label: "hsl",
-    func: "hsl($hue, $saturation, $lightness)",
-    insertText: "hsl(${1:hue}, ${2:saturation}, ${3:lightness})",
-    desc: t("Creates a Color from hue, saturation, and lightness values.")
-  },
-  {
-    label: "hsla",
-    func: "hsla($hue, $saturation, $lightness, $alpha)",
-    insertText: "hsla(${1:hue}, ${2:saturation}, ${3:lightness}, ${4:alpha})",
-    desc: t("Creates a Color from hue, saturation, lightness, and alpha values.")
-  },
-  {
-    label: "hsl relative",
-    func: "hsl(from $color $hue $saturation $lightness)",
-    insertText: "hsl(from ${1:color} ${2:h} ${3:s} ${4:l})",
-    desc: t("Creates a Color from the hue, saturation, and lightness values of another Color.")
-  },
-  {
-    label: "hwb",
-    func: "hwb($hue $white $black)",
-    insertText: "hwb(${1:hue} ${2:white} ${3:black})",
-    desc: t("Creates a Color from hue, white, and black values.")
-  },
-  {
-    label: "hwb relative",
-    func: "hwb(from $color $hue $white $black)",
-    insertText: "hwb(from ${1:color} ${2:h} ${3:w} ${4:b})",
-    desc: t("Creates a Color from the hue, white, and black values of another Color.")
-  },
-  {
-    label: "lab",
-    func: "lab($lightness $a $b)",
-    insertText: "lab(${1:lightness} ${2:a} ${3:b})",
-    desc: t("Creates a Color from lightness, a, and b values.")
-  },
-  {
-    label: "lab relative",
-    func: "lab(from $color $lightness $a $b)",
-    insertText: "lab(from ${1:color} ${2:l} ${3:a} ${4:b})",
-    desc: t("Creates a Color from the lightness, a, and b values of another Color.")
-  },
-  {
-    label: "oklab",
-    func: "oklab($lightness $a $b)",
-    insertText: "oklab(${1:lightness} ${2:a} ${3:b})",
-    desc: t("Creates a Color from lightness, a, and b values.")
-  },
-  {
-    label: "oklab relative",
-    func: "oklab(from $color $lightness $a $b)",
-    insertText: "oklab(from ${1:color} ${2:l} ${3:a} ${4:b})",
-    desc: t("Creates a Color from the lightness, a, and b values of another Color.")
-  },
-  {
-    label: "lch",
-    func: "lch($lightness $chroma $hue)",
-    insertText: "lch(${1:lightness} ${2:chroma} ${3:hue})",
-    desc: t("Creates a Color from lightness, chroma, and hue values.")
-  },
-  {
-    label: "lch relative",
-    func: "lch(from $color $lightness $chroma $hue)",
-    insertText: "lch(from ${1:color} ${2:l} ${3:c} ${4:h})",
-    desc: t("Creates a Color from the lightness, chroma, and hue values of another Color.")
-  },
-  {
-    label: "oklch",
-    func: "oklch($lightness $chroma $hue)",
-    insertText: "oklch(${1:lightness} ${2:chroma} ${3:hue})",
-    desc: t("Creates a Color from lightness, chroma, and hue values.")
-  },
-  {
-    label: "oklch relative",
-    func: "oklch(from $color $lightness $chroma $hue)",
-    insertText: "oklch(from ${1:color} ${2:l} ${3:c} ${4:h})",
-    desc: t("Creates a Color from the lightness, chroma, and hue values of another Color.")
-  },
-  {
-    label: "color",
-    func: "color($color-space $red $green $blue)",
-    insertText: "color(${1|srgb,srgb-linear,display-p3,a98-rgb,prophoto-rgb,rec2020,xyx,xyz-d50,xyz-d65|} ${2:red} ${3:green} ${4:blue})",
-    desc: t("Creates a Color in a specific color space from red, green, and blue values.")
-  },
-  {
-    label: "color relative",
-    func: "color(from $color $color-space $red $green $blue)",
-    insertText: "color(from ${1:color} ${2|srgb,srgb-linear,display-p3,a98-rgb,prophoto-rgb,rec2020,xyx,xyz-d50,xyz-d65|} ${3:r} ${4:g} ${5:b})",
-    desc: t("Creates a Color in a specific color space from the red, green, and blue values of another Color.")
-  },
-  {
-    label: "color-mix",
-    func: "color-mix(in $color-space, $color $percentage, $color $percentage)",
-    insertText: "color-mix(in ${1|srgb,srgb-linear,lab,oklab,xyz,xyz-d50,xyz-d65|}, ${3:color} ${4:percentage}, ${5:color} ${6:percentage})",
-    desc: t("Mix two colors together in a rectangular color space.")
-  },
-  {
-    label: "color-mix hue",
-    func: "color-mix(in $color-space $interpolation-method hue, $color $percentage, $color $percentage)",
-    insertText: "color-mix(in ${1|hsl,hwb,lch,oklch|} ${2|shorter hue,longer hue,increasing hue,decreasing hue|}, ${3:color} ${4:percentage}, ${5:color} ${6:percentage})",
-    desc: t("Mix two colors together in a polar color space.")
-  }
+  { func: "rgb($red, $green, $blue)", desc: localize3("css.builtin.rgb", "Creates a Color from red, green, and blue values.") },
+  { func: "rgba($red, $green, $blue, $alpha)", desc: localize3("css.builtin.rgba", "Creates a Color from red, green, blue, and alpha values.") },
+  { func: "hsl($hue, $saturation, $lightness)", desc: localize3("css.builtin.hsl", "Creates a Color from hue, saturation, and lightness values.") },
+  { func: "hsla($hue, $saturation, $lightness, $alpha)", desc: localize3("css.builtin.hsla", "Creates a Color from hue, saturation, lightness, and alpha values.") }
 ];
-var colorFunctionNameRegExp = /^(rgb|rgba|hsl|hsla|hwb)$/i;
 var colors = {
   aliceblue: "#f0f8ff",
   antiquewhite: "#faebd7",
@@ -3913,20 +4224,18 @@ var colors = {
   yellow: "#ffff00",
   yellowgreen: "#9acd32"
 };
-var colorsRegExp = new RegExp(`^(${Object.keys(colors).join("|")})$`, "i");
 var colorKeywords = {
   "currentColor": "The value of the 'color' property. The computed value of the 'currentColor' keyword is the computed value of the 'color' property. If the 'currentColor' keyword is set on the 'color' property itself, it is treated as 'color:inherit' at parse time.",
   "transparent": "Fully transparent. This keyword can be considered a shorthand for rgba(0,0,0,0) which is its computed value."
 };
-var colorKeywordsRegExp = new RegExp(`^(${Object.keys(colorKeywords).join("|")})$`, "i");
 function getNumericValue(node, factor) {
-  const val = node.getText();
-  const m = val.match(/^([-+]?[0-9]*\.?[0-9]+)(%?)$/);
+  var val = node.getText();
+  var m = val.match(/^([-+]?[0-9]*\.?[0-9]+)(%?)$/);
   if (m) {
     if (m[2]) {
       factor = 100;
     }
-    const result = parseFloat(m[1]) / factor;
+    var result = parseFloat(m[1]) / factor;
     if (result >= 0 && result <= 1) {
       return result;
     }
@@ -3934,8 +4243,8 @@ function getNumericValue(node, factor) {
   throw new Error();
 }
 function getAngle(node) {
-  const val = node.getText();
-  const m = val.match(/^([-+]?[0-9]*\.?[0-9]+)(deg|rad|grad|turn)?$/);
+  var val = node.getText();
+  var m = val.match(/^([-+]?[0-9]*\.?[0-9]+)(deg|rad|grad|turn)?$/);
   if (m) {
     switch (m[2]) {
       case "deg":
@@ -3947,7 +4256,7 @@ function getAngle(node) {
       case "turn":
         return parseFloat(val) * 360 % 360;
       default:
-        if ("undefined" === typeof m[2]) {
+        if (typeof m[2] === "undefined") {
           return parseFloat(val) % 360;
         }
     }
@@ -3955,14 +4264,11 @@ function getAngle(node) {
   throw new Error();
 }
 function isColorConstructor(node) {
-  const name = node.getName();
+  var name = node.getName();
   if (!name) {
     return false;
   }
-  return colorFunctionNameRegExp.test(name);
-}
-function isColorString(s) {
-  return hexColorRegExp.test(s) || colorsRegExp.test(s) || colorKeywordsRegExp.test(s);
+  return /^(rgb|rgba|hsl|hsla)$/gi.test(name);
 }
 var Digit0 = 48;
 var Digit9 = 57;
@@ -4020,12 +4326,15 @@ function colorFromHex(text) {
   }
   return null;
 }
-function colorFromHSL(hue, sat, light, alpha = 1) {
+function colorFromHSL(hue, sat, light, alpha) {
+  if (alpha === void 0) {
+    alpha = 1;
+  }
   hue = hue / 60;
   if (sat === 0) {
     return { red: light, green: light, blue: light, alpha };
   } else {
-    const hueToRgb = (t12, t22, hue2) => {
+    var hueToRgb = function(t12, t22, hue2) {
       while (hue2 < 0) {
         hue2 += 6;
       }
@@ -4043,22 +4352,22 @@ function colorFromHSL(hue, sat, light, alpha = 1) {
       }
       return t12;
     };
-    const t2 = light <= 0.5 ? light * (sat + 1) : light + sat - light * sat;
-    const t1 = light * 2 - t2;
+    var t2 = light <= 0.5 ? light * (sat + 1) : light + sat - light * sat;
+    var t1 = light * 2 - t2;
     return { red: hueToRgb(t1, t2, hue + 2), green: hueToRgb(t1, t2, hue), blue: hueToRgb(t1, t2, hue - 2), alpha };
   }
 }
 function hslFromColor(rgba) {
-  const r = rgba.red;
-  const g = rgba.green;
-  const b = rgba.blue;
-  const a2 = rgba.alpha;
-  const max = Math.max(r, g, b);
-  const min = Math.min(r, g, b);
-  let h = 0;
-  let s = 0;
-  const l = (min + max) / 2;
-  const chroma = max - min;
+  var r = rgba.red;
+  var g = rgba.green;
+  var b = rgba.blue;
+  var a2 = rgba.alpha;
+  var max = Math.max(r, g, b);
+  var min = Math.min(r, g, b);
+  var h = 0;
+  var s = 0;
+  var l = (min + max) / 2;
+  var chroma = max - min;
   if (chroma > 0) {
     s = Math.min(l <= 0.5 ? chroma / (2 * l) : chroma / (2 - 2 * l), 1);
     switch (max) {
@@ -4077,55 +4386,22 @@ function hslFromColor(rgba) {
   }
   return { h, s, l, a: a2 };
 }
-function colorFromHWB(hue, white, black, alpha = 1) {
-  if (white + black >= 1) {
-    const gray = white / (white + black);
-    return { red: gray, green: gray, blue: gray, alpha };
-  }
-  const rgb = colorFromHSL(hue, 1, 0.5, alpha);
-  let red = rgb.red;
-  red *= 1 - white - black;
-  red += white;
-  let green = rgb.green;
-  green *= 1 - white - black;
-  green += white;
-  let blue = rgb.blue;
-  blue *= 1 - white - black;
-  blue += white;
-  return {
-    red,
-    green,
-    blue,
-    alpha
-  };
-}
-function hwbFromColor(rgba) {
-  const hsl = hslFromColor(rgba);
-  const white = Math.min(rgba.red, rgba.green, rgba.blue);
-  const black = 1 - Math.max(rgba.red, rgba.green, rgba.blue);
-  return {
-    h: hsl.h,
-    w: white,
-    b: black,
-    a: hsl.a
-  };
-}
 function getColorValue(node) {
   if (node.type === NodeType.HexColorValue) {
-    const text = node.getText();
+    var text = node.getText();
     return colorFromHex(text);
   } else if (node.type === NodeType.Function) {
-    const functionNode = node;
-    const name = functionNode.getName();
-    let colorValues = functionNode.getArguments().getChildren();
+    var functionNode = node;
+    var name = functionNode.getName();
+    var colorValues = functionNode.getArguments().getChildren();
     if (colorValues.length === 1) {
-      const functionArg = colorValues[0].getChildren();
+      var functionArg = colorValues[0].getChildren();
       if (functionArg.length === 1 && functionArg[0].type === NodeType.Expression) {
         colorValues = functionArg[0].getChildren();
         if (colorValues.length === 3) {
-          const lastValue = colorValues[2];
+          var lastValue = colorValues[2];
           if (lastValue instanceof BinaryExpression) {
-            const left = lastValue.getLeft(), right = lastValue.getRight(), operator = lastValue.getOperator();
+            var left = lastValue.getLeft(), right = lastValue.getRight(), operator = lastValue.getOperator();
             if (left && right && operator && operator.matches("/")) {
               colorValues = [colorValues[0], colorValues[1], left, right];
             }
@@ -4137,7 +4413,7 @@ function getColorValue(node) {
       return null;
     }
     try {
-      const alpha = colorValues.length === 4 ? getNumericValue(colorValues[3], 1) : 1;
+      var alpha = colorValues.length === 4 ? getNumericValue(colorValues[3], 1) : 1;
       if (name === "rgb" || name === "rgba") {
         return {
           red: getNumericValue(colorValues[0], 255),
@@ -4146,15 +4422,10 @@ function getColorValue(node) {
           alpha
         };
       } else if (name === "hsl" || name === "hsla") {
-        const h = getAngle(colorValues[0]);
-        const s = getNumericValue(colorValues[1], 100);
-        const l = getNumericValue(colorValues[2], 100);
+        var h = getAngle(colorValues[0]);
+        var s = getNumericValue(colorValues[1], 100);
+        var l = getNumericValue(colorValues[2], 100);
         return colorFromHSL(h, s, l, alpha);
-      } else if (name === "hwb") {
-        const h = getAngle(colorValues[0]);
-        const w = getNumericValue(colorValues[1], 100);
-        const b = getNumericValue(colorValues[2], 100);
-        return colorFromHWB(h, w, b, alpha);
       }
     } catch (e) {
       return null;
@@ -4163,18 +4434,18 @@ function getColorValue(node) {
     if (node.parent && node.parent.type !== NodeType.Term) {
       return null;
     }
-    const term = node.parent;
+    var term = node.parent;
     if (term && term.parent && term.parent.type === NodeType.BinaryExpression) {
-      const expression = term.parent;
+      var expression = term.parent;
       if (expression.parent && expression.parent.type === NodeType.ListEntry && expression.parent.key === expression) {
         return null;
       }
     }
-    const candidateColor = node.getText().toLowerCase();
+    var candidateColor = node.getText().toLowerCase();
     if (candidateColor === "none") {
       return null;
     }
-    const colorHex = colors[candidateColor];
+    var colorHex = colors[candidateColor];
     if (colorHex) {
       return colorFromHex(colorHex);
     }
@@ -4297,7 +4568,7 @@ var basicShapeFunctions = {
   "polygon()": "Defines a polygon."
 };
 var units = {
-  "length": ["cap", "ch", "cm", "cqb", "cqh", "cqi", "cqmax", "cqmin", "cqw", "dvb", "dvh", "dvi", "dvw", "em", "ex", "ic", "in", "lh", "lvb", "lvh", "lvi", "lvw", "mm", "pc", "pt", "px", "q", "rcap", "rch", "rem", "rex", "ric", "rlh", "svb", "svh", "svi", "svw", "vb", "vh", "vi", "vmax", "vmin", "vw"],
+  "length": ["em", "rem", "ex", "px", "cm", "mm", "in", "pt", "pc", "ch", "vw", "vh", "vmin", "vmax"],
   "angle": ["deg", "rad", "grad", "turn"],
   "time": ["ms", "s"],
   "frequency": ["Hz", "kHz"],
@@ -4507,81 +4778,93 @@ var pageBoxDirectives = [
 
 // node_modules/vscode-css-languageservice/lib/esm/utils/objects.js
 function values(obj) {
-  return Object.keys(obj).map((key) => obj[key]);
+  return Object.keys(obj).map(function(key) {
+    return obj[key];
+  });
 }
 function isDefined(obj) {
   return typeof obj !== "undefined";
 }
 
 // node_modules/vscode-css-languageservice/lib/esm/parser/cssParser.js
-var Parser = class {
-  constructor(scnr = new Scanner()) {
+var __spreadArray = function(to, from, pack) {
+  if (pack || arguments.length === 2)
+    for (var i = 0, l = from.length, ar; i < l; i++) {
+      if (ar || !(i in from)) {
+        if (!ar)
+          ar = Array.prototype.slice.call(from, 0, i);
+        ar[i] = from[i];
+      }
+    }
+  return to.concat(ar || Array.prototype.slice.call(from));
+};
+var Parser = function() {
+  function Parser2(scnr) {
+    if (scnr === void 0) {
+      scnr = new Scanner();
+    }
     this.keyframeRegex = /^@(\-(webkit|ms|moz|o)\-)?keyframes$/i;
     this.scanner = scnr;
     this.token = { type: TokenType.EOF, offset: -1, len: 0, text: "" };
     this.prevToken = void 0;
   }
-  peekIdent(text) {
+  Parser2.prototype.peekIdent = function(text) {
     return TokenType.Ident === this.token.type && text.length === this.token.text.length && text === this.token.text.toLowerCase();
-  }
-  peekKeyword(text) {
+  };
+  Parser2.prototype.peekKeyword = function(text) {
     return TokenType.AtKeyword === this.token.type && text.length === this.token.text.length && text === this.token.text.toLowerCase();
-  }
-  peekDelim(text) {
+  };
+  Parser2.prototype.peekDelim = function(text) {
     return TokenType.Delim === this.token.type && text === this.token.text;
-  }
-  peek(type) {
+  };
+  Parser2.prototype.peek = function(type) {
     return type === this.token.type;
-  }
-  peekOne(...types) {
+  };
+  Parser2.prototype.peekOne = function() {
+    var types = [];
+    for (var _i = 0; _i < arguments.length; _i++) {
+      types[_i] = arguments[_i];
+    }
     return types.indexOf(this.token.type) !== -1;
-  }
-  peekRegExp(type, regEx) {
+  };
+  Parser2.prototype.peekRegExp = function(type, regEx) {
     if (type !== this.token.type) {
       return false;
     }
     return regEx.test(this.token.text);
-  }
-  hasWhitespace() {
+  };
+  Parser2.prototype.hasWhitespace = function() {
     return !!this.prevToken && this.prevToken.offset + this.prevToken.len !== this.token.offset;
-  }
-  consumeToken() {
+  };
+  Parser2.prototype.consumeToken = function() {
     this.prevToken = this.token;
     this.token = this.scanner.scan();
-  }
-  acceptUnicodeRange() {
-    const token = this.scanner.tryScanUnicode();
-    if (token) {
-      this.prevToken = token;
-      this.token = this.scanner.scan();
-      return true;
-    }
-    return false;
-  }
-  mark() {
+  };
+  Parser2.prototype.mark = function() {
     return {
       prev: this.prevToken,
       curr: this.token,
       pos: this.scanner.pos()
     };
-  }
-  restoreAtMark(mark) {
+  };
+  Parser2.prototype.restoreAtMark = function(mark) {
     this.prevToken = mark.prev;
     this.token = mark.curr;
     this.scanner.goBackTo(mark.pos);
-  }
-  try(func) {
-    const pos = this.mark();
-    const node = func();
+  };
+  Parser2.prototype.try = function(func) {
+    var pos = this.mark();
+    var node = func();
     if (!node) {
       this.restoreAtMark(pos);
       return null;
     }
     return node;
-  }
-  acceptOneKeyword(keywords) {
+  };
+  Parser2.prototype.acceptOneKeyword = function(keywords) {
     if (TokenType.AtKeyword === this.token.type) {
-      for (const keyword of keywords) {
+      for (var _i = 0, keywords_1 = keywords; _i < keywords_1.length; _i++) {
+        var keyword = keywords_1[_i];
         if (keyword.length === this.token.text.length && keyword === this.token.text.toLowerCase()) {
           this.consumeToken();
           return true;
@@ -4589,52 +4872,52 @@ var Parser = class {
       }
     }
     return false;
-  }
-  accept(type) {
+  };
+  Parser2.prototype.accept = function(type) {
     if (type === this.token.type) {
       this.consumeToken();
       return true;
     }
     return false;
-  }
-  acceptIdent(text) {
+  };
+  Parser2.prototype.acceptIdent = function(text) {
     if (this.peekIdent(text)) {
       this.consumeToken();
       return true;
     }
     return false;
-  }
-  acceptKeyword(text) {
+  };
+  Parser2.prototype.acceptKeyword = function(text) {
     if (this.peekKeyword(text)) {
       this.consumeToken();
       return true;
     }
     return false;
-  }
-  acceptDelim(text) {
+  };
+  Parser2.prototype.acceptDelim = function(text) {
     if (this.peekDelim(text)) {
       this.consumeToken();
       return true;
     }
     return false;
-  }
-  acceptRegexp(regEx) {
+  };
+  Parser2.prototype.acceptRegexp = function(regEx) {
     if (regEx.test(this.token.text)) {
       this.consumeToken();
       return true;
     }
     return false;
-  }
-  _parseRegexp(regEx) {
-    let node = this.createNode(NodeType.Identifier);
+  };
+  Parser2.prototype._parseRegexp = function(regEx) {
+    var node = this.createNode(NodeType.Identifier);
     do {
     } while (this.acceptRegexp(regEx));
     return this.finish(node);
-  }
-  acceptUnquotedString() {
-    const pos = this.scanner.pos();
+  };
+  Parser2.prototype.acceptUnquotedString = function() {
+    var pos = this.scanner.pos();
     this.scanner.goBackTo(this.token.offset);
-    const unquoted = this.scanner.scanUnquotedString();
+    var unquoted = this.scanner.scanUnquotedString();
     if (unquoted) {
       this.token = unquoted;
       this.consumeToken();
@@ -4642,8 +4925,8 @@ var Parser = class {
     }
     this.scanner.goBackTo(pos);
     return false;
-  }
-  resync(resyncTokens, resyncStopTokens) {
+  };
+  Parser2.prototype.resync = function(resyncTokens, resyncStopTokens) {
     while (true) {
       if (resyncTokens && resyncTokens.indexOf(this.token.type) !== -1) {
         this.consumeToken();
@@ -4657,26 +4940,26 @@ var Parser = class {
         this.token = this.scanner.scan();
       }
     }
-  }
-  createNode(nodeType) {
+  };
+  Parser2.prototype.createNode = function(nodeType) {
     return new Node(this.token.offset, this.token.len, nodeType);
-  }
-  create(ctor) {
+  };
+  Parser2.prototype.create = function(ctor) {
     return new ctor(this.token.offset, this.token.len);
-  }
-  finish(node, error, resyncTokens, resyncStopTokens) {
+  };
+  Parser2.prototype.finish = function(node, error, resyncTokens, resyncStopTokens) {
     if (!(node instanceof Nodelist)) {
       if (error) {
         this.markError(node, error, resyncTokens, resyncStopTokens);
       }
       if (this.prevToken) {
-        const prevEnd = this.prevToken.offset + this.prevToken.len;
+        var prevEnd = this.prevToken.offset + this.prevToken.len;
         node.length = prevEnd > node.offset ? prevEnd - node.offset : 0;
       }
     }
     return node;
-  }
-  markError(node, error, resyncTokens, resyncStopTokens) {
+  };
+  Parser2.prototype.markError = function(node, error, resyncTokens, resyncStopTokens) {
     if (this.token !== this.lastErrorToken) {
       node.addIssue(new Marker(node, error, Level.Error, void 0, this.token.offset, this.token.len));
       this.lastErrorToken = this.token;
@@ -4684,43 +4967,43 @@ var Parser = class {
     if (resyncTokens || resyncStopTokens) {
       this.resync(resyncTokens, resyncStopTokens);
     }
-  }
-  parseStylesheet(textDocument) {
-    const versionId = textDocument.version;
-    const text = textDocument.getText();
-    const textProvider = (offset, length) => {
+  };
+  Parser2.prototype.parseStylesheet = function(textDocument) {
+    var versionId = textDocument.version;
+    var text = textDocument.getText();
+    var textProvider = function(offset, length) {
       if (textDocument.version !== versionId) {
         throw new Error("Underlying model has changed, AST is no longer valid");
       }
       return text.substr(offset, length);
     };
     return this.internalParse(text, this._parseStylesheet, textProvider);
-  }
-  internalParse(input, parseFunc, textProvider) {
+  };
+  Parser2.prototype.internalParse = function(input, parseFunc, textProvider) {
     this.scanner.setSource(input);
     this.token = this.scanner.scan();
-    const node = parseFunc.bind(this)();
+    var node = parseFunc.bind(this)();
     if (node) {
       if (textProvider) {
         node.textProvider = textProvider;
       } else {
-        node.textProvider = (offset, length) => {
+        node.textProvider = function(offset, length) {
           return input.substr(offset, length);
         };
       }
     }
     return node;
-  }
-  _parseStylesheet() {
-    const node = this.create(Stylesheet);
+  };
+  Parser2.prototype._parseStylesheet = function() {
+    var node = this.create(Stylesheet);
     while (node.addChild(this._parseStylesheetStart())) {
     }
-    let inRecovery = false;
+    var inRecovery = false;
     do {
-      let hasMatch = false;
+      var hasMatch = false;
       do {
         hasMatch = false;
-        const statement = this._parseStylesheetStatement();
+        var statement = this._parseStylesheetStatement();
         if (statement) {
           node.addChild(statement);
           hasMatch = true;
@@ -4748,21 +5031,27 @@ var Parser = class {
       this.consumeToken();
     } while (!this.peek(TokenType.EOF));
     return this.finish(node);
-  }
-  _parseStylesheetStart() {
+  };
+  Parser2.prototype._parseStylesheetStart = function() {
     return this._parseCharset();
-  }
-  _parseStylesheetStatement(isNested = false) {
+  };
+  Parser2.prototype._parseStylesheetStatement = function(isNested) {
+    if (isNested === void 0) {
+      isNested = false;
+    }
     if (this.peek(TokenType.AtKeyword)) {
       return this._parseStylesheetAtStatement(isNested);
     }
     return this._parseRuleset(isNested);
-  }
-  _parseStylesheetAtStatement(isNested = false) {
-    return this._parseImport() || this._parseMedia(isNested) || this._parsePage() || this._parseFontFace() || this._parseKeyframe() || this._parseSupports(isNested) || this._parseLayer(isNested) || this._parsePropertyAtRule() || this._parseViewPort() || this._parseNamespace() || this._parseDocument() || this._parseContainer(isNested) || this._parseUnknownAtRule();
-  }
-  _tryParseRuleset(isNested) {
-    const mark = this.mark();
+  };
+  Parser2.prototype._parseStylesheetAtStatement = function(isNested) {
+    if (isNested === void 0) {
+      isNested = false;
+    }
+    return this._parseImport() || this._parseMedia(isNested) || this._parsePage() || this._parseFontFace() || this._parseKeyframe() || this._parseSupports(isNested) || this._parseViewPort() || this._parseNamespace() || this._parseDocument() || this._parseUnknownAtRule();
+  };
+  Parser2.prototype._tryParseRuleset = function(isNested) {
+    var mark = this.mark();
     if (this._parseSelector(isNested)) {
       while (this.accept(TokenType.Comma) && this._parseSelector(isNested)) {
       }
@@ -4773,10 +5062,13 @@ var Parser = class {
     }
     this.restoreAtMark(mark);
     return null;
-  }
-  _parseRuleset(isNested = false) {
-    const node = this.create(RuleSet);
-    const selectors = node.getSelectors();
+  };
+  Parser2.prototype._parseRuleset = function(isNested) {
+    if (isNested === void 0) {
+      isNested = false;
+    }
+    var node = this.create(RuleSet);
+    var selectors = node.getSelectors();
     if (!selectors.addChild(this._parseSelector(isNested))) {
       return null;
     }
@@ -4786,20 +5078,17 @@ var Parser = class {
       }
     }
     return this._parseBody(node, this._parseRuleSetDeclaration.bind(this));
-  }
-  _parseRuleSetDeclarationAtStatement() {
-    return this._parseMedia(true) || this._parseSupports(true) || this._parseLayer(true) || this._parseContainer(true) || this._parseUnknownAtRule();
-  }
-  _parseRuleSetDeclaration() {
+  };
+  Parser2.prototype._parseRuleSetDeclarationAtStatement = function() {
+    return this._parseUnknownAtRule();
+  };
+  Parser2.prototype._parseRuleSetDeclaration = function() {
     if (this.peek(TokenType.AtKeyword)) {
       return this._parseRuleSetDeclarationAtStatement();
     }
-    if (!this.peek(TokenType.Ident)) {
-      return this._parseRuleset(true);
-    }
-    return this._tryParseRuleset(true) || this._parseDeclaration();
-  }
-  _needsSemicolonAfter(node) {
+    return this._parseDeclaration();
+  };
+  Parser2.prototype._needsSemicolonAfter = function(node) {
     switch (node.type) {
       case NodeType.Keyframe:
       case NodeType.ViewPort:
@@ -4831,13 +5120,13 @@ var Parser = class {
         return !node.getNestedProperties();
     }
     return false;
-  }
-  _parseDeclarations(parseDeclaration) {
-    const node = this.create(Declarations);
+  };
+  Parser2.prototype._parseDeclarations = function(parseDeclaration) {
+    var node = this.create(Declarations);
     if (!this.accept(TokenType.CurlyL)) {
       return null;
     }
-    let decl = parseDeclaration();
+    var decl = parseDeclaration();
     while (node.addChild(decl)) {
       if (this.peek(TokenType.CurlyR)) {
         break;
@@ -4856,16 +5145,16 @@ var Parser = class {
       return this.finish(node, ParseError.RightCurlyExpected, [TokenType.CurlyR, TokenType.SemiColon]);
     }
     return this.finish(node);
-  }
-  _parseBody(node, parseDeclaration) {
+  };
+  Parser2.prototype._parseBody = function(node, parseDeclaration) {
     if (!node.setDeclarations(this._parseDeclarations(parseDeclaration))) {
       return this.finish(node, ParseError.LeftCurlyExpected, [TokenType.CurlyR, TokenType.SemiColon]);
     }
     return this.finish(node);
-  }
-  _parseSelector(isNested) {
-    const node = this.create(Selector);
-    let hasContent = false;
+  };
+  Parser2.prototype._parseSelector = function(isNested) {
+    var node = this.create(Selector);
+    var hasContent = false;
     if (isNested) {
       hasContent = node.addChild(this._parseCombinator());
     }
@@ -4874,13 +5163,13 @@ var Parser = class {
       node.addChild(this._parseCombinator());
     }
     return hasContent ? this.finish(node) : null;
-  }
-  _parseDeclaration(stopTokens) {
-    const customProperty = this._tryParseCustomPropertyDeclaration(stopTokens);
-    if (customProperty) {
-      return customProperty;
+  };
+  Parser2.prototype._parseDeclaration = function(stopTokens) {
+    var custonProperty = this._tryParseCustomPropertyDeclaration(stopTokens);
+    if (custonProperty) {
+      return custonProperty;
     }
-    const node = this.create(Declaration);
+    var node = this.create(Declaration);
     if (!node.setProperty(this._parseProperty())) {
       return null;
     }
@@ -4898,12 +5187,12 @@ var Parser = class {
       node.semicolonPosition = this.token.offset;
     }
     return this.finish(node);
-  }
-  _tryParseCustomPropertyDeclaration(stopTokens) {
+  };
+  Parser2.prototype._tryParseCustomPropertyDeclaration = function(stopTokens) {
     if (!this.peekRegExp(TokenType.Ident, /^--/)) {
       return null;
     }
-    const node = this.create(CustomPropertyDeclaration);
+    var node = this.create(CustomPropertyDeclaration);
     if (!node.setProperty(this._parseProperty())) {
       return null;
     }
@@ -4913,10 +5202,10 @@ var Parser = class {
     if (this.prevToken) {
       node.colonPosition = this.prevToken.offset;
     }
-    const mark = this.mark();
+    var mark = this.mark();
     if (this.peek(TokenType.CurlyL)) {
-      const propertySet = this.create(CustomPropertySet);
-      const declarations = this._parseDeclarations(this._parseRuleSetDeclaration.bind(this));
+      var propertySet = this.create(CustomPropertySet);
+      var declarations = this._parseDeclarations(this._parseRuleSetDeclaration.bind(this));
       if (propertySet.setDeclarations(declarations) && !declarations.isErroneous(true)) {
         propertySet.addChild(this._parsePrio());
         if (this.peek(TokenType.SemiColon)) {
@@ -4928,10 +5217,10 @@ var Parser = class {
       }
       this.restoreAtMark(mark);
     }
-    const expression = this._parseExpr();
+    var expression = this._parseExpr();
     if (expression && !expression.isErroneous(true)) {
       this._parsePrio();
-      if (this.peekOne(...stopTokens || [], TokenType.SemiColon, TokenType.EOF)) {
+      if (this.peekOne.apply(this, __spreadArray(__spreadArray([], stopTokens || [], false), [TokenType.SemiColon, TokenType.EOF], false))) {
         node.setValue(expression);
         if (this.peek(TokenType.SemiColon)) {
           node.semicolonPosition = this.token.offset;
@@ -4946,97 +5235,95 @@ var Parser = class {
       return this.finish(node, ParseError.PropertyValueExpected);
     }
     return this.finish(node);
-  }
-  /**
-   * Parse custom property values.
-   *
-   * Based on https://www.w3.org/TR/css-variables/#syntax
-   *
-   * This code is somewhat unusual, as the allowed syntax is incredibly broad,
-   * parsing almost any sequence of tokens, save for a small set of exceptions.
-   * Unbalanced delimitors, invalid tokens, and declaration
-   * terminators like semicolons and !important directives (when not inside
-   * of delimitors).
-   */
-  _parseCustomPropertyValue(stopTokens = [TokenType.CurlyR]) {
-    const node = this.create(Node);
-    const isTopLevel = () => curlyDepth === 0 && parensDepth === 0 && bracketsDepth === 0;
-    const onStopToken = () => stopTokens.indexOf(this.token.type) !== -1;
-    let curlyDepth = 0;
-    let parensDepth = 0;
-    let bracketsDepth = 0;
-    done: while (true) {
-      switch (this.token.type) {
-        case TokenType.SemiColon:
-          if (isTopLevel()) {
-            break done;
-          }
-          break;
-        case TokenType.Exclamation:
-          if (isTopLevel()) {
-            break done;
-          }
-          break;
-        case TokenType.CurlyL:
-          curlyDepth++;
-          break;
-        case TokenType.CurlyR:
-          curlyDepth--;
-          if (curlyDepth < 0) {
-            if (onStopToken() && parensDepth === 0 && bracketsDepth === 0) {
-              break done;
-            }
-            return this.finish(node, ParseError.LeftCurlyExpected);
-          }
-          break;
-        case TokenType.ParenthesisL:
-          parensDepth++;
-          break;
-        case TokenType.ParenthesisR:
-          parensDepth--;
-          if (parensDepth < 0) {
-            if (onStopToken() && bracketsDepth === 0 && curlyDepth === 0) {
-              break done;
-            }
-            return this.finish(node, ParseError.LeftParenthesisExpected);
-          }
-          break;
-        case TokenType.BracketL:
-          bracketsDepth++;
-          break;
-        case TokenType.BracketR:
-          bracketsDepth--;
-          if (bracketsDepth < 0) {
-            return this.finish(node, ParseError.LeftSquareBracketExpected);
-          }
-          break;
-        case TokenType.BadString:
-          break done;
-        case TokenType.EOF:
-          let error = ParseError.RightCurlyExpected;
-          if (bracketsDepth > 0) {
-            error = ParseError.RightSquareBracketExpected;
-          } else if (parensDepth > 0) {
-            error = ParseError.RightParenthesisExpected;
-          }
-          return this.finish(node, error);
-      }
-      this.consumeToken();
+  };
+  Parser2.prototype._parseCustomPropertyValue = function(stopTokens) {
+    var _this = this;
+    if (stopTokens === void 0) {
+      stopTokens = [TokenType.CurlyR];
     }
+    var node = this.create(Node);
+    var isTopLevel = function() {
+      return curlyDepth === 0 && parensDepth === 0 && bracketsDepth === 0;
+    };
+    var onStopToken = function() {
+      return stopTokens.indexOf(_this.token.type) !== -1;
+    };
+    var curlyDepth = 0;
+    var parensDepth = 0;
+    var bracketsDepth = 0;
+    done:
+      while (true) {
+        switch (this.token.type) {
+          case TokenType.SemiColon:
+            if (isTopLevel()) {
+              break done;
+            }
+            break;
+          case TokenType.Exclamation:
+            if (isTopLevel()) {
+              break done;
+            }
+            break;
+          case TokenType.CurlyL:
+            curlyDepth++;
+            break;
+          case TokenType.CurlyR:
+            curlyDepth--;
+            if (curlyDepth < 0) {
+              if (onStopToken() && parensDepth === 0 && bracketsDepth === 0) {
+                break done;
+              }
+              return this.finish(node, ParseError.LeftCurlyExpected);
+            }
+            break;
+          case TokenType.ParenthesisL:
+            parensDepth++;
+            break;
+          case TokenType.ParenthesisR:
+            parensDepth--;
+            if (parensDepth < 0) {
+              if (onStopToken() && bracketsDepth === 0 && curlyDepth === 0) {
+                break done;
+              }
+              return this.finish(node, ParseError.LeftParenthesisExpected);
+            }
+            break;
+          case TokenType.BracketL:
+            bracketsDepth++;
+            break;
+          case TokenType.BracketR:
+            bracketsDepth--;
+            if (bracketsDepth < 0) {
+              return this.finish(node, ParseError.LeftSquareBracketExpected);
+            }
+            break;
+          case TokenType.BadString:
+            break done;
+          case TokenType.EOF:
+            var error = ParseError.RightCurlyExpected;
+            if (bracketsDepth > 0) {
+              error = ParseError.RightSquareBracketExpected;
+            } else if (parensDepth > 0) {
+              error = ParseError.RightParenthesisExpected;
+            }
+            return this.finish(node, error);
+        }
+        this.consumeToken();
+      }
     return this.finish(node);
-  }
-  _tryToParseDeclaration(stopTokens) {
-    const mark = this.mark();
+  };
+  Parser2.prototype._tryToParseDeclaration = function(stopTokens) {
+    var mark = this.mark();
     if (this._parseProperty() && this.accept(TokenType.Colon)) {
       this.restoreAtMark(mark);
       return this._parseDeclaration(stopTokens);
     }
     this.restoreAtMark(mark);
     return null;
-  }
-  _parseProperty() {
-    const node = this.create(Property);
-    const mark = this.mark();
+  };
+  Parser2.prototype._parseProperty = function() {
+    var node = this.create(Property);
+    var mark = this.mark();
     if (this.acceptDelim("*") || this.acceptDelim("_")) {
       if (this.hasWhitespace()) {
         this.restoreAtMark(mark);
@@ -5047,15 +5334,15 @@ var Parser = class {
       return this.finish(node);
     }
     return null;
-  }
-  _parsePropertyIdentifier() {
+  };
+  Parser2.prototype._parsePropertyIdentifier = function() {
     return this._parseIdent();
-  }
-  _parseCharset() {
+  };
+  Parser2.prototype._parseCharset = function() {
     if (!this.peek(TokenType.Charset)) {
       return null;
     }
-    const node = this.create(Node);
+    var node = this.create(Node);
     this.consumeToken();
     if (!this.accept(TokenType.String)) {
       return this.finish(node, ParseError.IdentifierExpected);
@@ -5064,47 +5351,26 @@ var Parser = class {
       return this.finish(node, ParseError.SemiColonExpected);
     }
     return this.finish(node);
-  }
-  _parseImport() {
+  };
+  Parser2.prototype._parseImport = function() {
     if (!this.peekKeyword("@import")) {
       return null;
     }
-    const node = this.create(Import);
+    var node = this.create(Import);
     this.consumeToken();
     if (!node.addChild(this._parseURILiteral()) && !node.addChild(this._parseStringLiteral())) {
       return this.finish(node, ParseError.URIOrStringExpected);
-    }
-    return this._completeParseImport(node);
-  }
-  _completeParseImport(node) {
-    if (this.acceptIdent("layer")) {
-      if (this.accept(TokenType.ParenthesisL)) {
-        if (!node.addChild(this._parseLayerName())) {
-          return this.finish(node, ParseError.IdentifierExpected, [TokenType.SemiColon]);
-        }
-        if (!this.accept(TokenType.ParenthesisR)) {
-          return this.finish(node, ParseError.RightParenthesisExpected, [TokenType.ParenthesisR], []);
-        }
-      }
-    }
-    if (this.acceptIdent("supports")) {
-      if (this.accept(TokenType.ParenthesisL)) {
-        node.addChild(this._tryToParseDeclaration() || this._parseSupportsCondition());
-        if (!this.accept(TokenType.ParenthesisR)) {
-          return this.finish(node, ParseError.RightParenthesisExpected, [TokenType.ParenthesisR], []);
-        }
-      }
     }
     if (!this.peek(TokenType.SemiColon) && !this.peek(TokenType.EOF)) {
       node.setMedialist(this._parseMediaQueryList());
     }
     return this.finish(node);
-  }
-  _parseNamespace() {
+  };
+  Parser2.prototype._parseNamespace = function() {
     if (!this.peekKeyword("@namespace")) {
       return null;
     }
-    const node = this.create(Namespace);
+    var node = this.create(Namespace);
     this.consumeToken();
     if (!node.addChild(this._parseURILiteral())) {
       node.addChild(this._parseIdent());
@@ -5116,29 +5382,29 @@ var Parser = class {
       return this.finish(node, ParseError.SemiColonExpected);
     }
     return this.finish(node);
-  }
-  _parseFontFace() {
+  };
+  Parser2.prototype._parseFontFace = function() {
     if (!this.peekKeyword("@font-face")) {
       return null;
     }
-    const node = this.create(FontFace);
+    var node = this.create(FontFace);
     this.consumeToken();
     return this._parseBody(node, this._parseRuleSetDeclaration.bind(this));
-  }
-  _parseViewPort() {
+  };
+  Parser2.prototype._parseViewPort = function() {
     if (!this.peekKeyword("@-ms-viewport") && !this.peekKeyword("@-o-viewport") && !this.peekKeyword("@viewport")) {
       return null;
     }
-    const node = this.create(ViewPort);
+    var node = this.create(ViewPort);
     this.consumeToken();
     return this._parseBody(node, this._parseRuleSetDeclaration.bind(this));
-  }
-  _parseKeyframe() {
+  };
+  Parser2.prototype._parseKeyframe = function() {
     if (!this.peekRegExp(TokenType.AtKeyword, this.keyframeRegex)) {
       return null;
     }
-    const node = this.create(Keyframe);
-    const atNode = this.create(Node);
+    var node = this.create(Keyframe);
+    var atNode = this.create(Node);
     this.consumeToken();
     node.setKeyword(this.finish(atNode));
     if (atNode.matches("@-ms-keyframes")) {
@@ -5148,58 +5414,30 @@ var Parser = class {
       return this.finish(node, ParseError.IdentifierExpected, [TokenType.CurlyR]);
     }
     return this._parseBody(node, this._parseKeyframeSelector.bind(this));
-  }
-  _parseKeyframeIdent() {
+  };
+  Parser2.prototype._parseKeyframeIdent = function() {
     return this._parseIdent([ReferenceType.Keyframe]);
-  }
-  _parseKeyframeSelector() {
-    const node = this.create(KeyframeSelector);
-    let hasContent = false;
-    if (node.addChild(this._parseIdent())) {
-      hasContent = true;
-    }
-    if (this.accept(TokenType.Percentage)) {
-      hasContent = true;
-    }
-    if (!hasContent) {
+  };
+  Parser2.prototype._parseKeyframeSelector = function() {
+    var node = this.create(KeyframeSelector);
+    if (!node.addChild(this._parseIdent()) && !this.accept(TokenType.Percentage)) {
       return null;
     }
     while (this.accept(TokenType.Comma)) {
-      hasContent = false;
-      if (node.addChild(this._parseIdent())) {
-        hasContent = true;
-      }
-      if (this.accept(TokenType.Percentage)) {
-        hasContent = true;
-      }
-      if (!hasContent) {
+      if (!node.addChild(this._parseIdent()) && !this.accept(TokenType.Percentage)) {
         return this.finish(node, ParseError.PercentageExpected);
       }
     }
     return this._parseBody(node, this._parseRuleSetDeclaration.bind(this));
-  }
-  _tryParseKeyframeSelector() {
-    const node = this.create(KeyframeSelector);
-    const pos = this.mark();
-    let hasContent = false;
-    if (node.addChild(this._parseIdent())) {
-      hasContent = true;
-    }
-    if (this.accept(TokenType.Percentage)) {
-      hasContent = true;
-    }
-    if (!hasContent) {
+  };
+  Parser2.prototype._tryParseKeyframeSelector = function() {
+    var node = this.create(KeyframeSelector);
+    var pos = this.mark();
+    if (!node.addChild(this._parseIdent()) && !this.accept(TokenType.Percentage)) {
       return null;
     }
     while (this.accept(TokenType.Comma)) {
-      hasContent = false;
-      if (node.addChild(this._parseIdent())) {
-        hasContent = true;
-      }
-      if (this.accept(TokenType.Percentage)) {
-        hasContent = true;
-      }
-      if (!hasContent) {
+      if (!node.addChild(this._parseIdent()) && !this.accept(TokenType.Percentage)) {
         this.restoreAtMark(pos);
         return null;
       }
@@ -5209,98 +5447,45 @@ var Parser = class {
       return null;
     }
     return this._parseBody(node, this._parseRuleSetDeclaration.bind(this));
-  }
-  _parsePropertyAtRule() {
-    if (!this.peekKeyword("@property")) {
-      return null;
+  };
+  Parser2.prototype._parseSupports = function(isNested) {
+    if (isNested === void 0) {
+      isNested = false;
     }
-    const node = this.create(PropertyAtRule);
-    this.consumeToken();
-    if (!this.peekRegExp(TokenType.Ident, /^--/) || !node.setName(this._parseIdent([ReferenceType.Property]))) {
-      return this.finish(node, ParseError.IdentifierExpected);
-    }
-    return this._parseBody(node, this._parseDeclaration.bind(this));
-  }
-  _parseLayer(isNested = false) {
-    if (!this.peekKeyword("@layer")) {
-      return null;
-    }
-    const node = this.create(Layer);
-    this.consumeToken();
-    const names = this._parseLayerNameList();
-    if (names) {
-      node.setNames(names);
-    }
-    if ((!names || names.getChildren().length === 1) && this.peek(TokenType.CurlyL)) {
-      return this._parseBody(node, this._parseLayerDeclaration.bind(this, isNested));
-    }
-    if (!this.accept(TokenType.SemiColon)) {
-      return this.finish(node, ParseError.SemiColonExpected);
-    }
-    return this.finish(node);
-  }
-  _parseLayerDeclaration(isNested = false) {
-    if (isNested) {
-      return this._tryParseRuleset(true) || this._tryToParseDeclaration() || this._parseStylesheetStatement(true);
-    }
-    return this._parseStylesheetStatement(false);
-  }
-  _parseLayerNameList() {
-    const node = this.createNode(NodeType.LayerNameList);
-    if (!node.addChild(this._parseLayerName())) {
-      return null;
-    }
-    while (this.accept(TokenType.Comma)) {
-      if (!node.addChild(this._parseLayerName())) {
-        return this.finish(node, ParseError.IdentifierExpected);
-      }
-    }
-    return this.finish(node);
-  }
-  _parseLayerName() {
-    const node = this.createNode(NodeType.LayerName);
-    if (!node.addChild(this._parseIdent())) {
-      return null;
-    }
-    while (!this.hasWhitespace() && this.acceptDelim(".")) {
-      if (this.hasWhitespace() || !node.addChild(this._parseIdent())) {
-        return this.finish(node, ParseError.IdentifierExpected);
-      }
-    }
-    return this.finish(node);
-  }
-  _parseSupports(isNested = false) {
     if (!this.peekKeyword("@supports")) {
       return null;
     }
-    const node = this.create(Supports);
+    var node = this.create(Supports);
     this.consumeToken();
     node.addChild(this._parseSupportsCondition());
     return this._parseBody(node, this._parseSupportsDeclaration.bind(this, isNested));
-  }
-  _parseSupportsDeclaration(isNested = false) {
+  };
+  Parser2.prototype._parseSupportsDeclaration = function(isNested) {
+    if (isNested === void 0) {
+      isNested = false;
+    }
     if (isNested) {
       return this._tryParseRuleset(true) || this._tryToParseDeclaration() || this._parseStylesheetStatement(true);
     }
     return this._parseStylesheetStatement(false);
-  }
-  _parseSupportsCondition() {
-    const node = this.create(SupportsCondition);
+  };
+  Parser2.prototype._parseSupportsCondition = function() {
+    var node = this.create(SupportsCondition);
     if (this.acceptIdent("not")) {
       node.addChild(this._parseSupportsConditionInParens());
     } else {
       node.addChild(this._parseSupportsConditionInParens());
       if (this.peekRegExp(TokenType.Ident, /^(and|or)$/i)) {
-        const text = this.token.text.toLowerCase();
+        var text = this.token.text.toLowerCase();
         while (this.acceptIdent(text)) {
           node.addChild(this._parseSupportsConditionInParens());
         }
       }
     }
     return this.finish(node);
-  }
-  _parseSupportsConditionInParens() {
-    const node = this.create(SupportsCondition);
+  };
+  Parser2.prototype._parseSupportsConditionInParens = function() {
+    var node = this.create(SupportsCondition);
     if (this.accept(TokenType.ParenthesisL)) {
       if (this.prevToken) {
         node.lParent = this.prevToken.offset;
@@ -5318,10 +5503,10 @@ var Parser = class {
       }
       return this.finish(node);
     } else if (this.peek(TokenType.Ident)) {
-      const pos = this.mark();
+      var pos = this.mark();
       this.consumeToken();
       if (!this.hasWhitespace() && this.accept(TokenType.ParenthesisL)) {
-        let openParentCount = 1;
+        var openParentCount = 1;
         while (this.token.type !== TokenType.EOF && openParentCount !== 0) {
           if (this.token.type === TokenType.ParenthesisL) {
             openParentCount++;
@@ -5336,26 +5521,32 @@ var Parser = class {
       }
     }
     return this.finish(node, ParseError.LeftParenthesisExpected, [], [TokenType.ParenthesisL]);
-  }
-  _parseMediaDeclaration(isNested = false) {
+  };
+  Parser2.prototype._parseMediaDeclaration = function(isNested) {
+    if (isNested === void 0) {
+      isNested = false;
+    }
     if (isNested) {
       return this._tryParseRuleset(true) || this._tryToParseDeclaration() || this._parseStylesheetStatement(true);
     }
     return this._parseStylesheetStatement(false);
-  }
-  _parseMedia(isNested = false) {
+  };
+  Parser2.prototype._parseMedia = function(isNested) {
+    if (isNested === void 0) {
+      isNested = false;
+    }
     if (!this.peekKeyword("@media")) {
       return null;
     }
-    const node = this.create(Media);
+    var node = this.create(Media);
     this.consumeToken();
     if (!node.addChild(this._parseMediaQueryList())) {
       return this.finish(node, ParseError.MediaQueryExpected);
     }
     return this._parseBody(node, this._parseMediaDeclaration.bind(this, isNested));
-  }
-  _parseMediaQueryList() {
-    const node = this.create(Medialist);
+  };
+  Parser2.prototype._parseMediaQueryList = function() {
+    var node = this.create(Medialist);
     if (!node.addChild(this._parseMediaQuery())) {
       return this.finish(node, ParseError.MediaQueryExpected);
     }
@@ -5365,10 +5556,10 @@ var Parser = class {
       }
     }
     return this.finish(node);
-  }
-  _parseMediaQuery() {
-    const node = this.create(MediaQuery);
-    const pos = this.mark();
+  };
+  Parser2.prototype._parseMediaQuery = function() {
+    var node = this.create(MediaQuery);
+    var pos = this.mark();
     this.acceptIdent("not");
     if (!this.peek(TokenType.ParenthesisL)) {
       if (this.acceptIdent("only")) {
@@ -5384,10 +5575,10 @@ var Parser = class {
       node.addChild(this._parseMediaCondition());
     }
     return this.finish(node);
-  }
-  _parseRatio() {
-    const pos = this.mark();
-    const node = this.create(RatioValue);
+  };
+  Parser2.prototype._parseRatio = function() {
+    var pos = this.mark();
+    var node = this.create(RatioValue);
     if (!this._parseNumeric()) {
       return null;
     }
@@ -5399,11 +5590,11 @@ var Parser = class {
       return this.finish(node, ParseError.NumberExpected);
     }
     return this.finish(node);
-  }
-  _parseMediaCondition() {
-    const node = this.create(MediaCondition);
+  };
+  Parser2.prototype._parseMediaCondition = function() {
+    var node = this.create(MediaCondition);
     this.acceptIdent("not");
-    let parseExpression = true;
+    var parseExpression = true;
     while (parseExpression) {
       if (!this.accept(TokenType.ParenthesisL)) {
         return this.finish(node, ParseError.LeftParenthesisExpected, [], [TokenType.CurlyL]);
@@ -5419,20 +5610,32 @@ var Parser = class {
       parseExpression = this.acceptIdent("and") || this.acceptIdent("or");
     }
     return this.finish(node);
-  }
-  _parseMediaFeature() {
-    const resyncStopToken = [TokenType.ParenthesisR];
-    const node = this.create(MediaFeature);
+  };
+  Parser2.prototype._parseMediaFeature = function() {
+    var _this = this;
+    var resyncStopToken = [TokenType.ParenthesisR];
+    var node = this.create(MediaFeature);
+    var parseRangeOperator = function() {
+      if (_this.acceptDelim("<") || _this.acceptDelim(">")) {
+        if (!_this.hasWhitespace()) {
+          _this.acceptDelim("=");
+        }
+        return true;
+      } else if (_this.acceptDelim("=")) {
+        return true;
+      }
+      return false;
+    };
     if (node.addChild(this._parseMediaFeatureName())) {
       if (this.accept(TokenType.Colon)) {
         if (!node.addChild(this._parseMediaFeatureValue())) {
           return this.finish(node, ParseError.TermExpected, [], resyncStopToken);
         }
-      } else if (this._parseMediaFeatureRangeOperator()) {
+      } else if (parseRangeOperator()) {
         if (!node.addChild(this._parseMediaFeatureValue())) {
           return this.finish(node, ParseError.TermExpected, [], resyncStopToken);
         }
-        if (this._parseMediaFeatureRangeOperator()) {
+        if (parseRangeOperator()) {
           if (!node.addChild(this._parseMediaFeatureValue())) {
             return this.finish(node, ParseError.TermExpected, [], resyncStopToken);
           }
@@ -5440,13 +5643,13 @@ var Parser = class {
       } else {
       }
     } else if (node.addChild(this._parseMediaFeatureValue())) {
-      if (!this._parseMediaFeatureRangeOperator()) {
+      if (!parseRangeOperator()) {
         return this.finish(node, ParseError.OperatorExpected, [], resyncStopToken);
       }
       if (!node.addChild(this._parseMediaFeatureName())) {
         return this.finish(node, ParseError.IdentifierExpected, [], resyncStopToken);
       }
-      if (this._parseMediaFeatureRangeOperator()) {
+      if (parseRangeOperator()) {
         if (!node.addChild(this._parseMediaFeatureValue())) {
           return this.finish(node, ParseError.TermExpected, [], resyncStopToken);
         }
@@ -5455,40 +5658,29 @@ var Parser = class {
       return this.finish(node, ParseError.IdentifierExpected, [], resyncStopToken);
     }
     return this.finish(node);
-  }
-  _parseMediaFeatureRangeOperator() {
-    if (this.acceptDelim("<") || this.acceptDelim(">")) {
-      if (!this.hasWhitespace()) {
-        this.acceptDelim("=");
-      }
-      return true;
-    } else if (this.acceptDelim("=")) {
-      return true;
-    }
-    return false;
-  }
-  _parseMediaFeatureName() {
+  };
+  Parser2.prototype._parseMediaFeatureName = function() {
     return this._parseIdent();
-  }
-  _parseMediaFeatureValue() {
+  };
+  Parser2.prototype._parseMediaFeatureValue = function() {
     return this._parseRatio() || this._parseTermExpression();
-  }
-  _parseMedium() {
-    const node = this.create(Node);
+  };
+  Parser2.prototype._parseMedium = function() {
+    var node = this.create(Node);
     if (node.addChild(this._parseIdent())) {
       return this.finish(node);
     } else {
       return null;
     }
-  }
-  _parsePageDeclaration() {
+  };
+  Parser2.prototype._parsePageDeclaration = function() {
     return this._parsePageMarginBox() || this._parseRuleSetDeclaration();
-  }
-  _parsePage() {
+  };
+  Parser2.prototype._parsePage = function() {
     if (!this.peekKeyword("@page")) {
       return null;
     }
-    const node = this.create(Page);
+    var node = this.create(Page);
     this.consumeToken();
     if (node.addChild(this._parsePageSelector())) {
       while (this.accept(TokenType.Comma)) {
@@ -5498,22 +5690,22 @@ var Parser = class {
       }
     }
     return this._parseBody(node, this._parsePageDeclaration.bind(this));
-  }
-  _parsePageMarginBox() {
+  };
+  Parser2.prototype._parsePageMarginBox = function() {
     if (!this.peek(TokenType.AtKeyword)) {
       return null;
     }
-    const node = this.create(PageBoxMarginBox);
+    var node = this.create(PageBoxMarginBox);
     if (!this.acceptOneKeyword(pageBoxDirectives)) {
       this.markError(node, ParseError.UnknownAtRule, [], [TokenType.CurlyL]);
     }
     return this._parseBody(node, this._parseRuleSetDeclaration.bind(this));
-  }
-  _parsePageSelector() {
+  };
+  Parser2.prototype._parsePageSelector = function() {
     if (!this.peek(TokenType.Ident) && !this.peek(TokenType.Colon)) {
       return null;
     }
-    const node = this.create(Node);
+    var node = this.create(Node);
     node.addChild(this._parseIdent());
     if (this.accept(TokenType.Colon)) {
       if (!node.addChild(this._parseIdent())) {
@@ -5521,209 +5713,121 @@ var Parser = class {
       }
     }
     return this.finish(node);
-  }
-  _parseDocument() {
+  };
+  Parser2.prototype._parseDocument = function() {
     if (!this.peekKeyword("@-moz-document")) {
       return null;
     }
-    const node = this.create(Document);
+    var node = this.create(Document);
     this.consumeToken();
     this.resync([], [TokenType.CurlyL]);
     return this._parseBody(node, this._parseStylesheetStatement.bind(this));
-  }
-  _parseContainerDeclaration(isNested = false) {
-    if (isNested) {
-      return this._tryParseRuleset(true) || this._tryToParseDeclaration() || this._parseStylesheetStatement(true);
-    }
-    return this._parseStylesheetStatement(false);
-  }
-  _parseContainer(isNested = false) {
-    if (!this.peekKeyword("@container")) {
-      return null;
-    }
-    const node = this.create(Container);
-    this.consumeToken();
-    node.addChild(this._parseIdent());
-    node.addChild(this._parseContainerQuery());
-    return this._parseBody(node, this._parseContainerDeclaration.bind(this, isNested));
-  }
-  _parseContainerQuery() {
-    const node = this.create(Node);
-    if (this.acceptIdent("not")) {
-      node.addChild(this._parseContainerQueryInParens());
-    } else {
-      node.addChild(this._parseContainerQueryInParens());
-      if (this.peekIdent("and")) {
-        while (this.acceptIdent("and")) {
-          node.addChild(this._parseContainerQueryInParens());
-        }
-      } else if (this.peekIdent("or")) {
-        while (this.acceptIdent("or")) {
-          node.addChild(this._parseContainerQueryInParens());
-        }
-      }
-    }
-    return this.finish(node);
-  }
-  _parseContainerQueryInParens() {
-    const node = this.create(Node);
-    if (this.accept(TokenType.ParenthesisL)) {
-      if (this.peekIdent("not") || this.peek(TokenType.ParenthesisL)) {
-        node.addChild(this._parseContainerQuery());
-      } else {
-        node.addChild(this._parseMediaFeature());
-      }
-      if (!this.accept(TokenType.ParenthesisR)) {
-        return this.finish(node, ParseError.RightParenthesisExpected, [], [TokenType.CurlyL]);
-      }
-    } else if (this.acceptIdent("style")) {
-      if (this.hasWhitespace() || !this.accept(TokenType.ParenthesisL)) {
-        return this.finish(node, ParseError.LeftParenthesisExpected, [], [TokenType.CurlyL]);
-      }
-      node.addChild(this._parseStyleQuery());
-      if (!this.accept(TokenType.ParenthesisR)) {
-        return this.finish(node, ParseError.RightParenthesisExpected, [], [TokenType.CurlyL]);
-      }
-    } else {
-      return this.finish(node, ParseError.LeftParenthesisExpected, [], [TokenType.CurlyL]);
-    }
-    return this.finish(node);
-  }
-  _parseStyleQuery() {
-    const node = this.create(Node);
-    if (this.acceptIdent("not")) {
-      node.addChild(this._parseStyleInParens());
-    } else if (this.peek(TokenType.ParenthesisL)) {
-      node.addChild(this._parseStyleInParens());
-      if (this.peekIdent("and")) {
-        while (this.acceptIdent("and")) {
-          node.addChild(this._parseStyleInParens());
-        }
-      } else if (this.peekIdent("or")) {
-        while (this.acceptIdent("or")) {
-          node.addChild(this._parseStyleInParens());
-        }
-      }
-    } else {
-      node.addChild(this._parseDeclaration([TokenType.ParenthesisR]));
-    }
-    return this.finish(node);
-  }
-  _parseStyleInParens() {
-    const node = this.create(Node);
-    if (this.accept(TokenType.ParenthesisL)) {
-      node.addChild(this._parseStyleQuery());
-      if (!this.accept(TokenType.ParenthesisR)) {
-        return this.finish(node, ParseError.RightParenthesisExpected, [], [TokenType.CurlyL]);
-      }
-    } else {
-      return this.finish(node, ParseError.LeftParenthesisExpected, [], [TokenType.CurlyL]);
-    }
-    return this.finish(node);
-  }
-  // https://www.w3.org/TR/css-syntax-3/#consume-an-at-rule
-  _parseUnknownAtRule() {
+  };
+  Parser2.prototype._parseUnknownAtRule = function() {
     if (!this.peek(TokenType.AtKeyword)) {
       return null;
     }
-    const node = this.create(UnknownAtRule);
+    var node = this.create(UnknownAtRule);
     node.addChild(this._parseUnknownAtRuleName());
-    const isTopLevel = () => curlyDepth === 0 && parensDepth === 0 && bracketsDepth === 0;
-    let curlyLCount = 0;
-    let curlyDepth = 0;
-    let parensDepth = 0;
-    let bracketsDepth = 0;
-    done: while (true) {
-      switch (this.token.type) {
-        case TokenType.SemiColon:
-          if (isTopLevel()) {
-            break done;
-          }
-          break;
-        case TokenType.EOF:
-          if (curlyDepth > 0) {
-            return this.finish(node, ParseError.RightCurlyExpected);
-          } else if (bracketsDepth > 0) {
-            return this.finish(node, ParseError.RightSquareBracketExpected);
-          } else if (parensDepth > 0) {
-            return this.finish(node, ParseError.RightParenthesisExpected);
-          } else {
-            return this.finish(node);
-          }
-        case TokenType.CurlyL:
-          curlyLCount++;
-          curlyDepth++;
-          break;
-        case TokenType.CurlyR:
-          curlyDepth--;
-          if (curlyLCount > 0 && curlyDepth === 0) {
-            this.consumeToken();
-            if (bracketsDepth > 0) {
+    var isTopLevel = function() {
+      return curlyDepth === 0 && parensDepth === 0 && bracketsDepth === 0;
+    };
+    var curlyLCount = 0;
+    var curlyDepth = 0;
+    var parensDepth = 0;
+    var bracketsDepth = 0;
+    done:
+      while (true) {
+        switch (this.token.type) {
+          case TokenType.SemiColon:
+            if (isTopLevel()) {
+              break done;
+            }
+            break;
+          case TokenType.EOF:
+            if (curlyDepth > 0) {
+              return this.finish(node, ParseError.RightCurlyExpected);
+            } else if (bracketsDepth > 0) {
               return this.finish(node, ParseError.RightSquareBracketExpected);
             } else if (parensDepth > 0) {
               return this.finish(node, ParseError.RightParenthesisExpected);
+            } else {
+              return this.finish(node);
             }
-            break done;
-          }
-          if (curlyDepth < 0) {
-            if (parensDepth === 0 && bracketsDepth === 0) {
+          case TokenType.CurlyL:
+            curlyLCount++;
+            curlyDepth++;
+            break;
+          case TokenType.CurlyR:
+            curlyDepth--;
+            if (curlyLCount > 0 && curlyDepth === 0) {
+              this.consumeToken();
+              if (bracketsDepth > 0) {
+                return this.finish(node, ParseError.RightSquareBracketExpected);
+              } else if (parensDepth > 0) {
+                return this.finish(node, ParseError.RightParenthesisExpected);
+              }
               break done;
             }
-            return this.finish(node, ParseError.LeftCurlyExpected);
-          }
-          break;
-        case TokenType.ParenthesisL:
-          parensDepth++;
-          break;
-        case TokenType.ParenthesisR:
-          parensDepth--;
-          if (parensDepth < 0) {
-            return this.finish(node, ParseError.LeftParenthesisExpected);
-          }
-          break;
-        case TokenType.BracketL:
-          bracketsDepth++;
-          break;
-        case TokenType.BracketR:
-          bracketsDepth--;
-          if (bracketsDepth < 0) {
-            return this.finish(node, ParseError.LeftSquareBracketExpected);
-          }
-          break;
+            if (curlyDepth < 0) {
+              if (parensDepth === 0 && bracketsDepth === 0) {
+                break done;
+              }
+              return this.finish(node, ParseError.LeftCurlyExpected);
+            }
+            break;
+          case TokenType.ParenthesisL:
+            parensDepth++;
+            break;
+          case TokenType.ParenthesisR:
+            parensDepth--;
+            if (parensDepth < 0) {
+              return this.finish(node, ParseError.LeftParenthesisExpected);
+            }
+            break;
+          case TokenType.BracketL:
+            bracketsDepth++;
+            break;
+          case TokenType.BracketR:
+            bracketsDepth--;
+            if (bracketsDepth < 0) {
+              return this.finish(node, ParseError.LeftSquareBracketExpected);
+            }
+            break;
+        }
+        this.consumeToken();
       }
-      this.consumeToken();
-    }
     return node;
-  }
-  _parseUnknownAtRuleName() {
-    const node = this.create(Node);
+  };
+  Parser2.prototype._parseUnknownAtRuleName = function() {
+    var node = this.create(Node);
     if (this.accept(TokenType.AtKeyword)) {
       return this.finish(node);
     }
     return node;
-  }
-  _parseOperator() {
+  };
+  Parser2.prototype._parseOperator = function() {
     if (this.peekDelim("/") || this.peekDelim("*") || this.peekDelim("+") || this.peekDelim("-") || this.peek(TokenType.Dashmatch) || this.peek(TokenType.Includes) || this.peek(TokenType.SubstringOperator) || this.peek(TokenType.PrefixOperator) || this.peek(TokenType.SuffixOperator) || this.peekDelim("=")) {
-      const node = this.createNode(NodeType.Operator);
+      var node = this.createNode(NodeType.Operator);
       this.consumeToken();
       return this.finish(node);
     } else {
       return null;
     }
-  }
-  _parseUnaryOperator() {
+  };
+  Parser2.prototype._parseUnaryOperator = function() {
     if (!this.peekDelim("+") && !this.peekDelim("-")) {
       return null;
     }
-    const node = this.create(Node);
+    var node = this.create(Node);
     this.consumeToken();
     return this.finish(node);
-  }
-  _parseCombinator() {
+  };
+  Parser2.prototype._parseCombinator = function() {
     if (this.peekDelim(">")) {
-      const node = this.create(Node);
+      var node = this.create(Node);
       this.consumeToken();
-      const mark = this.mark();
+      var mark = this.mark();
       if (!this.hasWhitespace() && this.acceptDelim(">")) {
         if (!this.hasWhitespace() && this.acceptDelim(">")) {
           node.type = NodeType.SelectorCombinatorShadowPiercingDescendant;
@@ -5734,19 +5838,19 @@ var Parser = class {
       node.type = NodeType.SelectorCombinatorParent;
       return this.finish(node);
     } else if (this.peekDelim("+")) {
-      const node = this.create(Node);
+      var node = this.create(Node);
       this.consumeToken();
       node.type = NodeType.SelectorCombinatorSibling;
       return this.finish(node);
     } else if (this.peekDelim("~")) {
-      const node = this.create(Node);
+      var node = this.create(Node);
       this.consumeToken();
       node.type = NodeType.SelectorCombinatorAllSiblings;
       return this.finish(node);
     } else if (this.peekDelim("/")) {
-      const node = this.create(Node);
+      var node = this.create(Node);
       this.consumeToken();
-      const mark = this.mark();
+      var mark = this.mark();
       if (!this.hasWhitespace() && this.acceptIdent("deep") && !this.hasWhitespace() && this.acceptDelim("/")) {
         node.type = NodeType.SelectorCombinatorShadowPiercingDescendant;
         return this.finish(node);
@@ -5754,37 +5858,29 @@ var Parser = class {
       this.restoreAtMark(mark);
     }
     return null;
-  }
-  _parseSimpleSelector() {
-    const node = this.create(SimpleSelector);
-    let c = 0;
-    if (node.addChild(this._parseElementName() || this._parseNestingSelector())) {
+  };
+  Parser2.prototype._parseSimpleSelector = function() {
+    var node = this.create(SimpleSelector);
+    var c = 0;
+    if (node.addChild(this._parseElementName())) {
       c++;
     }
     while ((c === 0 || !this.hasWhitespace()) && node.addChild(this._parseSimpleSelectorBody())) {
       c++;
     }
     return c > 0 ? this.finish(node) : null;
-  }
-  _parseNestingSelector() {
-    if (this.peekDelim("&")) {
-      const node = this.createNode(NodeType.SelectorCombinator);
-      this.consumeToken();
-      return this.finish(node);
-    }
-    return null;
-  }
-  _parseSimpleSelectorBody() {
+  };
+  Parser2.prototype._parseSimpleSelectorBody = function() {
     return this._parsePseudo() || this._parseHash() || this._parseClass() || this._parseAttrib();
-  }
-  _parseSelectorIdent() {
+  };
+  Parser2.prototype._parseSelectorIdent = function() {
     return this._parseIdent();
-  }
-  _parseHash() {
+  };
+  Parser2.prototype._parseHash = function() {
     if (!this.peek(TokenType.Hash) && !this.peekDelim("#")) {
       return null;
     }
-    const node = this.createNode(NodeType.IdentifierSelector);
+    var node = this.createNode(NodeType.IdentifierSelector);
     if (this.acceptDelim("#")) {
       if (this.hasWhitespace() || !node.addChild(this._parseSelectorIdent())) {
         return this.finish(node, ParseError.IdentifierExpected);
@@ -5793,31 +5889,31 @@ var Parser = class {
       this.consumeToken();
     }
     return this.finish(node);
-  }
-  _parseClass() {
+  };
+  Parser2.prototype._parseClass = function() {
     if (!this.peekDelim(".")) {
       return null;
     }
-    const node = this.createNode(NodeType.ClassSelector);
+    var node = this.createNode(NodeType.ClassSelector);
     this.consumeToken();
     if (this.hasWhitespace() || !node.addChild(this._parseSelectorIdent())) {
       return this.finish(node, ParseError.IdentifierExpected);
     }
     return this.finish(node);
-  }
-  _parseElementName() {
-    const pos = this.mark();
-    const node = this.createNode(NodeType.ElementNameSelector);
+  };
+  Parser2.prototype._parseElementName = function() {
+    var pos = this.mark();
+    var node = this.createNode(NodeType.ElementNameSelector);
     node.addChild(this._parseNamespacePrefix());
     if (!node.addChild(this._parseSelectorIdent()) && !this.acceptDelim("*")) {
       this.restoreAtMark(pos);
       return null;
     }
     return this.finish(node);
-  }
-  _parseNamespacePrefix() {
-    const pos = this.mark();
-    const node = this.createNode(NodeType.NamespacePrefix);
+  };
+  Parser2.prototype._parseNamespacePrefix = function() {
+    var pos = this.mark();
+    var node = this.createNode(NodeType.NamespacePrefix);
     if (!node.addChild(this._parseIdent()) && !this.acceptDelim("*")) {
     }
     if (!this.acceptDelim("|")) {
@@ -5825,12 +5921,12 @@ var Parser = class {
       return null;
     }
     return this.finish(node);
-  }
-  _parseAttrib() {
+  };
+  Parser2.prototype._parseAttrib = function() {
     if (!this.peek(TokenType.BracketL)) {
       return null;
     }
-    const node = this.create(AttributeSelector);
+    var node = this.create(AttributeSelector);
     this.consumeToken();
     node.setNamespacePrefix(this._parseNamespacePrefix());
     if (!node.setIdentifier(this._parseIdent())) {
@@ -5845,29 +5941,25 @@ var Parser = class {
       return this.finish(node, ParseError.RightSquareBracketExpected);
     }
     return this.finish(node);
-  }
-  _parsePseudo() {
-    const node = this._tryParsePseudoIdentifier();
+  };
+  Parser2.prototype._parsePseudo = function() {
+    var _this = this;
+    var node = this._tryParsePseudoIdentifier();
     if (node) {
       if (!this.hasWhitespace() && this.accept(TokenType.ParenthesisL)) {
-        const tryAsSelector = () => {
-          const selectors = this.create(Node);
-          if (!selectors.addChild(this._parseSelector(true))) {
+        var tryAsSelector = function() {
+          var selectors = _this.create(Node);
+          if (!selectors.addChild(_this._parseSelector(false))) {
             return null;
           }
-          while (this.accept(TokenType.Comma) && selectors.addChild(this._parseSelector(true))) {
+          while (_this.accept(TokenType.Comma) && selectors.addChild(_this._parseSelector(false))) {
           }
-          if (this.peek(TokenType.ParenthesisR)) {
-            return this.finish(selectors);
+          if (_this.peek(TokenType.ParenthesisR)) {
+            return _this.finish(selectors);
           }
           return null;
         };
-        let hasSelector = node.addChild(this.try(tryAsSelector));
-        if (!hasSelector) {
-          if (node.addChild(this._parseBinaryExpr()) && this.acceptIdent("of") && !node.addChild(this.try(tryAsSelector))) {
-            return this.finish(node, ParseError.SelectorExpected);
-          }
-        }
+        node.addChild(this.try(tryAsSelector) || this._parseBinaryExpr());
         if (!this.accept(TokenType.ParenthesisR)) {
           return this.finish(node, ParseError.RightParenthesisExpected);
         }
@@ -5875,13 +5967,13 @@ var Parser = class {
       return this.finish(node);
     }
     return null;
-  }
-  _tryParsePseudoIdentifier() {
+  };
+  Parser2.prototype._tryParsePseudoIdentifier = function() {
     if (!this.peek(TokenType.Colon)) {
       return null;
     }
-    const pos = this.mark();
-    const node = this.createNode(NodeType.PseudoSelector);
+    var pos = this.mark();
+    var node = this.createNode(NodeType.PseudoSelector);
     this.consumeToken();
     if (this.hasWhitespace()) {
       this.restoreAtMark(pos);
@@ -5892,28 +5984,31 @@ var Parser = class {
       return this.finish(node, ParseError.IdentifierExpected);
     }
     return this.finish(node);
-  }
-  _tryParsePrio() {
-    const mark = this.mark();
-    const prio = this._parsePrio();
+  };
+  Parser2.prototype._tryParsePrio = function() {
+    var mark = this.mark();
+    var prio = this._parsePrio();
     if (prio) {
       return prio;
     }
     this.restoreAtMark(mark);
     return null;
-  }
-  _parsePrio() {
+  };
+  Parser2.prototype._parsePrio = function() {
     if (!this.peek(TokenType.Exclamation)) {
       return null;
     }
-    const node = this.createNode(NodeType.Prio);
+    var node = this.createNode(NodeType.Prio);
     if (this.accept(TokenType.Exclamation) && this.acceptIdent("important")) {
       return this.finish(node);
     }
     return null;
-  }
-  _parseExpr(stopOnComma = false) {
-    const node = this.create(Expression);
+  };
+  Parser2.prototype._parseExpr = function(stopOnComma) {
+    if (stopOnComma === void 0) {
+      stopOnComma = false;
+    }
+    var node = this.create(Expression);
     if (!node.addChild(this._parseBinaryExpr())) {
       return null;
     }
@@ -5929,22 +6024,12 @@ var Parser = class {
       }
     }
     return this.finish(node);
-  }
-  _parseUnicodeRange() {
-    if (!this.peekIdent("u")) {
-      return null;
-    }
-    const node = this.create(UnicodeRange);
-    if (!this.acceptUnicodeRange()) {
-      return null;
-    }
-    return this.finish(node);
-  }
-  _parseNamedLine() {
+  };
+  Parser2.prototype._parseNamedLine = function() {
     if (!this.peek(TokenType.BracketL)) {
       return null;
     }
-    const node = this.createNode(NodeType.GridLine);
+    var node = this.createNode(NodeType.GridLine);
     this.consumeToken();
     while (node.addChild(this._parseIdent())) {
     }
@@ -5952,9 +6037,9 @@ var Parser = class {
       return this.finish(node, ParseError.RightSquareBracketExpected);
     }
     return this.finish(node);
-  }
-  _parseBinaryExpr(preparsedLeft, preparsedOper) {
-    let node = this.create(BinaryExpression);
+  };
+  Parser2.prototype._parseBinaryExpr = function(preparsedLeft, preparsedOper) {
+    var node = this.create(BinaryExpression);
     if (!node.setLeft(preparsedLeft || this._parseTerm())) {
       return null;
     }
@@ -5965,59 +6050,57 @@ var Parser = class {
       return this.finish(node, ParseError.TermExpected);
     }
     node = this.finish(node);
-    const operator = this._parseOperator();
+    var operator = this._parseOperator();
     if (operator) {
       node = this._parseBinaryExpr(node, operator);
     }
     return this.finish(node);
-  }
-  _parseTerm() {
-    let node = this.create(Term);
+  };
+  Parser2.prototype._parseTerm = function() {
+    var node = this.create(Term);
     node.setOperator(this._parseUnaryOperator());
     if (node.setExpression(this._parseTermExpression())) {
       return this.finish(node);
     }
     return null;
-  }
-  _parseTermExpression() {
-    return this._parseURILiteral() || // url before function
-    this._parseUnicodeRange() || this._parseFunction() || // function before ident
-    this._parseIdent() || this._parseStringLiteral() || this._parseNumeric() || this._parseHexColor() || this._parseOperation() || this._parseNamedLine();
-  }
-  _parseOperation() {
+  };
+  Parser2.prototype._parseTermExpression = function() {
+    return this._parseURILiteral() || this._parseFunction() || this._parseIdent() || this._parseStringLiteral() || this._parseNumeric() || this._parseHexColor() || this._parseOperation() || this._parseNamedLine();
+  };
+  Parser2.prototype._parseOperation = function() {
     if (!this.peek(TokenType.ParenthesisL)) {
       return null;
     }
-    const node = this.create(Node);
+    var node = this.create(Node);
     this.consumeToken();
     node.addChild(this._parseExpr());
     if (!this.accept(TokenType.ParenthesisR)) {
       return this.finish(node, ParseError.RightParenthesisExpected);
     }
     return this.finish(node);
-  }
-  _parseNumeric() {
-    if (this.peek(TokenType.Num) || this.peek(TokenType.Percentage) || this.peek(TokenType.Resolution) || this.peek(TokenType.Length) || this.peek(TokenType.EMS) || this.peek(TokenType.EXS) || this.peek(TokenType.Angle) || this.peek(TokenType.Time) || this.peek(TokenType.Dimension) || this.peek(TokenType.ContainerQueryLength) || this.peek(TokenType.Freq)) {
-      const node = this.create(NumericValue);
+  };
+  Parser2.prototype._parseNumeric = function() {
+    if (this.peek(TokenType.Num) || this.peek(TokenType.Percentage) || this.peek(TokenType.Resolution) || this.peek(TokenType.Length) || this.peek(TokenType.EMS) || this.peek(TokenType.EXS) || this.peek(TokenType.Angle) || this.peek(TokenType.Time) || this.peek(TokenType.Dimension) || this.peek(TokenType.Freq)) {
+      var node = this.create(NumericValue);
       this.consumeToken();
       return this.finish(node);
     }
     return null;
-  }
-  _parseStringLiteral() {
+  };
+  Parser2.prototype._parseStringLiteral = function() {
     if (!this.peek(TokenType.String) && !this.peek(TokenType.BadString)) {
       return null;
     }
-    const node = this.createNode(NodeType.StringLiteral);
+    var node = this.createNode(NodeType.StringLiteral);
     this.consumeToken();
     return this.finish(node);
-  }
-  _parseURILiteral() {
+  };
+  Parser2.prototype._parseURILiteral = function() {
     if (!this.peekRegExp(TokenType.Ident, /^url(-prefix)?$/i)) {
       return null;
     }
-    const pos = this.mark();
-    const node = this.createNode(NodeType.URILiteral);
+    var pos = this.mark();
+    var node = this.createNode(NodeType.URILiteral);
     this.accept(TokenType.Ident);
     if (this.hasWhitespace() || !this.peek(TokenType.ParenthesisL)) {
       this.restoreAtMark(pos);
@@ -6031,29 +6114,29 @@ var Parser = class {
       return this.finish(node, ParseError.RightParenthesisExpected);
     }
     return this.finish(node);
-  }
-  _parseURLArgument() {
-    const node = this.create(Node);
+  };
+  Parser2.prototype._parseURLArgument = function() {
+    var node = this.create(Node);
     if (!this.accept(TokenType.String) && !this.accept(TokenType.BadString) && !this.acceptUnquotedString()) {
       return null;
     }
     return this.finish(node);
-  }
-  _parseIdent(referenceTypes) {
+  };
+  Parser2.prototype._parseIdent = function(referenceTypes) {
     if (!this.peek(TokenType.Ident)) {
       return null;
     }
-    const node = this.create(Identifier);
+    var node = this.create(Identifier);
     if (referenceTypes) {
       node.referenceTypes = referenceTypes;
     }
     node.isCustomProperty = this.peekRegExp(TokenType.Ident, /^--/);
     this.consumeToken();
     return this.finish(node);
-  }
-  _parseFunction() {
-    const pos = this.mark();
-    const node = this.create(Function);
+  };
+  Parser2.prototype._parseFunction = function() {
+    var pos = this.mark();
+    var node = this.create(Function);
     if (!node.setIdentifier(this._parseFunctionIdentifier())) {
       return null;
     }
@@ -6075,12 +6158,12 @@ var Parser = class {
       return this.finish(node, ParseError.RightParenthesisExpected);
     }
     return this.finish(node);
-  }
-  _parseFunctionIdentifier() {
+  };
+  Parser2.prototype._parseFunctionIdentifier = function() {
     if (!this.peek(TokenType.Ident)) {
       return null;
     }
-    const node = this.create(Identifier);
+    var node = this.create(Identifier);
     node.referenceTypes = [ReferenceType.Function];
     if (this.acceptIdent("progid")) {
       if (this.accept(TokenType.Colon)) {
@@ -6091,33 +6174,34 @@ var Parser = class {
     }
     this.consumeToken();
     return this.finish(node);
-  }
-  _parseFunctionArgument() {
-    const node = this.create(FunctionArgument);
+  };
+  Parser2.prototype._parseFunctionArgument = function() {
+    var node = this.create(FunctionArgument);
     if (node.setValue(this._parseExpr(true))) {
       return this.finish(node);
     }
     return null;
-  }
-  _parseHexColor() {
+  };
+  Parser2.prototype._parseHexColor = function() {
     if (this.peekRegExp(TokenType.Hash, /^#([A-Fa-f0-9]{3}|[A-Fa-f0-9]{4}|[A-Fa-f0-9]{6}|[A-Fa-f0-9]{8})$/g)) {
-      const node = this.create(HexColorValue);
+      var node = this.create(HexColorValue);
       this.consumeToken();
       return this.finish(node);
     } else {
       return null;
     }
-  }
-};
+  };
+  return Parser2;
+}();
 
 // node_modules/vscode-css-languageservice/lib/esm/utils/arrays.js
 function findFirst(array, p) {
-  let low = 0, high = array.length;
+  var low = 0, high = array.length;
   if (high === 0) {
     return 0;
   }
   while (low < high) {
-    let mid = Math.floor((low + high) / 2);
+    var mid = Math.floor((low + high) / 2);
     if (p(array[mid])) {
       high = mid;
     } else {
@@ -6129,10 +6213,16 @@ function findFirst(array, p) {
 function includes(array, item) {
   return array.indexOf(item) !== -1;
 }
-function union(...arrays) {
-  const result = [];
-  for (const array of arrays) {
-    for (const item of array) {
+function union() {
+  var arrays = [];
+  for (var _i = 0; _i < arguments.length; _i++) {
+    arrays[_i] = arguments[_i];
+  }
+  var result = [];
+  for (var _a2 = 0, arrays_1 = arrays; _a2 < arrays_1.length; _a2++) {
+    var array = arrays_1[_a2];
+    for (var _b = 0, array_1 = array; _b < array_1.length; _b++) {
+      var item = array_1[_b];
       if (!includes(result, item)) {
         result.push(item);
       }
@@ -6142,101 +6232,134 @@ function union(...arrays) {
 }
 
 // node_modules/vscode-css-languageservice/lib/esm/parser/cssSymbolScope.js
-var Scope = class {
-  constructor(offset, length) {
+var __extends2 = function() {
+  var extendStatics = function(d, b) {
+    extendStatics = Object.setPrototypeOf || { __proto__: [] } instanceof Array && function(d2, b2) {
+      d2.__proto__ = b2;
+    } || function(d2, b2) {
+      for (var p in b2)
+        if (Object.prototype.hasOwnProperty.call(b2, p))
+          d2[p] = b2[p];
+    };
+    return extendStatics(d, b);
+  };
+  return function(d, b) {
+    if (typeof b !== "function" && b !== null)
+      throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
+    extendStatics(d, b);
+    function __() {
+      this.constructor = d;
+    }
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+  };
+}();
+var Scope = function() {
+  function Scope2(offset, length) {
     this.offset = offset;
     this.length = length;
     this.symbols = [];
     this.parent = null;
     this.children = [];
   }
-  addChild(scope) {
+  Scope2.prototype.addChild = function(scope) {
     this.children.push(scope);
     scope.setParent(this);
-  }
-  setParent(scope) {
+  };
+  Scope2.prototype.setParent = function(scope) {
     this.parent = scope;
-  }
-  findScope(offset, length = 0) {
+  };
+  Scope2.prototype.findScope = function(offset, length) {
+    if (length === void 0) {
+      length = 0;
+    }
     if (this.offset <= offset && this.offset + this.length > offset + length || this.offset === offset && this.length === length) {
       return this.findInScope(offset, length);
     }
     return null;
-  }
-  findInScope(offset, length = 0) {
-    const end = offset + length;
-    const idx = findFirst(this.children, (s) => s.offset > end);
+  };
+  Scope2.prototype.findInScope = function(offset, length) {
+    if (length === void 0) {
+      length = 0;
+    }
+    var end = offset + length;
+    var idx = findFirst(this.children, function(s) {
+      return s.offset > end;
+    });
     if (idx === 0) {
       return this;
     }
-    const res = this.children[idx - 1];
+    var res = this.children[idx - 1];
     if (res.offset <= offset && res.offset + res.length >= offset + length) {
       return res.findInScope(offset, length);
     }
     return this;
-  }
-  addSymbol(symbol) {
+  };
+  Scope2.prototype.addSymbol = function(symbol) {
     this.symbols.push(symbol);
-  }
-  getSymbol(name, type) {
-    for (let index = 0; index < this.symbols.length; index++) {
-      const symbol = this.symbols[index];
+  };
+  Scope2.prototype.getSymbol = function(name, type) {
+    for (var index = 0; index < this.symbols.length; index++) {
+      var symbol = this.symbols[index];
       if (symbol.name === name && symbol.type === type) {
         return symbol;
       }
     }
     return null;
-  }
-  getSymbols() {
+  };
+  Scope2.prototype.getSymbols = function() {
     return this.symbols;
+  };
+  return Scope2;
+}();
+var GlobalScope = function(_super) {
+  __extends2(GlobalScope2, _super);
+  function GlobalScope2() {
+    return _super.call(this, 0, Number.MAX_VALUE) || this;
   }
-};
-var GlobalScope = class extends Scope {
-  constructor() {
-    super(0, Number.MAX_VALUE);
-  }
-};
-var Symbol2 = class {
-  constructor(name, value, node, type) {
+  return GlobalScope2;
+}(Scope);
+var Symbol2 = function() {
+  function Symbol3(name, value, node, type) {
     this.name = name;
     this.value = value;
     this.node = node;
     this.type = type;
   }
-};
-var ScopeBuilder = class {
-  constructor(scope) {
+  return Symbol3;
+}();
+var ScopeBuilder = function() {
+  function ScopeBuilder2(scope) {
     this.scope = scope;
   }
-  addSymbol(node, name, value, type) {
+  ScopeBuilder2.prototype.addSymbol = function(node, name, value, type) {
     if (node.offset !== -1) {
-      const current = this.scope.findScope(node.offset, node.length);
+      var current = this.scope.findScope(node.offset, node.length);
       if (current) {
         current.addSymbol(new Symbol2(name, value, node, type));
       }
     }
-  }
-  addScope(node) {
+  };
+  ScopeBuilder2.prototype.addScope = function(node) {
     if (node.offset !== -1) {
-      const current = this.scope.findScope(node.offset, node.length);
+      var current = this.scope.findScope(node.offset, node.length);
       if (current && (current.offset !== node.offset || current.length !== node.length)) {
-        const newScope = new Scope(node.offset, node.length);
+        var newScope = new Scope(node.offset, node.length);
         current.addChild(newScope);
         return newScope;
       }
       return current;
     }
     return null;
-  }
-  addSymbolToChildScope(scopeNode, node, name, value, type) {
+  };
+  ScopeBuilder2.prototype.addSymbolToChildScope = function(scopeNode, node, name, value, type) {
     if (scopeNode && scopeNode.offset !== -1) {
-      const current = this.addScope(scopeNode);
+      var current = this.addScope(scopeNode);
       if (current) {
         current.addSymbol(new Symbol2(name, value, node, type));
       }
     }
-  }
-  visitNode(node) {
+  };
+  ScopeBuilder2.prototype.visitNode = function(node) {
     switch (node.type) {
       case NodeType.Keyframe:
         this.addSymbol(node, node.getName(), void 0, ReferenceType.Keyframe);
@@ -6260,30 +6383,32 @@ var ScopeBuilder = class {
         this.addScope(node);
         return true;
       case NodeType.For:
-        const forNode = node;
-        const scopeNode = forNode.getDeclarations();
+        var forNode = node;
+        var scopeNode = forNode.getDeclarations();
         if (scopeNode && forNode.variable) {
           this.addSymbolToChildScope(scopeNode, forNode.variable, forNode.variable.getName(), void 0, ReferenceType.Variable);
         }
         return true;
       case NodeType.Each: {
-        const eachNode = node;
-        const scopeNode2 = eachNode.getDeclarations();
-        if (scopeNode2) {
-          const variables = eachNode.getVariables().getChildren();
-          for (const variable of variables) {
-            this.addSymbolToChildScope(scopeNode2, variable, variable.getName(), void 0, ReferenceType.Variable);
+        var eachNode = node;
+        var scopeNode_1 = eachNode.getDeclarations();
+        if (scopeNode_1) {
+          var variables = eachNode.getVariables().getChildren();
+          for (var _i = 0, variables_1 = variables; _i < variables_1.length; _i++) {
+            var variable = variables_1[_i];
+            this.addSymbolToChildScope(scopeNode_1, variable, variable.getName(), void 0, ReferenceType.Variable);
           }
         }
         return true;
       }
     }
     return true;
-  }
-  visitRuleSet(node) {
-    const current = this.scope.findScope(node.offset, node.length);
+  };
+  ScopeBuilder2.prototype.visitRuleSet = function(node) {
+    var current = this.scope.findScope(node.offset, node.length);
     if (current) {
-      for (const child of node.getSelectors().getChildren()) {
+      for (var _i = 0, _a2 = node.getSelectors().getChildren(); _i < _a2.length; _i++) {
+        var child = _a2[_i];
         if (child instanceof Selector) {
           if (child.getChildren().length === 1) {
             current.addSymbol(new Symbol2(child.getChild(0).getText(), void 0, child, ReferenceType.Rule));
@@ -6292,45 +6417,46 @@ var ScopeBuilder = class {
       }
     }
     return true;
-  }
-  visitVariableDeclarationNode(node) {
-    const value = node.getValue() ? node.getValue().getText() : void 0;
+  };
+  ScopeBuilder2.prototype.visitVariableDeclarationNode = function(node) {
+    var value = node.getValue() ? node.getValue().getText() : void 0;
     this.addSymbol(node, node.getName(), value, ReferenceType.Variable);
     return true;
-  }
-  visitFunctionParameterNode(node) {
-    const scopeNode = node.getParent().getDeclarations();
+  };
+  ScopeBuilder2.prototype.visitFunctionParameterNode = function(node) {
+    var scopeNode = node.getParent().getDeclarations();
     if (scopeNode) {
-      const valueNode = node.getDefaultValue();
-      const value = valueNode ? valueNode.getText() : void 0;
+      var valueNode = node.getDefaultValue();
+      var value = valueNode ? valueNode.getText() : void 0;
       this.addSymbolToChildScope(scopeNode, node, node.getName(), value, ReferenceType.Variable);
     }
     return true;
-  }
-  visitCustomPropertyDeclarationNode(node) {
-    const value = node.getValue() ? node.getValue().getText() : "";
+  };
+  ScopeBuilder2.prototype.visitCustomPropertyDeclarationNode = function(node) {
+    var value = node.getValue() ? node.getValue().getText() : "";
     this.addCSSVariable(node.getProperty(), node.getProperty().getName(), value, ReferenceType.Variable);
     return true;
-  }
-  addCSSVariable(node, name, value, type) {
+  };
+  ScopeBuilder2.prototype.addCSSVariable = function(node, name, value, type) {
     if (node.offset !== -1) {
       this.scope.addSymbol(new Symbol2(name, value, node, type));
     }
-  }
-};
-var Symbols = class {
-  constructor(node) {
+  };
+  return ScopeBuilder2;
+}();
+var Symbols = function() {
+  function Symbols2(node) {
     this.global = new GlobalScope();
     node.acceptVisitor(new ScopeBuilder(this.global));
   }
-  findSymbolsAtOffset(offset, referenceType) {
-    let scope = this.global.findScope(offset, 0);
-    const result = [];
-    const names = {};
+  Symbols2.prototype.findSymbolsAtOffset = function(offset, referenceType) {
+    var scope = this.global.findScope(offset, 0);
+    var result = [];
+    var names = {};
     while (scope) {
-      const symbols = scope.getSymbols();
-      for (let i = 0; i < symbols.length; i++) {
-        const symbol = symbols[i];
+      var symbols = scope.getSymbols();
+      for (var i = 0; i < symbols.length; i++) {
+        var symbol = symbols[i];
         if (symbol.type === referenceType && !names[symbol.name]) {
           result.push(symbol);
           names[symbol.name] = true;
@@ -6339,16 +6465,16 @@ var Symbols = class {
       scope = scope.parent;
     }
     return result;
-  }
-  internalFindSymbol(node, referenceTypes) {
-    let scopeNode = node;
+  };
+  Symbols2.prototype.internalFindSymbol = function(node, referenceTypes) {
+    var scopeNode = node;
     if (node.parent instanceof FunctionParameter && node.parent.getParent() instanceof BodyDeclaration) {
       scopeNode = node.parent.getParent().getDeclarations();
     }
     if (node.parent instanceof FunctionArgument && node.parent.getParent() instanceof Function) {
-      const funcId = node.parent.getParent().getIdentifier();
+      var funcId = node.parent.getParent().getIdentifier();
       if (funcId) {
-        const functionSymbol = this.internalFindSymbol(funcId, [ReferenceType.Function]);
+        var functionSymbol = this.internalFindSymbol(funcId, [ReferenceType.Function]);
         if (functionSymbol) {
           scopeNode = functionSymbol.node.getDeclarations();
         }
@@ -6357,12 +6483,12 @@ var Symbols = class {
     if (!scopeNode) {
       return null;
     }
-    const name = node.getText();
-    let scope = this.global.findScope(scopeNode.offset, scopeNode.length);
+    var name = node.getText();
+    var scope = this.global.findScope(scopeNode.offset, scopeNode.length);
     while (scope) {
-      for (let index = 0; index < referenceTypes.length; index++) {
-        const type = referenceTypes[index];
-        const symbol = scope.getSymbol(name, type);
+      for (var index = 0; index < referenceTypes.length; index++) {
+        var type = referenceTypes[index];
+        var symbol = scope.getSymbol(name, type);
         if (symbol) {
           return symbol;
         }
@@ -6370,19 +6496,19 @@ var Symbols = class {
       scope = scope.parent;
     }
     return null;
-  }
-  evaluateReferenceTypes(node) {
+  };
+  Symbols2.prototype.evaluateReferenceTypes = function(node) {
     if (node instanceof Identifier) {
-      const referenceTypes = node.referenceTypes;
+      var referenceTypes = node.referenceTypes;
       if (referenceTypes) {
         return referenceTypes;
       } else {
         if (node.isCustomProperty) {
           return [ReferenceType.Variable];
         }
-        const decl = getParentDeclaration(node);
+        var decl = getParentDeclaration(node);
         if (decl) {
-          const propertyName = decl.getNonPrefixedPropertyName();
+          var propertyName = decl.getNonPrefixedPropertyName();
           if ((propertyName === "animation" || propertyName === "animation-name") && decl.getValue() && decl.getValue().offset === node.offset) {
             return [ReferenceType.Keyframe];
           }
@@ -6391,26 +6517,26 @@ var Symbols = class {
     } else if (node instanceof Variable) {
       return [ReferenceType.Variable];
     }
-    const selector = node.findAParent(NodeType.Selector, NodeType.ExtendsReference);
+    var selector = node.findAParent(NodeType.Selector, NodeType.ExtendsReference);
     if (selector) {
       return [ReferenceType.Rule];
     }
     return null;
-  }
-  findSymbolFromNode(node) {
+  };
+  Symbols2.prototype.findSymbolFromNode = function(node) {
     if (!node) {
       return null;
     }
     while (node.type === NodeType.Interpolation) {
       node = node.getParent();
     }
-    const referenceTypes = this.evaluateReferenceTypes(node);
+    var referenceTypes = this.evaluateReferenceTypes(node);
     if (referenceTypes) {
       return this.internalFindSymbol(node, referenceTypes);
     }
     return null;
-  }
-  matchesSymbol(node, symbol) {
+  };
+  Symbols2.prototype.matchesSymbol = function(node, symbol) {
     if (!node) {
       return false;
     }
@@ -6420,466 +6546,670 @@ var Symbols = class {
     if (!node.matches(symbol.name)) {
       return false;
     }
-    const referenceTypes = this.evaluateReferenceTypes(node);
+    var referenceTypes = this.evaluateReferenceTypes(node);
     if (!referenceTypes || referenceTypes.indexOf(symbol.type) === -1) {
       return false;
     }
-    const nodeSymbol = this.internalFindSymbol(node, referenceTypes);
+    var nodeSymbol = this.internalFindSymbol(node, referenceTypes);
     return nodeSymbol === symbol;
-  }
-  findSymbol(name, type, offset) {
-    let scope = this.global.findScope(offset);
+  };
+  Symbols2.prototype.findSymbol = function(name, type, offset) {
+    var scope = this.global.findScope(offset);
     while (scope) {
-      const symbol = scope.getSymbol(name, type);
+      var symbol = scope.getSymbol(name, type);
       if (symbol) {
         return symbol;
       }
       scope = scope.parent;
     }
     return null;
-  }
-};
+  };
+  return Symbols2;
+}();
 
-// node_modules/vscode-uri/lib/esm/index.mjs
+// node_modules/vscode-uri/lib/esm/index.js
 var LIB;
-(() => {
+LIB = (() => {
   "use strict";
-  var t2 = { 470: (t3) => {
-    function e2(t4) {
-      if ("string" != typeof t4) throw new TypeError("Path must be a string. Received " + JSON.stringify(t4));
+  var t = { 470: (t2) => {
+    function e2(t3) {
+      if (typeof t3 != "string")
+        throw new TypeError("Path must be a string. Received " + JSON.stringify(t3));
     }
-    function r2(t4, e3) {
-      for (var r3, n3 = "", i = 0, o = -1, s = 0, h = 0; h <= t4.length; ++h) {
-        if (h < t4.length) r3 = t4.charCodeAt(h);
+    function r2(t3, e3) {
+      for (var r3, n2 = "", o = 0, i = -1, a2 = 0, h = 0; h <= t3.length; ++h) {
+        if (h < t3.length)
+          r3 = t3.charCodeAt(h);
         else {
-          if (47 === r3) break;
+          if (r3 === 47)
+            break;
           r3 = 47;
         }
-        if (47 === r3) {
-          if (o === h - 1 || 1 === s) ;
-          else if (o !== h - 1 && 2 === s) {
-            if (n3.length < 2 || 2 !== i || 46 !== n3.charCodeAt(n3.length - 1) || 46 !== n3.charCodeAt(n3.length - 2)) {
-              if (n3.length > 2) {
-                var a2 = n3.lastIndexOf("/");
-                if (a2 !== n3.length - 1) {
-                  -1 === a2 ? (n3 = "", i = 0) : i = (n3 = n3.slice(0, a2)).length - 1 - n3.lastIndexOf("/"), o = h, s = 0;
+        if (r3 === 47) {
+          if (i === h - 1 || a2 === 1)
+            ;
+          else if (i !== h - 1 && a2 === 2) {
+            if (n2.length < 2 || o !== 2 || n2.charCodeAt(n2.length - 1) !== 46 || n2.charCodeAt(n2.length - 2) !== 46) {
+              if (n2.length > 2) {
+                var s = n2.lastIndexOf("/");
+                if (s !== n2.length - 1) {
+                  s === -1 ? (n2 = "", o = 0) : o = (n2 = n2.slice(0, s)).length - 1 - n2.lastIndexOf("/"), i = h, a2 = 0;
                   continue;
                 }
-              } else if (2 === n3.length || 1 === n3.length) {
-                n3 = "", i = 0, o = h, s = 0;
+              } else if (n2.length === 2 || n2.length === 1) {
+                n2 = "", o = 0, i = h, a2 = 0;
                 continue;
               }
             }
-            e3 && (n3.length > 0 ? n3 += "/.." : n3 = "..", i = 2);
-          } else n3.length > 0 ? n3 += "/" + t4.slice(o + 1, h) : n3 = t4.slice(o + 1, h), i = h - o - 1;
-          o = h, s = 0;
-        } else 46 === r3 && -1 !== s ? ++s : s = -1;
+            e3 && (n2.length > 0 ? n2 += "/.." : n2 = "..", o = 2);
+          } else
+            n2.length > 0 ? n2 += "/" + t3.slice(i + 1, h) : n2 = t3.slice(i + 1, h), o = h - i - 1;
+          i = h, a2 = 0;
+        } else
+          r3 === 46 && a2 !== -1 ? ++a2 : a2 = -1;
       }
-      return n3;
+      return n2;
     }
-    var n2 = { resolve: function() {
-      for (var t4, n3 = "", i = false, o = arguments.length - 1; o >= -1 && !i; o--) {
-        var s;
-        o >= 0 ? s = arguments[o] : (void 0 === t4 && (t4 = process.cwd()), s = t4), e2(s), 0 !== s.length && (n3 = s + "/" + n3, i = 47 === s.charCodeAt(0));
+    var n = { resolve: function() {
+      for (var t3, n2 = "", o = false, i = arguments.length - 1; i >= -1 && !o; i--) {
+        var a2;
+        i >= 0 ? a2 = arguments[i] : (t3 === void 0 && (t3 = process.cwd()), a2 = t3), e2(a2), a2.length !== 0 && (n2 = a2 + "/" + n2, o = a2.charCodeAt(0) === 47);
       }
-      return n3 = r2(n3, !i), i ? n3.length > 0 ? "/" + n3 : "/" : n3.length > 0 ? n3 : ".";
-    }, normalize: function(t4) {
-      if (e2(t4), 0 === t4.length) return ".";
-      var n3 = 47 === t4.charCodeAt(0), i = 47 === t4.charCodeAt(t4.length - 1);
-      return 0 !== (t4 = r2(t4, !n3)).length || n3 || (t4 = "."), t4.length > 0 && i && (t4 += "/"), n3 ? "/" + t4 : t4;
-    }, isAbsolute: function(t4) {
-      return e2(t4), t4.length > 0 && 47 === t4.charCodeAt(0);
+      return n2 = r2(n2, !o), o ? n2.length > 0 ? "/" + n2 : "/" : n2.length > 0 ? n2 : ".";
+    }, normalize: function(t3) {
+      if (e2(t3), t3.length === 0)
+        return ".";
+      var n2 = t3.charCodeAt(0) === 47, o = t3.charCodeAt(t3.length - 1) === 47;
+      return (t3 = r2(t3, !n2)).length !== 0 || n2 || (t3 = "."), t3.length > 0 && o && (t3 += "/"), n2 ? "/" + t3 : t3;
+    }, isAbsolute: function(t3) {
+      return e2(t3), t3.length > 0 && t3.charCodeAt(0) === 47;
     }, join: function() {
-      if (0 === arguments.length) return ".";
-      for (var t4, r3 = 0; r3 < arguments.length; ++r3) {
-        var i = arguments[r3];
-        e2(i), i.length > 0 && (void 0 === t4 ? t4 = i : t4 += "/" + i);
+      if (arguments.length === 0)
+        return ".";
+      for (var t3, r3 = 0; r3 < arguments.length; ++r3) {
+        var o = arguments[r3];
+        e2(o), o.length > 0 && (t3 === void 0 ? t3 = o : t3 += "/" + o);
       }
-      return void 0 === t4 ? "." : n2.normalize(t4);
-    }, relative: function(t4, r3) {
-      if (e2(t4), e2(r3), t4 === r3) return "";
-      if ((t4 = n2.resolve(t4)) === (r3 = n2.resolve(r3))) return "";
-      for (var i = 1; i < t4.length && 47 === t4.charCodeAt(i); ++i) ;
-      for (var o = t4.length, s = o - i, h = 1; h < r3.length && 47 === r3.charCodeAt(h); ++h) ;
-      for (var a2 = r3.length - h, c = s < a2 ? s : a2, f2 = -1, u = 0; u <= c; ++u) {
+      return t3 === void 0 ? "." : n.normalize(t3);
+    }, relative: function(t3, r3) {
+      if (e2(t3), e2(r3), t3 === r3)
+        return "";
+      if ((t3 = n.resolve(t3)) === (r3 = n.resolve(r3)))
+        return "";
+      for (var o = 1; o < t3.length && t3.charCodeAt(o) === 47; ++o)
+        ;
+      for (var i = t3.length, a2 = i - o, h = 1; h < r3.length && r3.charCodeAt(h) === 47; ++h)
+        ;
+      for (var s = r3.length - h, c = a2 < s ? a2 : s, f2 = -1, u = 0; u <= c; ++u) {
         if (u === c) {
-          if (a2 > c) {
-            if (47 === r3.charCodeAt(h + u)) return r3.slice(h + u + 1);
-            if (0 === u) return r3.slice(h + u);
-          } else s > c && (47 === t4.charCodeAt(i + u) ? f2 = u : 0 === u && (f2 = 0));
+          if (s > c) {
+            if (r3.charCodeAt(h + u) === 47)
+              return r3.slice(h + u + 1);
+            if (u === 0)
+              return r3.slice(h + u);
+          } else
+            a2 > c && (t3.charCodeAt(o + u) === 47 ? f2 = u : u === 0 && (f2 = 0));
           break;
         }
-        var l = t4.charCodeAt(i + u);
-        if (l !== r3.charCodeAt(h + u)) break;
-        47 === l && (f2 = u);
+        var l = t3.charCodeAt(o + u);
+        if (l !== r3.charCodeAt(h + u))
+          break;
+        l === 47 && (f2 = u);
       }
-      var g = "";
-      for (u = i + f2 + 1; u <= o; ++u) u !== o && 47 !== t4.charCodeAt(u) || (0 === g.length ? g += ".." : g += "/..");
-      return g.length > 0 ? g + r3.slice(h + f2) : (h += f2, 47 === r3.charCodeAt(h) && ++h, r3.slice(h));
-    }, _makeLong: function(t4) {
-      return t4;
-    }, dirname: function(t4) {
-      if (e2(t4), 0 === t4.length) return ".";
-      for (var r3 = t4.charCodeAt(0), n3 = 47 === r3, i = -1, o = true, s = t4.length - 1; s >= 1; --s) if (47 === (r3 = t4.charCodeAt(s))) {
-        if (!o) {
-          i = s;
-          break;
-        }
-      } else o = false;
-      return -1 === i ? n3 ? "/" : "." : n3 && 1 === i ? "//" : t4.slice(0, i);
-    }, basename: function(t4, r3) {
-      if (void 0 !== r3 && "string" != typeof r3) throw new TypeError('"ext" argument must be a string');
-      e2(t4);
-      var n3, i = 0, o = -1, s = true;
-      if (void 0 !== r3 && r3.length > 0 && r3.length <= t4.length) {
-        if (r3.length === t4.length && r3 === t4) return "";
-        var h = r3.length - 1, a2 = -1;
-        for (n3 = t4.length - 1; n3 >= 0; --n3) {
-          var c = t4.charCodeAt(n3);
-          if (47 === c) {
-            if (!s) {
-              i = n3 + 1;
+      var p = "";
+      for (u = o + f2 + 1; u <= i; ++u)
+        u !== i && t3.charCodeAt(u) !== 47 || (p.length === 0 ? p += ".." : p += "/..");
+      return p.length > 0 ? p + r3.slice(h + f2) : (h += f2, r3.charCodeAt(h) === 47 && ++h, r3.slice(h));
+    }, _makeLong: function(t3) {
+      return t3;
+    }, dirname: function(t3) {
+      if (e2(t3), t3.length === 0)
+        return ".";
+      for (var r3 = t3.charCodeAt(0), n2 = r3 === 47, o = -1, i = true, a2 = t3.length - 1; a2 >= 1; --a2)
+        if ((r3 = t3.charCodeAt(a2)) === 47) {
+          if (!i) {
+            o = a2;
+            break;
+          }
+        } else
+          i = false;
+      return o === -1 ? n2 ? "/" : "." : n2 && o === 1 ? "//" : t3.slice(0, o);
+    }, basename: function(t3, r3) {
+      if (r3 !== void 0 && typeof r3 != "string")
+        throw new TypeError('"ext" argument must be a string');
+      e2(t3);
+      var n2, o = 0, i = -1, a2 = true;
+      if (r3 !== void 0 && r3.length > 0 && r3.length <= t3.length) {
+        if (r3.length === t3.length && r3 === t3)
+          return "";
+        var h = r3.length - 1, s = -1;
+        for (n2 = t3.length - 1; n2 >= 0; --n2) {
+          var c = t3.charCodeAt(n2);
+          if (c === 47) {
+            if (!a2) {
+              o = n2 + 1;
               break;
             }
-          } else -1 === a2 && (s = false, a2 = n3 + 1), h >= 0 && (c === r3.charCodeAt(h) ? -1 == --h && (o = n3) : (h = -1, o = a2));
+          } else
+            s === -1 && (a2 = false, s = n2 + 1), h >= 0 && (c === r3.charCodeAt(h) ? --h == -1 && (i = n2) : (h = -1, i = s));
         }
-        return i === o ? o = a2 : -1 === o && (o = t4.length), t4.slice(i, o);
+        return o === i ? i = s : i === -1 && (i = t3.length), t3.slice(o, i);
       }
-      for (n3 = t4.length - 1; n3 >= 0; --n3) if (47 === t4.charCodeAt(n3)) {
-        if (!s) {
-          i = n3 + 1;
+      for (n2 = t3.length - 1; n2 >= 0; --n2)
+        if (t3.charCodeAt(n2) === 47) {
+          if (!a2) {
+            o = n2 + 1;
+            break;
+          }
+        } else
+          i === -1 && (a2 = false, i = n2 + 1);
+      return i === -1 ? "" : t3.slice(o, i);
+    }, extname: function(t3) {
+      e2(t3);
+      for (var r3 = -1, n2 = 0, o = -1, i = true, a2 = 0, h = t3.length - 1; h >= 0; --h) {
+        var s = t3.charCodeAt(h);
+        if (s !== 47)
+          o === -1 && (i = false, o = h + 1), s === 46 ? r3 === -1 ? r3 = h : a2 !== 1 && (a2 = 1) : r3 !== -1 && (a2 = -1);
+        else if (!i) {
+          n2 = h + 1;
           break;
         }
-      } else -1 === o && (s = false, o = n3 + 1);
-      return -1 === o ? "" : t4.slice(i, o);
-    }, extname: function(t4) {
-      e2(t4);
-      for (var r3 = -1, n3 = 0, i = -1, o = true, s = 0, h = t4.length - 1; h >= 0; --h) {
-        var a2 = t4.charCodeAt(h);
-        if (47 !== a2) -1 === i && (o = false, i = h + 1), 46 === a2 ? -1 === r3 ? r3 = h : 1 !== s && (s = 1) : -1 !== r3 && (s = -1);
-        else if (!o) {
-          n3 = h + 1;
-          break;
-        }
       }
-      return -1 === r3 || -1 === i || 0 === s || 1 === s && r3 === i - 1 && r3 === n3 + 1 ? "" : t4.slice(r3, i);
-    }, format: function(t4) {
-      if (null === t4 || "object" != typeof t4) throw new TypeError('The "pathObject" argument must be of type Object. Received type ' + typeof t4);
-      return (function(t5, e3) {
-        var r3 = e3.dir || e3.root, n3 = e3.base || (e3.name || "") + (e3.ext || "");
-        return r3 ? r3 === e3.root ? r3 + n3 : r3 + "/" + n3 : n3;
-      })(0, t4);
-    }, parse: function(t4) {
-      e2(t4);
+      return r3 === -1 || o === -1 || a2 === 0 || a2 === 1 && r3 === o - 1 && r3 === n2 + 1 ? "" : t3.slice(r3, o);
+    }, format: function(t3) {
+      if (t3 === null || typeof t3 != "object")
+        throw new TypeError('The "pathObject" argument must be of type Object. Received type ' + typeof t3);
+      return function(t4, e3) {
+        var r3 = e3.dir || e3.root, n2 = e3.base || (e3.name || "") + (e3.ext || "");
+        return r3 ? r3 === e3.root ? r3 + n2 : r3 + "/" + n2 : n2;
+      }(0, t3);
+    }, parse: function(t3) {
+      e2(t3);
       var r3 = { root: "", dir: "", base: "", ext: "", name: "" };
-      if (0 === t4.length) return r3;
-      var n3, i = t4.charCodeAt(0), o = 47 === i;
-      o ? (r3.root = "/", n3 = 1) : n3 = 0;
-      for (var s = -1, h = 0, a2 = -1, c = true, f2 = t4.length - 1, u = 0; f2 >= n3; --f2) if (47 !== (i = t4.charCodeAt(f2))) -1 === a2 && (c = false, a2 = f2 + 1), 46 === i ? -1 === s ? s = f2 : 1 !== u && (u = 1) : -1 !== s && (u = -1);
-      else if (!c) {
-        h = f2 + 1;
-        break;
-      }
-      return -1 === s || -1 === a2 || 0 === u || 1 === u && s === a2 - 1 && s === h + 1 ? -1 !== a2 && (r3.base = r3.name = 0 === h && o ? t4.slice(1, a2) : t4.slice(h, a2)) : (0 === h && o ? (r3.name = t4.slice(1, s), r3.base = t4.slice(1, a2)) : (r3.name = t4.slice(h, s), r3.base = t4.slice(h, a2)), r3.ext = t4.slice(s, a2)), h > 0 ? r3.dir = t4.slice(0, h - 1) : o && (r3.dir = "/"), r3;
+      if (t3.length === 0)
+        return r3;
+      var n2, o = t3.charCodeAt(0), i = o === 47;
+      i ? (r3.root = "/", n2 = 1) : n2 = 0;
+      for (var a2 = -1, h = 0, s = -1, c = true, f2 = t3.length - 1, u = 0; f2 >= n2; --f2)
+        if ((o = t3.charCodeAt(f2)) !== 47)
+          s === -1 && (c = false, s = f2 + 1), o === 46 ? a2 === -1 ? a2 = f2 : u !== 1 && (u = 1) : a2 !== -1 && (u = -1);
+        else if (!c) {
+          h = f2 + 1;
+          break;
+        }
+      return a2 === -1 || s === -1 || u === 0 || u === 1 && a2 === s - 1 && a2 === h + 1 ? s !== -1 && (r3.base = r3.name = h === 0 && i ? t3.slice(1, s) : t3.slice(h, s)) : (h === 0 && i ? (r3.name = t3.slice(1, a2), r3.base = t3.slice(1, s)) : (r3.name = t3.slice(h, a2), r3.base = t3.slice(h, s)), r3.ext = t3.slice(a2, s)), h > 0 ? r3.dir = t3.slice(0, h - 1) : i && (r3.dir = "/"), r3;
     }, sep: "/", delimiter: ":", win32: null, posix: null };
-    n2.posix = n2, t3.exports = n2;
-  } }, e = {};
-  function r(n2) {
-    var i = e[n2];
-    if (void 0 !== i) return i.exports;
-    var o = e[n2] = { exports: {} };
-    return t2[n2](o, o.exports, r), o.exports;
-  }
-  r.d = (t3, e2) => {
-    for (var n2 in e2) r.o(e2, n2) && !r.o(t3, n2) && Object.defineProperty(t3, n2, { enumerable: true, get: e2[n2] });
-  }, r.o = (t3, e2) => Object.prototype.hasOwnProperty.call(t3, e2), r.r = (t3) => {
-    "undefined" != typeof Symbol && Symbol.toStringTag && Object.defineProperty(t3, Symbol.toStringTag, { value: "Module" }), Object.defineProperty(t3, "__esModule", { value: true });
-  };
-  var n = {};
-  (() => {
-    let t3;
-    if (r.r(n), r.d(n, { URI: () => f2, Utils: () => P }), "object" == typeof process) t3 = "win32" === process.platform;
-    else if ("object" == typeof navigator) {
-      let e3 = navigator.userAgent;
-      t3 = e3.indexOf("Windows") >= 0;
+    n.posix = n, t2.exports = n;
+  }, 447: (t2, e2, r2) => {
+    var n;
+    if (r2.r(e2), r2.d(e2, { URI: () => d, Utils: () => P }), typeof process == "object")
+      n = process.platform === "win32";
+    else if (typeof navigator == "object") {
+      var o = navigator.userAgent;
+      n = o.indexOf("Windows") >= 0;
     }
-    const e2 = /^\w[\w\d+.-]*$/, i = /^\//, o = /^\/\//;
-    function s(t4, r2) {
-      if (!t4.scheme && r2) throw new Error(`[UriError]: Scheme is missing: {scheme: "", authority: "${t4.authority}", path: "${t4.path}", query: "${t4.query}", fragment: "${t4.fragment}"}`);
-      if (t4.scheme && !e2.test(t4.scheme)) throw new Error("[UriError]: Scheme contains illegal characters.");
-      if (t4.path) {
-        if (t4.authority) {
-          if (!i.test(t4.path)) throw new Error('[UriError]: If a URI contains an authority component, then the path component must either be empty or begin with a slash ("/") character');
-        } else if (o.test(t4.path)) throw new Error('[UriError]: If a URI does not contain an authority component, then the path cannot begin with two slash characters ("//")');
+    var i, a2, h = (i = function(t3, e3) {
+      return (i = Object.setPrototypeOf || { __proto__: [] } instanceof Array && function(t4, e4) {
+        t4.__proto__ = e4;
+      } || function(t4, e4) {
+        for (var r3 in e4)
+          Object.prototype.hasOwnProperty.call(e4, r3) && (t4[r3] = e4[r3]);
+      })(t3, e3);
+    }, function(t3, e3) {
+      if (typeof e3 != "function" && e3 !== null)
+        throw new TypeError("Class extends value " + String(e3) + " is not a constructor or null");
+      function r3() {
+        this.constructor = t3;
+      }
+      i(t3, e3), t3.prototype = e3 === null ? Object.create(e3) : (r3.prototype = e3.prototype, new r3());
+    }), s = /^\w[\w\d+.-]*$/, c = /^\//, f2 = /^\/\//;
+    function u(t3, e3) {
+      if (!t3.scheme && e3)
+        throw new Error('[UriError]: Scheme is missing: {scheme: "", authority: "'.concat(t3.authority, '", path: "').concat(t3.path, '", query: "').concat(t3.query, '", fragment: "').concat(t3.fragment, '"}'));
+      if (t3.scheme && !s.test(t3.scheme))
+        throw new Error("[UriError]: Scheme contains illegal characters.");
+      if (t3.path) {
+        if (t3.authority) {
+          if (!c.test(t3.path))
+            throw new Error('[UriError]: If a URI contains an authority component, then the path component must either be empty or begin with a slash ("/") character');
+        } else if (f2.test(t3.path))
+          throw new Error('[UriError]: If a URI does not contain an authority component, then the path cannot begin with two slash characters ("//")');
       }
     }
-    const h = "", a2 = "/", c = /^(([^:/?#]+?):)?(\/\/([^/?#]*))?([^?#]*)(\?([^#]*))?(#(.*))?/;
-    class f2 {
-      static isUri(t4) {
-        return t4 instanceof f2 || !!t4 && "string" == typeof t4.authority && "string" == typeof t4.fragment && "string" == typeof t4.path && "string" == typeof t4.query && "string" == typeof t4.scheme && "string" == typeof t4.fsPath && "function" == typeof t4.with && "function" == typeof t4.toString;
-      }
-      scheme;
-      authority;
-      path;
-      query;
-      fragment;
-      constructor(t4, e3, r2, n2, i2, o2 = false) {
-        "object" == typeof t4 ? (this.scheme = t4.scheme || h, this.authority = t4.authority || h, this.path = t4.path || h, this.query = t4.query || h, this.fragment = t4.fragment || h) : (this.scheme = /* @__PURE__ */ (function(t5, e4) {
+    var l = "", p = "/", g = /^(([^:/?#]+?):)?(\/\/([^/?#]*))?([^?#]*)(\?([^#]*))?(#(.*))?/, d = function() {
+      function t3(t4, e3, r3, n2, o2, i2) {
+        i2 === void 0 && (i2 = false), typeof t4 == "object" ? (this.scheme = t4.scheme || l, this.authority = t4.authority || l, this.path = t4.path || l, this.query = t4.query || l, this.fragment = t4.fragment || l) : (this.scheme = function(t5, e4) {
           return t5 || e4 ? t5 : "file";
-        })(t4, o2), this.authority = e3 || h, this.path = (function(t5, e4) {
+        }(t4, i2), this.authority = e3 || l, this.path = function(t5, e4) {
           switch (t5) {
             case "https":
             case "http":
             case "file":
-              e4 ? e4[0] !== a2 && (e4 = a2 + e4) : e4 = a2;
+              e4 ? e4[0] !== p && (e4 = p + e4) : e4 = p;
           }
           return e4;
-        })(this.scheme, r2 || h), this.query = n2 || h, this.fragment = i2 || h, s(this, o2));
+        }(this.scheme, r3 || l), this.query = n2 || l, this.fragment = o2 || l, u(this, i2));
       }
-      get fsPath() {
-        return m(this, false);
-      }
-      with(t4) {
-        if (!t4) return this;
-        let { scheme: e3, authority: r2, path: n2, query: i2, fragment: o2 } = t4;
-        return void 0 === e3 ? e3 = this.scheme : null === e3 && (e3 = h), void 0 === r2 ? r2 = this.authority : null === r2 && (r2 = h), void 0 === n2 ? n2 = this.path : null === n2 && (n2 = h), void 0 === i2 ? i2 = this.query : null === i2 && (i2 = h), void 0 === o2 ? o2 = this.fragment : null === o2 && (o2 = h), e3 === this.scheme && r2 === this.authority && n2 === this.path && i2 === this.query && o2 === this.fragment ? this : new l(e3, r2, n2, i2, o2);
-      }
-      static parse(t4, e3 = false) {
-        const r2 = c.exec(t4);
-        return r2 ? new l(r2[2] || h, C(r2[4] || h), C(r2[5] || h), C(r2[7] || h), C(r2[9] || h), e3) : new l(h, h, h, h, h);
-      }
-      static file(e3) {
-        let r2 = h;
-        if (t3 && (e3 = e3.replace(/\\/g, a2)), e3[0] === a2 && e3[1] === a2) {
-          const t4 = e3.indexOf(a2, 2);
-          -1 === t4 ? (r2 = e3.substring(2), e3 = a2) : (r2 = e3.substring(2, t4), e3 = e3.substring(t4) || a2);
+      return t3.isUri = function(e3) {
+        return e3 instanceof t3 || !!e3 && typeof e3.authority == "string" && typeof e3.fragment == "string" && typeof e3.path == "string" && typeof e3.query == "string" && typeof e3.scheme == "string" && typeof e3.fsPath == "string" && typeof e3.with == "function" && typeof e3.toString == "function";
+      }, Object.defineProperty(t3.prototype, "fsPath", { get: function() {
+        return A2(this, false);
+      }, enumerable: false, configurable: true }), t3.prototype.with = function(t4) {
+        if (!t4)
+          return this;
+        var e3 = t4.scheme, r3 = t4.authority, n2 = t4.path, o2 = t4.query, i2 = t4.fragment;
+        return e3 === void 0 ? e3 = this.scheme : e3 === null && (e3 = l), r3 === void 0 ? r3 = this.authority : r3 === null && (r3 = l), n2 === void 0 ? n2 = this.path : n2 === null && (n2 = l), o2 === void 0 ? o2 = this.query : o2 === null && (o2 = l), i2 === void 0 ? i2 = this.fragment : i2 === null && (i2 = l), e3 === this.scheme && r3 === this.authority && n2 === this.path && o2 === this.query && i2 === this.fragment ? this : new y(e3, r3, n2, o2, i2);
+      }, t3.parse = function(t4, e3) {
+        e3 === void 0 && (e3 = false);
+        var r3 = g.exec(t4);
+        return r3 ? new y(r3[2] || l, O(r3[4] || l), O(r3[5] || l), O(r3[7] || l), O(r3[9] || l), e3) : new y(l, l, l, l, l);
+      }, t3.file = function(t4) {
+        var e3 = l;
+        if (n && (t4 = t4.replace(/\\/g, p)), t4[0] === p && t4[1] === p) {
+          var r3 = t4.indexOf(p, 2);
+          r3 === -1 ? (e3 = t4.substring(2), t4 = p) : (e3 = t4.substring(2, r3), t4 = t4.substring(r3) || p);
         }
-        return new l("file", r2, e3, h, h);
-      }
-      static from(t4) {
-        const e3 = new l(t4.scheme, t4.authority, t4.path, t4.query, t4.fragment);
-        return s(e3, true), e3;
-      }
-      toString(t4 = false) {
-        return y(this, t4);
-      }
-      toJSON() {
+        return new y("file", e3, t4, l, l);
+      }, t3.from = function(t4) {
+        var e3 = new y(t4.scheme, t4.authority, t4.path, t4.query, t4.fragment);
+        return u(e3, true), e3;
+      }, t3.prototype.toString = function(t4) {
+        return t4 === void 0 && (t4 = false), w(this, t4);
+      }, t3.prototype.toJSON = function() {
         return this;
-      }
-      static revive(t4) {
-        if (t4) {
-          if (t4 instanceof f2) return t4;
-          {
-            const e3 = new l(t4);
-            return e3._formatted = t4.external, e3._fsPath = t4._sep === u ? t4.fsPath : null, e3;
-          }
+      }, t3.revive = function(e3) {
+        if (e3) {
+          if (e3 instanceof t3)
+            return e3;
+          var r3 = new y(e3);
+          return r3._formatted = e3.external, r3._fsPath = e3._sep === v ? e3.fsPath : null, r3;
         }
-        return t4;
+        return e3;
+      }, t3;
+    }(), v = n ? 1 : void 0, y = function(t3) {
+      function e3() {
+        var e4 = t3 !== null && t3.apply(this, arguments) || this;
+        return e4._formatted = null, e4._fsPath = null, e4;
       }
-    }
-    const u = t3 ? 1 : void 0;
-    class l extends f2 {
-      _formatted = null;
-      _fsPath = null;
-      get fsPath() {
-        return this._fsPath || (this._fsPath = m(this, false)), this._fsPath;
-      }
-      toString(t4 = false) {
-        return t4 ? y(this, true) : (this._formatted || (this._formatted = y(this, false)), this._formatted);
-      }
-      toJSON() {
-        const t4 = { $mid: 1 };
-        return this._fsPath && (t4.fsPath = this._fsPath, t4._sep = u), this._formatted && (t4.external = this._formatted), this.path && (t4.path = this.path), this.scheme && (t4.scheme = this.scheme), this.authority && (t4.authority = this.authority), this.query && (t4.query = this.query), this.fragment && (t4.fragment = this.fragment), t4;
-      }
-    }
-    const g = { 58: "%3A", 47: "%2F", 63: "%3F", 35: "%23", 91: "%5B", 93: "%5D", 64: "%40", 33: "%21", 36: "%24", 38: "%26", 39: "%27", 40: "%28", 41: "%29", 42: "%2A", 43: "%2B", 44: "%2C", 59: "%3B", 61: "%3D", 32: "%20" };
-    function d(t4, e3, r2) {
-      let n2, i2 = -1;
-      for (let o2 = 0; o2 < t4.length; o2++) {
-        const s2 = t4.charCodeAt(o2);
-        if (s2 >= 97 && s2 <= 122 || s2 >= 65 && s2 <= 90 || s2 >= 48 && s2 <= 57 || 45 === s2 || 46 === s2 || 95 === s2 || 126 === s2 || e3 && 47 === s2 || r2 && 91 === s2 || r2 && 93 === s2 || r2 && 58 === s2) -1 !== i2 && (n2 += encodeURIComponent(t4.substring(i2, o2)), i2 = -1), void 0 !== n2 && (n2 += t4.charAt(o2));
+      return h(e3, t3), Object.defineProperty(e3.prototype, "fsPath", { get: function() {
+        return this._fsPath || (this._fsPath = A2(this, false)), this._fsPath;
+      }, enumerable: false, configurable: true }), e3.prototype.toString = function(t4) {
+        return t4 === void 0 && (t4 = false), t4 ? w(this, true) : (this._formatted || (this._formatted = w(this, false)), this._formatted);
+      }, e3.prototype.toJSON = function() {
+        var t4 = { $mid: 1 };
+        return this._fsPath && (t4.fsPath = this._fsPath, t4._sep = v), this._formatted && (t4.external = this._formatted), this.path && (t4.path = this.path), this.scheme && (t4.scheme = this.scheme), this.authority && (t4.authority = this.authority), this.query && (t4.query = this.query), this.fragment && (t4.fragment = this.fragment), t4;
+      }, e3;
+    }(d), m = ((a2 = {})[58] = "%3A", a2[47] = "%2F", a2[63] = "%3F", a2[35] = "%23", a2[91] = "%5B", a2[93] = "%5D", a2[64] = "%40", a2[33] = "%21", a2[36] = "%24", a2[38] = "%26", a2[39] = "%27", a2[40] = "%28", a2[41] = "%29", a2[42] = "%2A", a2[43] = "%2B", a2[44] = "%2C", a2[59] = "%3B", a2[61] = "%3D", a2[32] = "%20", a2);
+    function b(t3, e3) {
+      for (var r3 = void 0, n2 = -1, o2 = 0; o2 < t3.length; o2++) {
+        var i2 = t3.charCodeAt(o2);
+        if (i2 >= 97 && i2 <= 122 || i2 >= 65 && i2 <= 90 || i2 >= 48 && i2 <= 57 || i2 === 45 || i2 === 46 || i2 === 95 || i2 === 126 || e3 && i2 === 47)
+          n2 !== -1 && (r3 += encodeURIComponent(t3.substring(n2, o2)), n2 = -1), r3 !== void 0 && (r3 += t3.charAt(o2));
         else {
-          void 0 === n2 && (n2 = t4.substr(0, o2));
-          const e4 = g[s2];
-          void 0 !== e4 ? (-1 !== i2 && (n2 += encodeURIComponent(t4.substring(i2, o2)), i2 = -1), n2 += e4) : -1 === i2 && (i2 = o2);
+          r3 === void 0 && (r3 = t3.substr(0, o2));
+          var a3 = m[i2];
+          a3 !== void 0 ? (n2 !== -1 && (r3 += encodeURIComponent(t3.substring(n2, o2)), n2 = -1), r3 += a3) : n2 === -1 && (n2 = o2);
         }
       }
-      return -1 !== i2 && (n2 += encodeURIComponent(t4.substring(i2))), void 0 !== n2 ? n2 : t4;
+      return n2 !== -1 && (r3 += encodeURIComponent(t3.substring(n2))), r3 !== void 0 ? r3 : t3;
     }
-    function p(t4) {
-      let e3;
-      for (let r2 = 0; r2 < t4.length; r2++) {
-        const n2 = t4.charCodeAt(r2);
-        35 === n2 || 63 === n2 ? (void 0 === e3 && (e3 = t4.substr(0, r2)), e3 += g[n2]) : void 0 !== e3 && (e3 += t4[r2]);
+    function C(t3) {
+      for (var e3 = void 0, r3 = 0; r3 < t3.length; r3++) {
+        var n2 = t3.charCodeAt(r3);
+        n2 === 35 || n2 === 63 ? (e3 === void 0 && (e3 = t3.substr(0, r3)), e3 += m[n2]) : e3 !== void 0 && (e3 += t3[r3]);
       }
-      return void 0 !== e3 ? e3 : t4;
+      return e3 !== void 0 ? e3 : t3;
     }
-    function m(e3, r2) {
-      let n2;
-      return n2 = e3.authority && e3.path.length > 1 && "file" === e3.scheme ? `//${e3.authority}${e3.path}` : 47 === e3.path.charCodeAt(0) && (e3.path.charCodeAt(1) >= 65 && e3.path.charCodeAt(1) <= 90 || e3.path.charCodeAt(1) >= 97 && e3.path.charCodeAt(1) <= 122) && 58 === e3.path.charCodeAt(2) ? r2 ? e3.path.substr(1) : e3.path[1].toLowerCase() + e3.path.substr(2) : e3.path, t3 && (n2 = n2.replace(/\//g, "\\")), n2;
+    function A2(t3, e3) {
+      var r3;
+      return r3 = t3.authority && t3.path.length > 1 && t3.scheme === "file" ? "//".concat(t3.authority).concat(t3.path) : t3.path.charCodeAt(0) === 47 && (t3.path.charCodeAt(1) >= 65 && t3.path.charCodeAt(1) <= 90 || t3.path.charCodeAt(1) >= 97 && t3.path.charCodeAt(1) <= 122) && t3.path.charCodeAt(2) === 58 ? e3 ? t3.path.substr(1) : t3.path[1].toLowerCase() + t3.path.substr(2) : t3.path, n && (r3 = r3.replace(/\//g, "\\")), r3;
     }
-    function y(t4, e3) {
-      const r2 = e3 ? p : d;
-      let n2 = "", { scheme: i2, authority: o2, path: s2, query: h2, fragment: c2 } = t4;
-      if (i2 && (n2 += i2, n2 += ":"), (o2 || "file" === i2) && (n2 += a2, n2 += a2), o2) {
-        let t5 = o2.indexOf("@");
-        if (-1 !== t5) {
-          const e4 = o2.substr(0, t5);
-          o2 = o2.substr(t5 + 1), t5 = e4.lastIndexOf(":"), -1 === t5 ? n2 += r2(e4, false, false) : (n2 += r2(e4.substr(0, t5), false, false), n2 += ":", n2 += r2(e4.substr(t5 + 1), false, true)), n2 += "@";
+    function w(t3, e3) {
+      var r3 = e3 ? C : b, n2 = "", o2 = t3.scheme, i2 = t3.authority, a3 = t3.path, h2 = t3.query, s2 = t3.fragment;
+      if (o2 && (n2 += o2, n2 += ":"), (i2 || o2 === "file") && (n2 += p, n2 += p), i2) {
+        var c2 = i2.indexOf("@");
+        if (c2 !== -1) {
+          var f3 = i2.substr(0, c2);
+          i2 = i2.substr(c2 + 1), (c2 = f3.indexOf(":")) === -1 ? n2 += r3(f3, false) : (n2 += r3(f3.substr(0, c2), false), n2 += ":", n2 += r3(f3.substr(c2 + 1), false)), n2 += "@";
         }
-        o2 = o2.toLowerCase(), t5 = o2.lastIndexOf(":"), -1 === t5 ? n2 += r2(o2, false, true) : (n2 += r2(o2.substr(0, t5), false, true), n2 += o2.substr(t5));
+        (c2 = (i2 = i2.toLowerCase()).indexOf(":")) === -1 ? n2 += r3(i2, false) : (n2 += r3(i2.substr(0, c2), false), n2 += i2.substr(c2));
       }
-      if (s2) {
-        if (s2.length >= 3 && 47 === s2.charCodeAt(0) && 58 === s2.charCodeAt(2)) {
-          const t5 = s2.charCodeAt(1);
-          t5 >= 65 && t5 <= 90 && (s2 = `/${String.fromCharCode(t5 + 32)}:${s2.substr(3)}`);
-        } else if (s2.length >= 2 && 58 === s2.charCodeAt(1)) {
-          const t5 = s2.charCodeAt(0);
-          t5 >= 65 && t5 <= 90 && (s2 = `${String.fromCharCode(t5 + 32)}:${s2.substr(2)}`);
+      if (a3) {
+        if (a3.length >= 3 && a3.charCodeAt(0) === 47 && a3.charCodeAt(2) === 58)
+          (u2 = a3.charCodeAt(1)) >= 65 && u2 <= 90 && (a3 = "/".concat(String.fromCharCode(u2 + 32), ":").concat(a3.substr(3)));
+        else if (a3.length >= 2 && a3.charCodeAt(1) === 58) {
+          var u2;
+          (u2 = a3.charCodeAt(0)) >= 65 && u2 <= 90 && (a3 = "".concat(String.fromCharCode(u2 + 32), ":").concat(a3.substr(2)));
         }
-        n2 += r2(s2, true, false);
+        n2 += r3(a3, true);
       }
-      return h2 && (n2 += "?", n2 += r2(h2, false, false)), c2 && (n2 += "#", n2 += e3 ? c2 : d(c2, false, false)), n2;
+      return h2 && (n2 += "?", n2 += r3(h2, false)), s2 && (n2 += "#", n2 += e3 ? s2 : b(s2, false)), n2;
     }
-    function v(t4) {
+    function x(t3) {
       try {
-        return decodeURIComponent(t4);
-      } catch {
-        return t4.length > 3 ? t4.substr(0, 3) + v(t4.substr(3)) : t4;
+        return decodeURIComponent(t3);
+      } catch (e3) {
+        return t3.length > 3 ? t3.substr(0, 3) + x(t3.substr(3)) : t3;
       }
     }
-    const b = /(%[0-9A-Za-z][0-9A-Za-z])+/g;
-    function C(t4) {
-      return t4.match(b) ? t4.replace(b, ((t5) => v(t5))) : t4;
+    var _ = /(%[0-9A-Za-z][0-9A-Za-z])+/g;
+    function O(t3) {
+      return t3.match(_) ? t3.replace(_, function(t4) {
+        return x(t4);
+      }) : t3;
     }
-    var A2 = r(470);
-    const w = A2.posix || A2, x = "/";
-    var P;
-    !(function(t4) {
-      t4.joinPath = function(t5, ...e3) {
-        return t5.with({ path: w.join(t5.path, ...e3) });
-      }, t4.resolvePath = function(t5, ...e3) {
-        let r2 = t5.path, n2 = false;
-        r2[0] !== x && (r2 = x + r2, n2 = true);
-        let i2 = w.resolve(r2, ...e3);
-        return n2 && i2[0] === x && !t5.authority && (i2 = i2.substring(1)), t5.with({ path: i2 });
-      }, t4.dirname = function(t5) {
-        if (0 === t5.path.length || t5.path === x) return t5;
-        let e3 = w.dirname(t5.path);
-        return 1 === e3.length && 46 === e3.charCodeAt(0) && (e3 = ""), t5.with({ path: e3 });
-      }, t4.basename = function(t5) {
-        return w.basename(t5.path);
-      }, t4.extname = function(t5) {
-        return w.extname(t5.path);
+    var P, j = r2(470), U = function(t3, e3, r3) {
+      if (r3 || arguments.length === 2)
+        for (var n2, o2 = 0, i2 = e3.length; o2 < i2; o2++)
+          !n2 && o2 in e3 || (n2 || (n2 = Array.prototype.slice.call(e3, 0, o2)), n2[o2] = e3[o2]);
+      return t3.concat(n2 || Array.prototype.slice.call(e3));
+    }, I = j.posix || j;
+    !function(t3) {
+      t3.joinPath = function(t4) {
+        for (var e3 = [], r3 = 1; r3 < arguments.length; r3++)
+          e3[r3 - 1] = arguments[r3];
+        return t4.with({ path: I.join.apply(I, U([t4.path], e3, false)) });
+      }, t3.resolvePath = function(t4) {
+        for (var e3 = [], r3 = 1; r3 < arguments.length; r3++)
+          e3[r3 - 1] = arguments[r3];
+        var n2 = t4.path || "/";
+        return t4.with({ path: I.resolve.apply(I, U([n2], e3, false)) });
+      }, t3.dirname = function(t4) {
+        var e3 = I.dirname(t4.path);
+        return e3.length === 1 && e3.charCodeAt(0) === 46 ? t4 : t4.with({ path: e3 });
+      }, t3.basename = function(t4) {
+        return I.basename(t4.path);
+      }, t3.extname = function(t4) {
+        return I.extname(t4.path);
       };
-    })(P || (P = {}));
-  })(), LIB = n;
+    }(P || (P = {}));
+  } }, e = {};
+  function r(n) {
+    if (e[n])
+      return e[n].exports;
+    var o = e[n] = { exports: {} };
+    return t[n](o, o.exports, r), o.exports;
+  }
+  return r.d = (t2, e2) => {
+    for (var n in e2)
+      r.o(e2, n) && !r.o(t2, n) && Object.defineProperty(t2, n, { enumerable: true, get: e2[n] });
+  }, r.o = (t2, e2) => Object.prototype.hasOwnProperty.call(t2, e2), r.r = (t2) => {
+    typeof Symbol != "undefined" && Symbol.toStringTag && Object.defineProperty(t2, Symbol.toStringTag, { value: "Module" }), Object.defineProperty(t2, "__esModule", { value: true });
+  }, r(447);
 })();
-var { URI: URI2, Utils } = LIB;
+var { URI, Utils } = LIB;
 
 // node_modules/vscode-css-languageservice/lib/esm/utils/resources.js
+var __spreadArray2 = function(to, from, pack) {
+  if (pack || arguments.length === 2)
+    for (var i = 0, l = from.length, ar; i < l; i++) {
+      if (ar || !(i in from)) {
+        if (!ar)
+          ar = Array.prototype.slice.call(from, 0, i);
+        ar[i] = from[i];
+      }
+    }
+  return to.concat(ar || Array.prototype.slice.call(from));
+};
 function dirname(uriString) {
-  return Utils.dirname(URI2.parse(uriString)).toString(true);
+  return Utils.dirname(URI.parse(uriString)).toString();
 }
-function joinPath(uriString, ...paths) {
-  return Utils.joinPath(URI2.parse(uriString), ...paths).toString(true);
+function joinPath(uriString) {
+  var paths = [];
+  for (var _i = 1; _i < arguments.length; _i++) {
+    paths[_i - 1] = arguments[_i];
+  }
+  return Utils.joinPath.apply(Utils, __spreadArray2([URI.parse(uriString)], paths, false)).toString();
 }
 
 // node_modules/vscode-css-languageservice/lib/esm/services/pathCompletion.js
-var PathCompletionParticipant = class {
-  constructor(readDirectory) {
+var __awaiter = function(thisArg, _arguments, P, generator) {
+  function adopt(value) {
+    return value instanceof P ? value : new P(function(resolve) {
+      resolve(value);
+    });
+  }
+  return new (P || (P = Promise))(function(resolve, reject) {
+    function fulfilled(value) {
+      try {
+        step(generator.next(value));
+      } catch (e) {
+        reject(e);
+      }
+    }
+    function rejected(value) {
+      try {
+        step(generator["throw"](value));
+      } catch (e) {
+        reject(e);
+      }
+    }
+    function step(result) {
+      result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected);
+    }
+    step((generator = generator.apply(thisArg, _arguments || [])).next());
+  });
+};
+var __generator = function(thisArg, body) {
+  var _ = { label: 0, sent: function() {
+    if (t[0] & 1)
+      throw t[1];
+    return t[1];
+  }, trys: [], ops: [] }, f2, y, t, g;
+  return g = { next: verb(0), "throw": verb(1), "return": verb(2) }, typeof Symbol === "function" && (g[Symbol.iterator] = function() {
+    return this;
+  }), g;
+  function verb(n) {
+    return function(v) {
+      return step([n, v]);
+    };
+  }
+  function step(op) {
+    if (f2)
+      throw new TypeError("Generator is already executing.");
+    while (_)
+      try {
+        if (f2 = 1, y && (t = op[0] & 2 ? y["return"] : op[0] ? y["throw"] || ((t = y["return"]) && t.call(y), 0) : y.next) && !(t = t.call(y, op[1])).done)
+          return t;
+        if (y = 0, t)
+          op = [op[0] & 2, t.value];
+        switch (op[0]) {
+          case 0:
+          case 1:
+            t = op;
+            break;
+          case 4:
+            _.label++;
+            return { value: op[1], done: false };
+          case 5:
+            _.label++;
+            y = op[1];
+            op = [0];
+            continue;
+          case 7:
+            op = _.ops.pop();
+            _.trys.pop();
+            continue;
+          default:
+            if (!(t = _.trys, t = t.length > 0 && t[t.length - 1]) && (op[0] === 6 || op[0] === 2)) {
+              _ = 0;
+              continue;
+            }
+            if (op[0] === 3 && (!t || op[1] > t[0] && op[1] < t[3])) {
+              _.label = op[1];
+              break;
+            }
+            if (op[0] === 6 && _.label < t[1]) {
+              _.label = t[1];
+              t = op;
+              break;
+            }
+            if (t && _.label < t[2]) {
+              _.label = t[2];
+              _.ops.push(op);
+              break;
+            }
+            if (t[2])
+              _.ops.pop();
+            _.trys.pop();
+            continue;
+        }
+        op = body.call(thisArg, _);
+      } catch (e) {
+        op = [6, e];
+        y = 0;
+      } finally {
+        f2 = t = 0;
+      }
+    if (op[0] & 5)
+      throw op[1];
+    return { value: op[0] ? op[1] : void 0, done: true };
+  }
+};
+var PathCompletionParticipant = function() {
+  function PathCompletionParticipant2(readDirectory) {
     this.readDirectory = readDirectory;
     this.literalCompletions = [];
     this.importCompletions = [];
   }
-  onCssURILiteralValue(context) {
+  PathCompletionParticipant2.prototype.onCssURILiteralValue = function(context) {
     this.literalCompletions.push(context);
-  }
-  onCssImportPath(context) {
+  };
+  PathCompletionParticipant2.prototype.onCssImportPath = function(context) {
     this.importCompletions.push(context);
-  }
-  async computeCompletions(document, documentContext) {
-    const result = { items: [], isIncomplete: false };
-    for (const literalCompletion of this.literalCompletions) {
-      const uriValue = literalCompletion.uriValue;
-      const fullValue = stripQuotes(uriValue);
-      if (fullValue === "." || fullValue === "..") {
-        result.isIncomplete = true;
-      } else {
-        const items = await this.providePathSuggestions(uriValue, literalCompletion.position, literalCompletion.range, document, documentContext);
-        for (let item of items) {
-          result.items.push(item);
+  };
+  PathCompletionParticipant2.prototype.computeCompletions = function(document, documentContext) {
+    return __awaiter(this, void 0, void 0, function() {
+      var result, _i, _a2, literalCompletion, uriValue, fullValue, items, _b, items_1, item, _c, _d, importCompletion, pathValue, fullValue, suggestions, _e, suggestions_1, item;
+      return __generator(this, function(_f2) {
+        switch (_f2.label) {
+          case 0:
+            result = { items: [], isIncomplete: false };
+            _i = 0, _a2 = this.literalCompletions;
+            _f2.label = 1;
+          case 1:
+            if (!(_i < _a2.length))
+              return [3, 5];
+            literalCompletion = _a2[_i];
+            uriValue = literalCompletion.uriValue;
+            fullValue = stripQuotes(uriValue);
+            if (!(fullValue === "." || fullValue === ".."))
+              return [3, 2];
+            result.isIncomplete = true;
+            return [3, 4];
+          case 2:
+            return [4, this.providePathSuggestions(uriValue, literalCompletion.position, literalCompletion.range, document, documentContext)];
+          case 3:
+            items = _f2.sent();
+            for (_b = 0, items_1 = items; _b < items_1.length; _b++) {
+              item = items_1[_b];
+              result.items.push(item);
+            }
+            _f2.label = 4;
+          case 4:
+            _i++;
+            return [3, 1];
+          case 5:
+            _c = 0, _d = this.importCompletions;
+            _f2.label = 6;
+          case 6:
+            if (!(_c < _d.length))
+              return [3, 10];
+            importCompletion = _d[_c];
+            pathValue = importCompletion.pathValue;
+            fullValue = stripQuotes(pathValue);
+            if (!(fullValue === "." || fullValue === ".."))
+              return [3, 7];
+            result.isIncomplete = true;
+            return [3, 9];
+          case 7:
+            return [4, this.providePathSuggestions(pathValue, importCompletion.position, importCompletion.range, document, documentContext)];
+          case 8:
+            suggestions = _f2.sent();
+            if (document.languageId === "scss") {
+              suggestions.forEach(function(s) {
+                if (startsWith(s.label, "_") && endsWith(s.label, ".scss")) {
+                  if (s.textEdit) {
+                    s.textEdit.newText = s.label.slice(1, -5);
+                  } else {
+                    s.label = s.label.slice(1, -5);
+                  }
+                }
+              });
+            }
+            for (_e = 0, suggestions_1 = suggestions; _e < suggestions_1.length; _e++) {
+              item = suggestions_1[_e];
+              result.items.push(item);
+            }
+            _f2.label = 9;
+          case 9:
+            _c++;
+            return [3, 6];
+          case 10:
+            return [2, result];
         }
-      }
-    }
-    for (const importCompletion of this.importCompletions) {
-      const pathValue = importCompletion.pathValue;
-      const fullValue = stripQuotes(pathValue);
-      if (fullValue === "." || fullValue === "..") {
-        result.isIncomplete = true;
-      } else {
-        let suggestions = await this.providePathSuggestions(pathValue, importCompletion.position, importCompletion.range, document, documentContext);
-        if (document.languageId === "scss") {
-          suggestions.forEach((s) => {
-            if (startsWith(s.label, "_") && endsWith(s.label, ".scss")) {
-              if (s.textEdit) {
-                s.textEdit.newText = s.label.slice(1, -5);
-              } else {
-                s.label = s.label.slice(1, -5);
+      });
+    });
+  };
+  PathCompletionParticipant2.prototype.providePathSuggestions = function(pathValue, position, range, document, documentContext) {
+    return __awaiter(this, void 0, void 0, function() {
+      var fullValue, isValueQuoted, valueBeforeCursor, currentDocUri, fullValueRange, replaceRange, valueBeforeLastSlash, parentDir, result, infos, _i, infos_1, _a2, name, type, e_1;
+      return __generator(this, function(_b) {
+        switch (_b.label) {
+          case 0:
+            fullValue = stripQuotes(pathValue);
+            isValueQuoted = startsWith(pathValue, "'") || startsWith(pathValue, '"');
+            valueBeforeCursor = isValueQuoted ? fullValue.slice(0, position.character - (range.start.character + 1)) : fullValue.slice(0, position.character - range.start.character);
+            currentDocUri = document.uri;
+            fullValueRange = isValueQuoted ? shiftRange(range, 1, -1) : range;
+            replaceRange = pathToReplaceRange(valueBeforeCursor, fullValue, fullValueRange);
+            valueBeforeLastSlash = valueBeforeCursor.substring(0, valueBeforeCursor.lastIndexOf("/") + 1);
+            parentDir = documentContext.resolveReference(valueBeforeLastSlash || ".", currentDocUri);
+            if (!parentDir)
+              return [3, 4];
+            _b.label = 1;
+          case 1:
+            _b.trys.push([1, 3, , 4]);
+            result = [];
+            return [4, this.readDirectory(parentDir)];
+          case 2:
+            infos = _b.sent();
+            for (_i = 0, infos_1 = infos; _i < infos_1.length; _i++) {
+              _a2 = infos_1[_i], name = _a2[0], type = _a2[1];
+              if (name.charCodeAt(0) !== CharCode_dot && (type === FileType.Directory || joinPath(parentDir, name) !== currentDocUri)) {
+                result.push(createCompletionItem(name, type === FileType.Directory, replaceRange));
               }
             }
-          });
+            return [2, result];
+          case 3:
+            e_1 = _b.sent();
+            return [3, 4];
+          case 4:
+            return [2, []];
         }
-        for (let item of suggestions) {
-          result.items.push(item);
-        }
-      }
-    }
-    return result;
-  }
-  async providePathSuggestions(pathValue, position, range, document, documentContext) {
-    const fullValue = stripQuotes(pathValue);
-    const isValueQuoted = startsWith(pathValue, `'`) || startsWith(pathValue, `"`);
-    const valueBeforeCursor = isValueQuoted ? fullValue.slice(0, position.character - (range.start.character + 1)) : fullValue.slice(0, position.character - range.start.character);
-    const currentDocUri = document.uri;
-    const fullValueRange = isValueQuoted ? shiftRange(range, 1, -1) : range;
-    const replaceRange = pathToReplaceRange(valueBeforeCursor, fullValue, fullValueRange);
-    const valueBeforeLastSlash = valueBeforeCursor.substring(0, valueBeforeCursor.lastIndexOf("/") + 1);
-    let parentDir = documentContext.resolveReference(valueBeforeLastSlash || ".", currentDocUri);
-    if (parentDir) {
-      try {
-        const result = [];
-        const infos = await this.readDirectory(parentDir);
-        for (const [name, type] of infos) {
-          if (name.charCodeAt(0) !== CharCode_dot && (type === FileType.Directory || joinPath(parentDir, name) !== currentDocUri)) {
-            result.push(createCompletionItem(name, type === FileType.Directory, replaceRange));
-          }
-        }
-        return result;
-      } catch (e) {
-      }
-    }
-    return [];
-  }
-};
+      });
+    });
+  };
+  return PathCompletionParticipant2;
+}();
 var CharCode_dot = ".".charCodeAt(0);
 function stripQuotes(fullValue) {
-  if (startsWith(fullValue, `'`) || startsWith(fullValue, `"`)) {
+  if (startsWith(fullValue, "'") || startsWith(fullValue, '"')) {
     return fullValue.slice(1, -1);
   } else {
     return fullValue;
   }
 }
 function pathToReplaceRange(valueBeforeCursor, fullValue, fullValueRange) {
-  let replaceRange;
-  const lastIndexOfSlash = valueBeforeCursor.lastIndexOf("/");
+  var replaceRange;
+  var lastIndexOfSlash = valueBeforeCursor.lastIndexOf("/");
   if (lastIndexOfSlash === -1) {
     replaceRange = fullValueRange;
   } else {
-    const valueAfterLastSlash = fullValue.slice(lastIndexOfSlash + 1);
-    const startPos = shiftPosition(fullValueRange.end, -valueAfterLastSlash.length);
-    const whitespaceIndex = valueAfterLastSlash.indexOf(" ");
-    let endPos;
+    var valueAfterLastSlash = fullValue.slice(lastIndexOfSlash + 1);
+    var startPos = shiftPosition(fullValueRange.end, -valueAfterLastSlash.length);
+    var whitespaceIndex = valueAfterLastSlash.indexOf(" ");
+    var endPos = void 0;
     if (whitespaceIndex !== -1) {
       endPos = shiftPosition(startPos, whitespaceIndex);
     } else {
@@ -6916,12 +7246,116 @@ function shiftPosition(pos, offset) {
   return Position.create(pos.line, pos.character + offset);
 }
 function shiftRange(range, startOffset, endOffset) {
-  const start2 = shiftPosition(range.start, startOffset);
-  const end = shiftPosition(range.end, endOffset);
-  return Range.create(start2, end);
+  var start = shiftPosition(range.start, startOffset);
+  var end = shiftPosition(range.end, endOffset);
+  return Range.create(start, end);
 }
 
 // node_modules/vscode-css-languageservice/lib/esm/services/cssCompletion.js
+var __awaiter2 = function(thisArg, _arguments, P, generator) {
+  function adopt(value) {
+    return value instanceof P ? value : new P(function(resolve) {
+      resolve(value);
+    });
+  }
+  return new (P || (P = Promise))(function(resolve, reject) {
+    function fulfilled(value) {
+      try {
+        step(generator.next(value));
+      } catch (e) {
+        reject(e);
+      }
+    }
+    function rejected(value) {
+      try {
+        step(generator["throw"](value));
+      } catch (e) {
+        reject(e);
+      }
+    }
+    function step(result) {
+      result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected);
+    }
+    step((generator = generator.apply(thisArg, _arguments || [])).next());
+  });
+};
+var __generator2 = function(thisArg, body) {
+  var _ = { label: 0, sent: function() {
+    if (t[0] & 1)
+      throw t[1];
+    return t[1];
+  }, trys: [], ops: [] }, f2, y, t, g;
+  return g = { next: verb(0), "throw": verb(1), "return": verb(2) }, typeof Symbol === "function" && (g[Symbol.iterator] = function() {
+    return this;
+  }), g;
+  function verb(n) {
+    return function(v) {
+      return step([n, v]);
+    };
+  }
+  function step(op) {
+    if (f2)
+      throw new TypeError("Generator is already executing.");
+    while (_)
+      try {
+        if (f2 = 1, y && (t = op[0] & 2 ? y["return"] : op[0] ? y["throw"] || ((t = y["return"]) && t.call(y), 0) : y.next) && !(t = t.call(y, op[1])).done)
+          return t;
+        if (y = 0, t)
+          op = [op[0] & 2, t.value];
+        switch (op[0]) {
+          case 0:
+          case 1:
+            t = op;
+            break;
+          case 4:
+            _.label++;
+            return { value: op[1], done: false };
+          case 5:
+            _.label++;
+            y = op[1];
+            op = [0];
+            continue;
+          case 7:
+            op = _.ops.pop();
+            _.trys.pop();
+            continue;
+          default:
+            if (!(t = _.trys, t = t.length > 0 && t[t.length - 1]) && (op[0] === 6 || op[0] === 2)) {
+              _ = 0;
+              continue;
+            }
+            if (op[0] === 3 && (!t || op[1] > t[0] && op[1] < t[3])) {
+              _.label = op[1];
+              break;
+            }
+            if (op[0] === 6 && _.label < t[1]) {
+              _.label = t[1];
+              t = op;
+              break;
+            }
+            if (t && _.label < t[2]) {
+              _.label = t[2];
+              _.ops.push(op);
+              break;
+            }
+            if (t[2])
+              _.ops.pop();
+            _.trys.pop();
+            continue;
+        }
+        op = body.call(thisArg, _);
+      } catch (e) {
+        op = [6, e];
+        y = 0;
+      } finally {
+        f2 = t = 0;
+      }
+    if (op[0] & 5)
+      throw op[1];
+    return { value: op[0] ? op[1] : void 0, done: true };
+  }
+};
+var localize4 = loadMessageBundle();
 var SnippetFormat = InsertTextFormat.Snippet;
 var retriggerCommand = {
   title: "Suggest",
@@ -6935,45 +7369,64 @@ var SortTexts;
   SortTexts2["Term"] = "y";
   SortTexts2["Variable"] = "z";
 })(SortTexts || (SortTexts = {}));
-var CSSCompletion = class {
-  constructor(variablePrefix = null, lsOptions, cssDataManager) {
+var CSSCompletion = function() {
+  function CSSCompletion2(variablePrefix, lsOptions, cssDataManager) {
+    if (variablePrefix === void 0) {
+      variablePrefix = null;
+    }
     this.variablePrefix = variablePrefix;
     this.lsOptions = lsOptions;
     this.cssDataManager = cssDataManager;
     this.completionParticipants = [];
   }
-  configure(settings) {
+  CSSCompletion2.prototype.configure = function(settings) {
     this.defaultSettings = settings;
-  }
-  getSymbolContext() {
+  };
+  CSSCompletion2.prototype.getSymbolContext = function() {
     if (!this.symbolContext) {
       this.symbolContext = new Symbols(this.styleSheet);
     }
     return this.symbolContext;
-  }
-  setCompletionParticipants(registeredCompletionParticipants) {
+  };
+  CSSCompletion2.prototype.setCompletionParticipants = function(registeredCompletionParticipants) {
     this.completionParticipants = registeredCompletionParticipants || [];
-  }
-  async doComplete2(document, position, styleSheet, documentContext, completionSettings = this.defaultSettings) {
-    if (!this.lsOptions.fileSystemProvider || !this.lsOptions.fileSystemProvider.readDirectory) {
-      return this.doComplete(document, position, styleSheet, completionSettings);
+  };
+  CSSCompletion2.prototype.doComplete2 = function(document, position, styleSheet, documentContext, completionSettings) {
+    if (completionSettings === void 0) {
+      completionSettings = this.defaultSettings;
     }
-    const participant = new PathCompletionParticipant(this.lsOptions.fileSystemProvider.readDirectory);
-    const contributedParticipants = this.completionParticipants;
-    this.completionParticipants = [participant].concat(contributedParticipants);
-    const result = this.doComplete(document, position, styleSheet, completionSettings);
-    try {
-      const pathCompletionResult = await participant.computeCompletions(document, documentContext);
-      return {
-        isIncomplete: result.isIncomplete || pathCompletionResult.isIncomplete,
-        itemDefaults: result.itemDefaults,
-        items: pathCompletionResult.items.concat(result.items)
-      };
-    } finally {
-      this.completionParticipants = contributedParticipants;
-    }
-  }
-  doComplete(document, position, styleSheet, documentSettings) {
+    return __awaiter2(this, void 0, void 0, function() {
+      var participant, contributedParticipants, result, pathCompletionResult;
+      return __generator2(this, function(_a2) {
+        switch (_a2.label) {
+          case 0:
+            if (!this.lsOptions.fileSystemProvider || !this.lsOptions.fileSystemProvider.readDirectory) {
+              return [2, this.doComplete(document, position, styleSheet, completionSettings)];
+            }
+            participant = new PathCompletionParticipant(this.lsOptions.fileSystemProvider.readDirectory);
+            contributedParticipants = this.completionParticipants;
+            this.completionParticipants = [participant].concat(contributedParticipants);
+            result = this.doComplete(document, position, styleSheet, completionSettings);
+            _a2.label = 1;
+          case 1:
+            _a2.trys.push([1, , 3, 4]);
+            return [4, participant.computeCompletions(document, documentContext)];
+          case 2:
+            pathCompletionResult = _a2.sent();
+            return [2, {
+              isIncomplete: result.isIncomplete || pathCompletionResult.isIncomplete,
+              items: pathCompletionResult.items.concat(result.items)
+            }];
+          case 3:
+            this.completionParticipants = contributedParticipants;
+            return [7];
+          case 4:
+            return [2];
+        }
+      });
+    });
+  };
+  CSSCompletion2.prototype.doComplete = function(document, position, styleSheet, documentSettings) {
     this.offset = document.offsetAt(position);
     this.position = position;
     this.currentWord = getCurrentWord(document, this.offset);
@@ -6982,19 +7435,10 @@ var CSSCompletion = class {
     this.styleSheet = styleSheet;
     this.documentSettings = documentSettings;
     try {
-      const result = {
-        isIncomplete: false,
-        itemDefaults: {
-          editRange: {
-            start: { line: position.line, character: position.character - this.currentWord.length },
-            end: position
-          }
-        },
-        items: []
-      };
+      var result = { isIncomplete: false, items: [] };
       this.nodePath = getNodePath(this.styleSheet, this.offset);
-      for (let i = this.nodePath.length - 1; i >= 0; i--) {
-        const node = this.nodePath[i];
+      for (var i = this.nodePath.length - 1; i >= 0; i--) {
+        var node = this.nodePath[i];
         if (node instanceof Property) {
           this.getCompletionsForDeclarationProperty(node.getParent(), result);
         } else if (node instanceof Expression) {
@@ -7004,12 +7448,12 @@ var CSSCompletion = class {
             this.getCompletionsForExpression(node, result);
           }
         } else if (node instanceof SimpleSelector) {
-          const parentRef = node.findAParent(NodeType.ExtendsReference, NodeType.Ruleset);
+          var parentRef = node.findAParent(NodeType.ExtendsReference, NodeType.Ruleset);
           if (parentRef) {
             if (parentRef.type === NodeType.ExtendsReference) {
               this.getCompletionsForExtendsReference(parentRef, node, result);
             } else {
-              const parentRuleSet = parentRef;
+              var parentRuleSet = parentRef;
               this.getCompletionsForSelector(parentRuleSet, parentRuleSet && parentRuleSet.isNested(), result);
             }
           }
@@ -7064,42 +7508,47 @@ var CSSCompletion = class {
       this.defaultReplaceRange = null;
       this.nodePath = null;
     }
-  }
-  isImportPathParent(type) {
+  };
+  CSSCompletion2.prototype.isImportPathParent = function(type) {
     return type === NodeType.Import;
-  }
-  finalize(result) {
+  };
+  CSSCompletion2.prototype.finalize = function(result) {
     return result;
-  }
-  findInNodePath(...types) {
-    for (let i = this.nodePath.length - 1; i >= 0; i--) {
-      const node = this.nodePath[i];
+  };
+  CSSCompletion2.prototype.findInNodePath = function() {
+    var types = [];
+    for (var _i = 0; _i < arguments.length; _i++) {
+      types[_i] = arguments[_i];
+    }
+    for (var i = this.nodePath.length - 1; i >= 0; i--) {
+      var node = this.nodePath[i];
       if (types.indexOf(node.type) !== -1) {
         return node;
       }
     }
     return null;
-  }
-  getCompletionsForDeclarationProperty(declaration, result) {
+  };
+  CSSCompletion2.prototype.getCompletionsForDeclarationProperty = function(declaration, result) {
     return this.getPropertyProposals(declaration, result);
-  }
-  getPropertyProposals(declaration, result) {
-    const triggerPropertyValueCompletion = this.isTriggerPropertyValueCompletionEnabled;
-    const completePropertyWithSemicolon = this.isCompletePropertyWithSemicolonEnabled;
-    const properties = this.cssDataManager.getProperties();
-    properties.forEach((entry) => {
-      let range;
-      let insertText;
-      let retrigger = false;
+  };
+  CSSCompletion2.prototype.getPropertyProposals = function(declaration, result) {
+    var _this = this;
+    var triggerPropertyValueCompletion = this.isTriggerPropertyValueCompletionEnabled;
+    var completePropertyWithSemicolon = this.isCompletePropertyWithSemicolonEnabled;
+    var properties = this.cssDataManager.getProperties();
+    properties.forEach(function(entry) {
+      var range;
+      var insertText;
+      var retrigger = false;
       if (declaration) {
-        range = this.getCompletionRange(declaration.getProperty());
+        range = _this.getCompletionRange(declaration.getProperty());
         insertText = entry.name;
         if (!isDefined(declaration.colonPosition)) {
           insertText += ": ";
           retrigger = true;
         }
       } else {
-        range = this.getCompletionRange(null);
+        range = _this.getCompletionRange(null);
         insertText = entry.name + ": ";
         retrigger = true;
       }
@@ -7107,13 +7556,13 @@ var CSSCompletion = class {
         insertText += "$0;";
       }
       if (declaration && !declaration.semicolonPosition) {
-        if (completePropertyWithSemicolon && this.offset >= this.textDocument.offsetAt(range.end)) {
+        if (completePropertyWithSemicolon && _this.offset >= _this.textDocument.offsetAt(range.end)) {
           insertText += "$0;";
         }
       }
-      const item = {
+      var item = {
         label: entry.name,
-        documentation: getEntryDescription(entry, this.doesSupportMarkdown()),
+        documentation: getEntryDescription(entry, _this.doesSupportMarkdown()),
         tags: isDeprecated(entry) ? [CompletionItemTag.Deprecated] : [],
         textEdit: TextEdit.replace(range, insertText),
         insertTextFormat: InsertTextFormat.Snippet,
@@ -7125,47 +7574,59 @@ var CSSCompletion = class {
       if (triggerPropertyValueCompletion && retrigger) {
         item.command = retriggerCommand;
       }
-      const relevance = typeof entry.relevance === "number" ? Math.min(Math.max(entry.relevance, 0), 99) : 50;
-      const sortTextSuffix = (255 - relevance).toString(16);
-      const sortTextPrefix = startsWith(entry.name, "-") ? SortTexts.VendorPrefixed : SortTexts.Normal;
+      var relevance = typeof entry.relevance === "number" ? Math.min(Math.max(entry.relevance, 0), 99) : 50;
+      var sortTextSuffix = (255 - relevance).toString(16);
+      var sortTextPrefix = startsWith(entry.name, "-") ? SortTexts.VendorPrefixed : SortTexts.Normal;
       item.sortText = sortTextPrefix + "_" + sortTextSuffix;
       result.items.push(item);
     });
-    this.completionParticipants.forEach((participant) => {
+    this.completionParticipants.forEach(function(participant) {
       if (participant.onCssProperty) {
         participant.onCssProperty({
-          propertyName: this.currentWord,
-          range: this.defaultReplaceRange
+          propertyName: _this.currentWord,
+          range: _this.defaultReplaceRange
         });
       }
     });
     return result;
-  }
-  get isTriggerPropertyValueCompletionEnabled() {
-    return this.documentSettings?.triggerPropertyValueCompletion ?? true;
-  }
-  get isCompletePropertyWithSemicolonEnabled() {
-    return this.documentSettings?.completePropertyWithSemicolon ?? true;
-  }
-  getCompletionsForDeclarationValue(node, result) {
-    const propertyName = node.getFullPropertyName();
-    const entry = this.cssDataManager.getProperty(propertyName);
-    let existingNode = node.getValue() || null;
+  };
+  Object.defineProperty(CSSCompletion2.prototype, "isTriggerPropertyValueCompletionEnabled", {
+    get: function() {
+      var _a2, _b;
+      return (_b = (_a2 = this.documentSettings) === null || _a2 === void 0 ? void 0 : _a2.triggerPropertyValueCompletion) !== null && _b !== void 0 ? _b : true;
+    },
+    enumerable: false,
+    configurable: true
+  });
+  Object.defineProperty(CSSCompletion2.prototype, "isCompletePropertyWithSemicolonEnabled", {
+    get: function() {
+      var _a2, _b;
+      return (_b = (_a2 = this.documentSettings) === null || _a2 === void 0 ? void 0 : _a2.completePropertyWithSemicolon) !== null && _b !== void 0 ? _b : true;
+    },
+    enumerable: false,
+    configurable: true
+  });
+  CSSCompletion2.prototype.getCompletionsForDeclarationValue = function(node, result) {
+    var _this = this;
+    var propertyName = node.getFullPropertyName();
+    var entry = this.cssDataManager.getProperty(propertyName);
+    var existingNode = node.getValue() || null;
     while (existingNode && existingNode.hasChildren()) {
       existingNode = existingNode.findChildAtOffset(this.offset, false);
     }
-    this.completionParticipants.forEach((participant) => {
+    this.completionParticipants.forEach(function(participant) {
       if (participant.onCssPropertyValue) {
         participant.onCssPropertyValue({
           propertyName,
-          propertyValue: this.currentWord,
-          range: this.getCompletionRange(existingNode)
+          propertyValue: _this.currentWord,
+          range: _this.getCompletionRange(existingNode)
         });
       }
     });
     if (entry) {
       if (entry.restrictions) {
-        for (const restriction of entry.restrictions) {
+        for (var _i = 0, _a2 = entry.restrictions; _i < _a2.length; _i++) {
+          var restriction = _a2[_i];
           switch (restriction) {
             case "color":
               this.getColorProposals(entry, existingNode, result);
@@ -7204,8 +7665,9 @@ var CSSCompletion = class {
       this.getCSSWideKeywordProposals(entry, existingNode, result);
       this.getUnitProposals(entry, existingNode, result);
     } else {
-      const existingValues = collectValues(this.styleSheet, node);
-      for (const existingValue of existingValues.getEntries()) {
+      var existingValues = collectValues(this.styleSheet, node);
+      for (var _b = 0, _c = existingValues.getEntries(); _b < _c.length; _b++) {
+        var existingValue = _c[_b];
         result.items.push({
           label: existingValue,
           textEdit: TextEdit.replace(this.getCompletionRange(existingNode), existingValue),
@@ -7216,24 +7678,25 @@ var CSSCompletion = class {
     this.getVariableProposals(existingNode, result);
     this.getTermProposals(entry, existingNode, result);
     return result;
-  }
-  getValueEnumProposals(entry, existingNode, result) {
+  };
+  CSSCompletion2.prototype.getValueEnumProposals = function(entry, existingNode, result) {
     if (entry.values) {
-      for (const value of entry.values) {
-        let insertString = value.name;
-        let insertTextFormat;
+      for (var _i = 0, _a2 = entry.values; _i < _a2.length; _i++) {
+        var value = _a2[_i];
+        var insertString = value.name;
+        var insertTextFormat = void 0;
         if (endsWith(insertString, ")")) {
-          const from = insertString.lastIndexOf("(");
+          var from = insertString.lastIndexOf("(");
           if (from !== -1) {
-            insertString = insertString.substring(0, from + 1) + "$1" + insertString.substring(from + 1);
+            insertString = insertString.substr(0, from) + "($1)";
             insertTextFormat = SnippetFormat;
           }
         }
-        let sortText = SortTexts.Enums;
+        var sortText = SortTexts.Enums;
         if (startsWith(value.name, "-")) {
           sortText += SortTexts.VendorPrefixed;
         }
-        const item = {
+        var item = {
           label: value.name,
           documentation: getEntryDescription(value, this.doesSupportMarkdown()),
           tags: isDeprecated(entry) ? [CompletionItemTag.Deprecated] : [],
@@ -7246,9 +7709,9 @@ var CSSCompletion = class {
       }
     }
     return result;
-  }
-  getCSSWideKeywordProposals(entry, existingNode, result) {
-    for (const keywords in cssWideKeywords) {
+  };
+  CSSCompletion2.prototype.getCSSWideKeywordProposals = function(entry, existingNode, result) {
+    for (var keywords in cssWideKeywords) {
       result.items.push({
         label: keywords,
         documentation: cssWideKeywords[keywords],
@@ -7256,8 +7719,8 @@ var CSSCompletion = class {
         kind: CompletionItemKind.Value
       });
     }
-    for (const func in cssWideFunctions) {
-      const insertText = moveCursorInsideParenthesis(func);
+    for (var func in cssWideFunctions) {
+      var insertText = moveCursorInsideParenthesis(func);
       result.items.push({
         label: func,
         documentation: cssWideFunctions[func],
@@ -7268,18 +7731,19 @@ var CSSCompletion = class {
       });
     }
     return result;
-  }
-  getCompletionsForInterpolation(node, result) {
+  };
+  CSSCompletion2.prototype.getCompletionsForInterpolation = function(node, result) {
     if (this.offset >= node.offset + 2) {
       this.getVariableProposals(null, result);
     }
     return result;
-  }
-  getVariableProposals(existingNode, result) {
-    const symbols = this.getSymbolContext().findSymbolsAtOffset(this.offset, ReferenceType.Variable);
-    for (const symbol of symbols) {
-      const insertText = startsWith(symbol.name, "--") ? `var(${symbol.name})` : symbol.name;
-      const completionItem = {
+  };
+  CSSCompletion2.prototype.getVariableProposals = function(existingNode, result) {
+    var symbols = this.getSymbolContext().findSymbolsAtOffset(this.offset, ReferenceType.Variable);
+    for (var _i = 0, symbols_1 = symbols; _i < symbols_1.length; _i++) {
+      var symbol = symbols_1[_i];
+      var insertText = startsWith(symbol.name, "--") ? "var(".concat(symbol.name, ")") : symbol.name;
+      var completionItem = {
         label: symbol.name,
         documentation: symbol.value ? getLimitedString(symbol.value) : symbol.value,
         textEdit: TextEdit.replace(this.getCompletionRange(existingNode), insertText),
@@ -7290,22 +7754,23 @@ var CSSCompletion = class {
         completionItem.kind = CompletionItemKind.Color;
       }
       if (symbol.node.type === NodeType.FunctionParameter) {
-        const mixinNode = symbol.node.getParent();
+        var mixinNode = symbol.node.getParent();
         if (mixinNode.type === NodeType.MixinDeclaration) {
-          completionItem.detail = t("argument from '{0}'", mixinNode.getName());
+          completionItem.detail = localize4("completion.argument", "argument from '{0}'", mixinNode.getName());
         }
       }
       result.items.push(completionItem);
     }
     return result;
-  }
-  getVariableProposalsForCSSVarFunction(result) {
-    const allReferencedVariables = new Set2();
+  };
+  CSSCompletion2.prototype.getVariableProposalsForCSSVarFunction = function(result) {
+    var allReferencedVariables = new Set();
     this.styleSheet.acceptVisitor(new VariableCollector(allReferencedVariables, this.offset));
-    let symbols = this.getSymbolContext().findSymbolsAtOffset(this.offset, ReferenceType.Variable);
-    for (const symbol of symbols) {
+    var symbols = this.getSymbolContext().findSymbolsAtOffset(this.offset, ReferenceType.Variable);
+    for (var _i = 0, symbols_2 = symbols; _i < symbols_2.length; _i++) {
+      var symbol = symbols_2[_i];
       if (startsWith(symbol.name, "--")) {
-        const completionItem = {
+        var completionItem = {
           label: symbol.name,
           documentation: symbol.value ? getLimitedString(symbol.value) : symbol.value,
           textEdit: TextEdit.replace(this.getCompletionRange(null), symbol.name),
@@ -7318,9 +7783,10 @@ var CSSCompletion = class {
       }
       allReferencedVariables.remove(symbol.name);
     }
-    for (const name of allReferencedVariables.getEntries()) {
+    for (var _a2 = 0, _b = allReferencedVariables.getEntries(); _a2 < _b.length; _a2++) {
+      var name = _b[_a2];
       if (startsWith(name, "--")) {
-        const completionItem = {
+        var completionItem = {
           label: name,
           textEdit: TextEdit.replace(this.getCompletionRange(null), name),
           kind: CompletionItemKind.Variable
@@ -7329,11 +7795,11 @@ var CSSCompletion = class {
       }
     }
     return result;
-  }
-  getUnitProposals(entry, existingNode, result) {
-    let currentWord = "0";
+  };
+  CSSCompletion2.prototype.getUnitProposals = function(entry, existingNode, result) {
+    var currentWord = "0";
     if (this.currentWord.length > 0) {
-      const numMatch = this.currentWord.match(/^-?\d[\.\d+]*/);
+      var numMatch = this.currentWord.match(/^-?\d[\.\d+]*/);
       if (numMatch) {
         currentWord = numMatch[0];
         result.isIncomplete = currentWord.length === this.currentWord.length;
@@ -7345,11 +7811,13 @@ var CSSCompletion = class {
       existingNode = existingNode.getParent();
     }
     if (entry.restrictions) {
-      for (const restriction of entry.restrictions) {
-        const units2 = units[restriction];
+      for (var _i = 0, _a2 = entry.restrictions; _i < _a2.length; _i++) {
+        var restriction = _a2[_i];
+        var units2 = units[restriction];
         if (units2) {
-          for (const unit of units2) {
-            const insertText = currentWord + unit;
+          for (var _b = 0, units_1 = units2; _b < units_1.length; _b++) {
+            var unit = units_1[_b];
+            var insertText = currentWord + unit;
             result.items.push({
               label: insertText,
               textEdit: TextEdit.replace(this.getCompletionRange(existingNode), insertText),
@@ -7360,19 +7828,19 @@ var CSSCompletion = class {
       }
     }
     return result;
-  }
-  getCompletionRange(existingNode) {
+  };
+  CSSCompletion2.prototype.getCompletionRange = function(existingNode) {
     if (existingNode && existingNode.offset <= this.offset && this.offset <= existingNode.end) {
-      const end = existingNode.end !== -1 ? this.textDocument.positionAt(existingNode.end) : this.position;
-      const start2 = this.textDocument.positionAt(existingNode.offset);
-      if (start2.line === end.line) {
-        return Range.create(start2, end);
+      var end = existingNode.end !== -1 ? this.textDocument.positionAt(existingNode.end) : this.position;
+      var start = this.textDocument.positionAt(existingNode.offset);
+      if (start.line === end.line) {
+        return Range.create(start, end);
       }
     }
     return this.defaultReplaceRange;
-  }
-  getColorProposals(entry, existingNode, result) {
-    for (const color in colors) {
+  };
+  CSSCompletion2.prototype.getColorProposals = function(entry, existingNode, result) {
+    for (var color in colors) {
       result.items.push({
         label: color,
         documentation: colors[color],
@@ -7380,7 +7848,7 @@ var CSSCompletion = class {
         kind: CompletionItemKind.Color
       });
     }
-    for (const color in colorKeywords) {
+    for (var color in colorKeywords) {
       result.items.push({
         label: color,
         documentation: colorKeywords[color],
@@ -7388,29 +7856,40 @@ var CSSCompletion = class {
         kind: CompletionItemKind.Value
       });
     }
-    const colorValues = new Set2();
+    var colorValues = new Set();
     this.styleSheet.acceptVisitor(new ColorValueCollector(colorValues, this.offset));
-    for (const color of colorValues.getEntries()) {
+    for (var _i = 0, _a2 = colorValues.getEntries(); _i < _a2.length; _i++) {
+      var color = _a2[_i];
       result.items.push({
         label: color,
         textEdit: TextEdit.replace(this.getCompletionRange(existingNode), color),
         kind: CompletionItemKind.Color
       });
     }
-    for (const p of colorFunctions) {
+    var _loop_1 = function(p2) {
+      var tabStop = 1;
+      var replaceFunction = function(_match, p1) {
+        return "${" + tabStop++ + ":" + p1 + "}";
+      };
+      var insertText = p2.func.replace(/\[?\$(\w+)\]?/g, replaceFunction);
       result.items.push({
-        label: p.label,
-        detail: p.func,
-        documentation: p.desc,
-        textEdit: TextEdit.replace(this.getCompletionRange(existingNode), p.insertText),
+        label: p2.func.substr(0, p2.func.indexOf("(")),
+        detail: p2.func,
+        documentation: p2.desc,
+        textEdit: TextEdit.replace(this_1.getCompletionRange(existingNode), insertText),
         insertTextFormat: SnippetFormat,
         kind: CompletionItemKind.Function
       });
+    };
+    var this_1 = this;
+    for (var _b = 0, _c = colorFunctions; _b < _c.length; _b++) {
+      var p = _c[_b];
+      _loop_1(p);
     }
     return result;
-  }
-  getPositionProposals(entry, existingNode, result) {
-    for (const position in positionKeywords) {
+  };
+  CSSCompletion2.prototype.getPositionProposals = function(entry, existingNode, result) {
+    for (var position in positionKeywords) {
       result.items.push({
         label: position,
         documentation: positionKeywords[position],
@@ -7419,20 +7898,20 @@ var CSSCompletion = class {
       });
     }
     return result;
-  }
-  getRepeatStyleProposals(entry, existingNode, result) {
-    for (const repeat2 in repeatStyleKeywords) {
+  };
+  CSSCompletion2.prototype.getRepeatStyleProposals = function(entry, existingNode, result) {
+    for (var repeat in repeatStyleKeywords) {
       result.items.push({
-        label: repeat2,
-        documentation: repeatStyleKeywords[repeat2],
-        textEdit: TextEdit.replace(this.getCompletionRange(existingNode), repeat2),
+        label: repeat,
+        documentation: repeatStyleKeywords[repeat],
+        textEdit: TextEdit.replace(this.getCompletionRange(existingNode), repeat),
         kind: CompletionItemKind.Value
       });
     }
     return result;
-  }
-  getLineStyleProposals(entry, existingNode, result) {
-    for (const lineStyle in lineStyleKeywords) {
+  };
+  CSSCompletion2.prototype.getLineStyleProposals = function(entry, existingNode, result) {
+    for (var lineStyle in lineStyleKeywords) {
       result.items.push({
         label: lineStyle,
         documentation: lineStyleKeywords[lineStyle],
@@ -7441,9 +7920,10 @@ var CSSCompletion = class {
       });
     }
     return result;
-  }
-  getLineWidthProposals(entry, existingNode, result) {
-    for (const lineWidth of lineWidthKeywords) {
+  };
+  CSSCompletion2.prototype.getLineWidthProposals = function(entry, existingNode, result) {
+    for (var _i = 0, _a2 = lineWidthKeywords; _i < _a2.length; _i++) {
+      var lineWidth = _a2[_i];
       result.items.push({
         label: lineWidth,
         textEdit: TextEdit.replace(this.getCompletionRange(existingNode), lineWidth),
@@ -7451,9 +7931,9 @@ var CSSCompletion = class {
       });
     }
     return result;
-  }
-  getGeometryBoxProposals(entry, existingNode, result) {
-    for (const box in geometryBoxKeywords) {
+  };
+  CSSCompletion2.prototype.getGeometryBoxProposals = function(entry, existingNode, result) {
+    for (var box in geometryBoxKeywords) {
       result.items.push({
         label: box,
         documentation: geometryBoxKeywords[box],
@@ -7462,9 +7942,9 @@ var CSSCompletion = class {
       });
     }
     return result;
-  }
-  getBoxProposals(entry, existingNode, result) {
-    for (const box in boxKeywords) {
+  };
+  CSSCompletion2.prototype.getBoxProposals = function(entry, existingNode, result) {
+    for (var box in boxKeywords) {
       result.items.push({
         label: box,
         documentation: boxKeywords[box],
@@ -7473,10 +7953,10 @@ var CSSCompletion = class {
       });
     }
     return result;
-  }
-  getImageProposals(entry, existingNode, result) {
-    for (const image in imageFunctions) {
-      const insertText = moveCursorInsideParenthesis(image);
+  };
+  CSSCompletion2.prototype.getImageProposals = function(entry, existingNode, result) {
+    for (var image in imageFunctions) {
+      var insertText = moveCursorInsideParenthesis(image);
       result.items.push({
         label: image,
         documentation: imageFunctions[image],
@@ -7486,10 +7966,10 @@ var CSSCompletion = class {
       });
     }
     return result;
-  }
-  getTimingFunctionProposals(entry, existingNode, result) {
-    for (const timing in transitionTimingFunctions) {
-      const insertText = moveCursorInsideParenthesis(timing);
+  };
+  CSSCompletion2.prototype.getTimingFunctionProposals = function(entry, existingNode, result) {
+    for (var timing in transitionTimingFunctions) {
+      var insertText = moveCursorInsideParenthesis(timing);
       result.items.push({
         label: timing,
         documentation: transitionTimingFunctions[timing],
@@ -7499,10 +7979,10 @@ var CSSCompletion = class {
       });
     }
     return result;
-  }
-  getBasicShapeProposals(entry, existingNode, result) {
-    for (const shape in basicShapeFunctions) {
-      const insertText = moveCursorInsideParenthesis(shape);
+  };
+  CSSCompletion2.prototype.getBasicShapeProposals = function(entry, existingNode, result) {
+    for (var shape in basicShapeFunctions) {
+      var insertText = moveCursorInsideParenthesis(shape);
       result.items.push({
         label: shape,
         documentation: basicShapeFunctions[shape],
@@ -7512,9 +7992,9 @@ var CSSCompletion = class {
       });
     }
     return result;
-  }
-  getCompletionsForStylesheet(result) {
-    const node = this.styleSheet.findFirstChildBeforeOffset(this.offset);
+  };
+  CSSCompletion2.prototype.getCompletionsForStylesheet = function(result) {
+    var node = this.styleSheet.findFirstChildBeforeOffset(this.offset);
     if (!node) {
       return this.getCompletionForTopLevel(result);
     }
@@ -7525,34 +8005,36 @@ var CSSCompletion = class {
       return this.getCompletionsForSupports(node, result);
     }
     return result;
-  }
-  getCompletionForTopLevel(result) {
-    this.cssDataManager.getAtDirectives().forEach((entry) => {
+  };
+  CSSCompletion2.prototype.getCompletionForTopLevel = function(result) {
+    var _this = this;
+    this.cssDataManager.getAtDirectives().forEach(function(entry) {
       result.items.push({
         label: entry.name,
-        textEdit: TextEdit.replace(this.getCompletionRange(null), entry.name),
-        documentation: getEntryDescription(entry, this.doesSupportMarkdown()),
+        textEdit: TextEdit.replace(_this.getCompletionRange(null), entry.name),
+        documentation: getEntryDescription(entry, _this.doesSupportMarkdown()),
         tags: isDeprecated(entry) ? [CompletionItemTag.Deprecated] : [],
         kind: CompletionItemKind.Keyword
       });
     });
     this.getCompletionsForSelector(null, false, result);
     return result;
-  }
-  getCompletionsForRuleSet(ruleSet, result) {
-    const declarations = ruleSet.getDeclarations();
-    const isAfter = declarations && declarations.endsWith("}") && this.offset >= declarations.end;
+  };
+  CSSCompletion2.prototype.getCompletionsForRuleSet = function(ruleSet, result) {
+    var declarations = ruleSet.getDeclarations();
+    var isAfter = declarations && declarations.endsWith("}") && this.offset >= declarations.end;
     if (isAfter) {
       return this.getCompletionForTopLevel(result);
     }
-    const isInSelectors = !declarations || this.offset <= declarations.offset;
+    var isInSelectors = !declarations || this.offset <= declarations.offset;
     if (isInSelectors) {
       return this.getCompletionsForSelector(ruleSet, ruleSet.isNested(), result);
     }
     return this.getCompletionsForDeclarations(ruleSet.getDeclarations(), result);
-  }
-  getCompletionsForSelector(ruleSet, isNested, result) {
-    const existingNode = this.findInNodePath(NodeType.PseudoSelector, NodeType.IdentifierSelector, NodeType.ClassSelector, NodeType.ElementNameSelector);
+  };
+  CSSCompletion2.prototype.getCompletionsForSelector = function(ruleSet, isNested, result) {
+    var _this = this;
+    var existingNode = this.findInNodePath(NodeType.PseudoSelector, NodeType.IdentifierSelector, NodeType.ClassSelector, NodeType.ElementNameSelector);
     if (!existingNode && this.hasCharacterAtPosition(this.offset - this.currentWord.length - 1, ":")) {
       this.currentWord = ":" + this.currentWord;
       if (this.hasCharacterAtPosition(this.offset - this.currentWord.length - 1, ":")) {
@@ -7560,47 +8042,49 @@ var CSSCompletion = class {
       }
       this.defaultReplaceRange = Range.create(Position.create(this.position.line, this.position.character - this.currentWord.length), this.position);
     }
-    const pseudoClasses = this.cssDataManager.getPseudoClasses();
-    pseudoClasses.forEach((entry) => {
-      const insertText = moveCursorInsideParenthesis(entry.name);
-      const item = {
-        label: entry.name,
-        textEdit: TextEdit.replace(this.getCompletionRange(existingNode), insertText),
-        documentation: getEntryDescription(entry, this.doesSupportMarkdown()),
-        tags: isDeprecated(entry) ? [CompletionItemTag.Deprecated] : [],
+    var pseudoClasses = this.cssDataManager.getPseudoClasses();
+    pseudoClasses.forEach(function(entry2) {
+      var insertText = moveCursorInsideParenthesis(entry2.name);
+      var item = {
+        label: entry2.name,
+        textEdit: TextEdit.replace(_this.getCompletionRange(existingNode), insertText),
+        documentation: getEntryDescription(entry2, _this.doesSupportMarkdown()),
+        tags: isDeprecated(entry2) ? [CompletionItemTag.Deprecated] : [],
         kind: CompletionItemKind.Function,
-        insertTextFormat: entry.name !== insertText ? SnippetFormat : void 0
+        insertTextFormat: entry2.name !== insertText ? SnippetFormat : void 0
       };
-      if (startsWith(entry.name, ":-")) {
+      if (startsWith(entry2.name, ":-")) {
         item.sortText = SortTexts.VendorPrefixed;
       }
       result.items.push(item);
     });
-    const pseudoElements = this.cssDataManager.getPseudoElements();
-    pseudoElements.forEach((entry) => {
-      const insertText = moveCursorInsideParenthesis(entry.name);
-      const item = {
-        label: entry.name,
-        textEdit: TextEdit.replace(this.getCompletionRange(existingNode), insertText),
-        documentation: getEntryDescription(entry, this.doesSupportMarkdown()),
-        tags: isDeprecated(entry) ? [CompletionItemTag.Deprecated] : [],
+    var pseudoElements = this.cssDataManager.getPseudoElements();
+    pseudoElements.forEach(function(entry2) {
+      var insertText = moveCursorInsideParenthesis(entry2.name);
+      var item = {
+        label: entry2.name,
+        textEdit: TextEdit.replace(_this.getCompletionRange(existingNode), insertText),
+        documentation: getEntryDescription(entry2, _this.doesSupportMarkdown()),
+        tags: isDeprecated(entry2) ? [CompletionItemTag.Deprecated] : [],
         kind: CompletionItemKind.Function,
-        insertTextFormat: entry.name !== insertText ? SnippetFormat : void 0
+        insertTextFormat: entry2.name !== insertText ? SnippetFormat : void 0
       };
-      if (startsWith(entry.name, "::-")) {
+      if (startsWith(entry2.name, "::-")) {
         item.sortText = SortTexts.VendorPrefixed;
       }
       result.items.push(item);
     });
     if (!isNested) {
-      for (const entry of html5Tags) {
+      for (var _i = 0, _a2 = html5Tags; _i < _a2.length; _i++) {
+        var entry = _a2[_i];
         result.items.push({
           label: entry,
           textEdit: TextEdit.replace(this.getCompletionRange(existingNode), entry),
           kind: CompletionItemKind.Keyword
         });
       }
-      for (const entry of svgElements) {
+      for (var _b = 0, _c = svgElements; _b < _c.length; _b++) {
+        var entry = _c[_b];
         result.items.push({
           label: entry,
           textEdit: TextEdit.replace(this.getCompletionRange(existingNode), entry),
@@ -7608,17 +8092,17 @@ var CSSCompletion = class {
         });
       }
     }
-    const visited = {};
+    var visited = {};
     visited[this.currentWord] = true;
-    const docText = this.textDocument.getText();
-    this.styleSheet.accept((n) => {
+    var docText = this.textDocument.getText();
+    this.styleSheet.accept(function(n) {
       if (n.type === NodeType.SimpleSelector && n.length > 0) {
-        const selector = docText.substr(n.offset, n.length);
-        if (selector.charAt(0) === "." && !visited[selector]) {
-          visited[selector] = true;
+        var selector2 = docText.substr(n.offset, n.length);
+        if (selector2.charAt(0) === "." && !visited[selector2]) {
+          visited[selector2] = true;
           result.items.push({
-            label: selector,
-            textEdit: TextEdit.replace(this.getCompletionRange(existingNode), selector),
+            label: selector2,
+            textEdit: TextEdit.replace(_this.getCompletionRange(existingNode), selector2),
             kind: CompletionItemKind.Keyword
           });
         }
@@ -7627,23 +8111,23 @@ var CSSCompletion = class {
       return true;
     });
     if (ruleSet && ruleSet.isNested()) {
-      const selector = ruleSet.getSelectors().findFirstChildBeforeOffset(this.offset);
+      var selector = ruleSet.getSelectors().findFirstChildBeforeOffset(this.offset);
       if (selector && ruleSet.getSelectors().getChildren().indexOf(selector) === 0) {
         this.getPropertyProposals(null, result);
       }
     }
     return result;
-  }
-  getCompletionsForDeclarations(declarations, result) {
+  };
+  CSSCompletion2.prototype.getCompletionsForDeclarations = function(declarations, result) {
     if (!declarations || this.offset === declarations.offset) {
       return result;
     }
-    const node = declarations.findFirstChildBeforeOffset(this.offset);
+    var node = declarations.findFirstChildBeforeOffset(this.offset);
     if (!node) {
       return this.getCompletionsForDeclarationProperty(null, result);
     }
     if (node instanceof AbstractDeclaration) {
-      const declaration = node;
+      var declaration = node;
       if (!isDefined(declaration.colonPosition) || this.offset <= declaration.colonPosition) {
         return this.getCompletionsForDeclarationProperty(declaration, result);
       } else if (isDefined(declaration.semicolonPosition) && declaration.semicolonPosition < this.offset) {
@@ -7663,25 +8147,25 @@ var CSSCompletion = class {
       this.getCompletionsForDeclarationProperty(null, result);
     }
     return result;
-  }
-  getCompletionsForVariableDeclaration(declaration, result) {
+  };
+  CSSCompletion2.prototype.getCompletionsForVariableDeclaration = function(declaration, result) {
     if (this.offset && isDefined(declaration.colonPosition) && this.offset > declaration.colonPosition) {
-      this.getVariableProposals(declaration.getValue() || null, result);
+      this.getVariableProposals(declaration.getValue(), result);
     }
     return result;
-  }
-  getCompletionsForExpression(expression, result) {
-    const parent = expression.getParent();
+  };
+  CSSCompletion2.prototype.getCompletionsForExpression = function(expression, result) {
+    var parent = expression.getParent();
     if (parent instanceof FunctionArgument) {
       this.getCompletionsForFunctionArgument(parent, parent.getParent(), result);
       return result;
     }
-    const declaration = expression.findParent(NodeType.Declaration);
+    var declaration = expression.findParent(NodeType.Declaration);
     if (!declaration) {
       this.getTermProposals(void 0, null, result);
       return result;
     }
-    const node = expression.findChildAtOffset(this.offset, true);
+    var node = expression.findChildAtOffset(this.offset, true);
     if (!node) {
       return this.getCompletionsForDeclarationValue(declaration, result);
     }
@@ -7689,56 +8173,61 @@ var CSSCompletion = class {
       return this.getCompletionsForDeclarationValue(declaration, result);
     }
     return result;
-  }
-  getCompletionsForFunctionArgument(arg, func, result) {
-    const identifier = func.getIdentifier();
+  };
+  CSSCompletion2.prototype.getCompletionsForFunctionArgument = function(arg, func, result) {
+    var identifier = func.getIdentifier();
     if (identifier && identifier.matches("var")) {
       if (!func.getArguments().hasChildren() || func.getArguments().getChild(0) === arg) {
         this.getVariableProposalsForCSSVarFunction(result);
       }
     }
     return result;
-  }
-  getCompletionsForFunctionDeclaration(decl, result) {
-    const declarations = decl.getDeclarations();
+  };
+  CSSCompletion2.prototype.getCompletionsForFunctionDeclaration = function(decl, result) {
+    var declarations = decl.getDeclarations();
     if (declarations && this.offset > declarations.offset && this.offset < declarations.end) {
       this.getTermProposals(void 0, null, result);
     }
     return result;
-  }
-  getCompletionsForMixinReference(ref, result) {
-    const allMixins = this.getSymbolContext().findSymbolsAtOffset(this.offset, ReferenceType.Mixin);
-    for (const mixinSymbol of allMixins) {
+  };
+  CSSCompletion2.prototype.getCompletionsForMixinReference = function(ref, result) {
+    var _this = this;
+    var allMixins = this.getSymbolContext().findSymbolsAtOffset(this.offset, ReferenceType.Mixin);
+    for (var _i = 0, allMixins_1 = allMixins; _i < allMixins_1.length; _i++) {
+      var mixinSymbol = allMixins_1[_i];
       if (mixinSymbol.node instanceof MixinDeclaration) {
         result.items.push(this.makeTermProposal(mixinSymbol, mixinSymbol.node.getParameters(), null));
       }
     }
-    const identifierNode = ref.getIdentifier() || null;
-    this.completionParticipants.forEach((participant) => {
+    var identifierNode = ref.getIdentifier() || null;
+    this.completionParticipants.forEach(function(participant) {
       if (participant.onCssMixinReference) {
         participant.onCssMixinReference({
-          mixinName: this.currentWord,
-          range: this.getCompletionRange(identifierNode)
+          mixinName: _this.currentWord,
+          range: _this.getCompletionRange(identifierNode)
         });
       }
     });
     return result;
-  }
-  getTermProposals(entry, existingNode, result) {
-    const allFunctions = this.getSymbolContext().findSymbolsAtOffset(this.offset, ReferenceType.Function);
-    for (const functionSymbol of allFunctions) {
+  };
+  CSSCompletion2.prototype.getTermProposals = function(entry, existingNode, result) {
+    var allFunctions = this.getSymbolContext().findSymbolsAtOffset(this.offset, ReferenceType.Function);
+    for (var _i = 0, allFunctions_1 = allFunctions; _i < allFunctions_1.length; _i++) {
+      var functionSymbol = allFunctions_1[_i];
       if (functionSymbol.node instanceof FunctionDeclaration) {
         result.items.push(this.makeTermProposal(functionSymbol, functionSymbol.node.getParameters(), existingNode));
       }
     }
     return result;
-  }
-  makeTermProposal(symbol, parameters, existingNode) {
-    const decl = symbol.node;
-    const params = parameters.getChildren().map((c) => {
+  };
+  CSSCompletion2.prototype.makeTermProposal = function(symbol, parameters, existingNode) {
+    var decl = symbol.node;
+    var params = parameters.getChildren().map(function(c) {
       return c instanceof FunctionParameter ? c.getName() : c.getText();
     });
-    const insertText = symbol.name + "(" + params.map((p, index) => "${" + (index + 1) + ":" + p + "}").join(", ") + ")";
+    var insertText = symbol.name + "(" + params.map(function(p, index) {
+      return "${" + (index + 1) + ":" + p + "}";
+    }).join(", ") + ")";
     return {
       label: symbol.name,
       detail: symbol.name + "(" + params.join(", ") + ")",
@@ -7747,9 +8236,9 @@ var CSSCompletion = class {
       kind: CompletionItemKind.Function,
       sortText: SortTexts.Term
     };
-  }
-  getCompletionsForSupportsCondition(supportsCondition, result) {
-    const child = supportsCondition.findFirstChildBeforeOffset(this.offset);
+  };
+  CSSCompletion2.prototype.getCompletionsForSupportsCondition = function(supportsCondition, result) {
+    var child = supportsCondition.findFirstChildBeforeOffset(this.offset);
     if (child) {
       if (child instanceof Declaration) {
         if (!isDefined(child.colonPosition) || this.offset <= child.colonPosition) {
@@ -7765,38 +8254,38 @@ var CSSCompletion = class {
       return this.getCompletionsForDeclarationProperty(null, result);
     }
     return result;
-  }
-  getCompletionsForSupports(supports, result) {
-    const declarations = supports.getDeclarations();
-    const inInCondition = !declarations || this.offset <= declarations.offset;
+  };
+  CSSCompletion2.prototype.getCompletionsForSupports = function(supports, result) {
+    var declarations = supports.getDeclarations();
+    var inInCondition = !declarations || this.offset <= declarations.offset;
     if (inInCondition) {
-      const child = supports.findFirstChildBeforeOffset(this.offset);
+      var child = supports.findFirstChildBeforeOffset(this.offset);
       if (child instanceof SupportsCondition) {
         return this.getCompletionsForSupportsCondition(child, result);
       }
       return result;
     }
     return this.getCompletionForTopLevel(result);
-  }
-  getCompletionsForExtendsReference(extendsRef, existingNode, result) {
+  };
+  CSSCompletion2.prototype.getCompletionsForExtendsReference = function(extendsRef, existingNode, result) {
     return result;
-  }
-  getCompletionForUriLiteralValue(uriLiteralNode, result) {
-    let uriValue;
-    let position;
-    let range;
+  };
+  CSSCompletion2.prototype.getCompletionForUriLiteralValue = function(uriLiteralNode, result) {
+    var uriValue;
+    var position;
+    var range;
     if (!uriLiteralNode.hasChildren()) {
       uriValue = "";
       position = this.position;
-      const emptyURIValuePosition = this.textDocument.positionAt(uriLiteralNode.offset + "url(".length);
+      var emptyURIValuePosition = this.textDocument.positionAt(uriLiteralNode.offset + "url(".length);
       range = Range.create(emptyURIValuePosition, emptyURIValuePosition);
     } else {
-      const uriValueNode = uriLiteralNode.getChild(0);
+      var uriValueNode = uriLiteralNode.getChild(0);
       uriValue = uriValueNode.getText();
       position = this.position;
       range = this.getCompletionRange(uriValueNode);
     }
-    this.completionParticipants.forEach((participant) => {
+    this.completionParticipants.forEach(function(participant) {
       if (participant.onCssURILiteralValue) {
         participant.onCssURILiteralValue({
           uriValue,
@@ -7806,61 +8295,65 @@ var CSSCompletion = class {
       }
     });
     return result;
-  }
-  getCompletionForImportPath(importPathNode, result) {
-    this.completionParticipants.forEach((participant) => {
+  };
+  CSSCompletion2.prototype.getCompletionForImportPath = function(importPathNode, result) {
+    var _this = this;
+    this.completionParticipants.forEach(function(participant) {
       if (participant.onCssImportPath) {
         participant.onCssImportPath({
           pathValue: importPathNode.getText(),
-          position: this.position,
-          range: this.getCompletionRange(importPathNode)
+          position: _this.position,
+          range: _this.getCompletionRange(importPathNode)
         });
       }
     });
     return result;
-  }
-  hasCharacterAtPosition(offset, char) {
-    const text = this.textDocument.getText();
+  };
+  CSSCompletion2.prototype.hasCharacterAtPosition = function(offset, char) {
+    var text = this.textDocument.getText();
     return offset >= 0 && offset < text.length && text.charAt(offset) === char;
-  }
-  doesSupportMarkdown() {
+  };
+  CSSCompletion2.prototype.doesSupportMarkdown = function() {
+    var _a2, _b, _c;
     if (!isDefined(this.supportsMarkdown)) {
       if (!isDefined(this.lsOptions.clientCapabilities)) {
         this.supportsMarkdown = true;
         return this.supportsMarkdown;
       }
-      const documentationFormat = this.lsOptions.clientCapabilities.textDocument?.completion?.completionItem?.documentationFormat;
+      var documentationFormat = (_c = (_b = (_a2 = this.lsOptions.clientCapabilities.textDocument) === null || _a2 === void 0 ? void 0 : _a2.completion) === null || _b === void 0 ? void 0 : _b.completionItem) === null || _c === void 0 ? void 0 : _c.documentationFormat;
       this.supportsMarkdown = Array.isArray(documentationFormat) && documentationFormat.indexOf(MarkupKind.Markdown) !== -1;
     }
     return this.supportsMarkdown;
-  }
-};
+  };
+  return CSSCompletion2;
+}();
 function isDeprecated(entry) {
   if (entry.status && (entry.status === "nonstandard" || entry.status === "obsolete")) {
     return true;
   }
   return false;
 }
-var Set2 = class {
-  constructor() {
+var Set = function() {
+  function Set2() {
     this.entries = {};
   }
-  add(entry) {
+  Set2.prototype.add = function(entry) {
     this.entries[entry] = true;
-  }
-  remove(entry) {
+  };
+  Set2.prototype.remove = function(entry) {
     delete this.entries[entry];
-  }
-  getEntries() {
+  };
+  Set2.prototype.getEntries = function() {
     return Object.keys(this.entries);
-  }
-};
+  };
+  return Set2;
+}();
 function moveCursorInsideParenthesis(text) {
   return text.replace(/\(\)$/, "($1)");
 }
 function collectValues(styleSheet, declaration) {
-  const fullPropertyName = declaration.getFullPropertyName();
-  const entries = new Set2();
+  var fullPropertyName = declaration.getFullPropertyName();
+  var entries = new Set();
   function visitValue(node) {
     if (node instanceof Identifier || node instanceof NumericValue || node instanceof HexColorValue) {
       entries.add(node.getText());
@@ -7868,13 +8361,13 @@ function collectValues(styleSheet, declaration) {
     return true;
   }
   function matchesProperty(decl) {
-    const propertyName = decl.getFullPropertyName();
+    var propertyName = decl.getFullPropertyName();
     return fullPropertyName === propertyName;
   }
   function vistNode(node) {
     if (node instanceof Declaration && node !== declaration) {
       if (matchesProperty(node)) {
-        const value = node.getValue();
+        var value = node.getValue();
         if (value) {
           value.accept(visitValue);
         }
@@ -7885,149 +8378,191 @@ function collectValues(styleSheet, declaration) {
   styleSheet.accept(vistNode);
   return entries;
 }
-var ColorValueCollector = class {
-  constructor(entries, currentOffset) {
+var ColorValueCollector = function() {
+  function ColorValueCollector2(entries, currentOffset) {
     this.entries = entries;
     this.currentOffset = currentOffset;
   }
-  visitNode(node) {
+  ColorValueCollector2.prototype.visitNode = function(node) {
     if (node instanceof HexColorValue || node instanceof Function && isColorConstructor(node)) {
       if (this.currentOffset < node.offset || node.end < this.currentOffset) {
         this.entries.add(node.getText());
       }
     }
     return true;
-  }
-};
-var VariableCollector = class {
-  constructor(entries, currentOffset) {
+  };
+  return ColorValueCollector2;
+}();
+var VariableCollector = function() {
+  function VariableCollector2(entries, currentOffset) {
     this.entries = entries;
     this.currentOffset = currentOffset;
   }
-  visitNode(node) {
+  VariableCollector2.prototype.visitNode = function(node) {
     if (node instanceof Identifier && node.isCustomProperty) {
       if (this.currentOffset < node.offset || node.end < this.currentOffset) {
         this.entries.add(node.getText());
       }
     }
     return true;
-  }
-};
+  };
+  return VariableCollector2;
+}();
 function getCurrentWord(document, offset) {
-  let i = offset - 1;
-  const text = document.getText();
+  var i = offset - 1;
+  var text = document.getText();
   while (i >= 0 && ' 	\n\r":{[()]},*>+'.indexOf(text.charAt(i)) === -1) {
     i--;
   }
   return text.substring(i + 1, offset);
 }
+function isColorString(s) {
+  return s.toLowerCase() in colors || /(^#[0-9A-F]{6}$)|(^#[0-9A-F]{3}$)/i.test(s);
+}
 
 // node_modules/vscode-css-languageservice/lib/esm/services/selectorPrinting.js
-var Element = class _Element {
-  constructor() {
+var __extends3 = function() {
+  var extendStatics = function(d, b) {
+    extendStatics = Object.setPrototypeOf || { __proto__: [] } instanceof Array && function(d2, b2) {
+      d2.__proto__ = b2;
+    } || function(d2, b2) {
+      for (var p in b2)
+        if (Object.prototype.hasOwnProperty.call(b2, p))
+          d2[p] = b2[p];
+    };
+    return extendStatics(d, b);
+  };
+  return function(d, b) {
+    if (typeof b !== "function" && b !== null)
+      throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
+    extendStatics(d, b);
+    function __() {
+      this.constructor = d;
+    }
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+  };
+}();
+var localize5 = loadMessageBundle();
+var Element = function() {
+  function Element3() {
     this.parent = null;
     this.children = null;
     this.attributes = null;
   }
-  findAttribute(name) {
+  Element3.prototype.findAttribute = function(name) {
     if (this.attributes) {
-      for (const attribute of this.attributes) {
+      for (var _i = 0, _a2 = this.attributes; _i < _a2.length; _i++) {
+        var attribute = _a2[_i];
         if (attribute.name === name) {
           return attribute.value;
         }
       }
     }
     return null;
-  }
-  addChild(child) {
-    if (child instanceof _Element) {
+  };
+  Element3.prototype.addChild = function(child) {
+    if (child instanceof Element3) {
       child.parent = this;
     }
     if (!this.children) {
       this.children = [];
     }
     this.children.push(child);
-  }
-  append(text) {
+  };
+  Element3.prototype.append = function(text) {
     if (this.attributes) {
-      const last = this.attributes[this.attributes.length - 1];
+      var last = this.attributes[this.attributes.length - 1];
       last.value = last.value + text;
     }
-  }
-  prepend(text) {
+  };
+  Element3.prototype.prepend = function(text) {
     if (this.attributes) {
-      const first = this.attributes[0];
+      var first = this.attributes[0];
       first.value = text + first.value;
     }
-  }
-  findRoot() {
-    let curr = this;
+  };
+  Element3.prototype.findRoot = function() {
+    var curr = this;
     while (curr.parent && !(curr.parent instanceof RootElement)) {
       curr = curr.parent;
     }
     return curr;
-  }
-  removeChild(child) {
+  };
+  Element3.prototype.removeChild = function(child) {
     if (this.children) {
-      const index = this.children.indexOf(child);
+      var index = this.children.indexOf(child);
       if (index !== -1) {
         this.children.splice(index, 1);
         return true;
       }
     }
     return false;
-  }
-  addAttr(name, value) {
+  };
+  Element3.prototype.addAttr = function(name, value) {
     if (!this.attributes) {
       this.attributes = [];
     }
-    for (const attribute of this.attributes) {
+    for (var _i = 0, _a2 = this.attributes; _i < _a2.length; _i++) {
+      var attribute = _a2[_i];
       if (attribute.name === name) {
         attribute.value += " " + value;
         return;
       }
     }
     this.attributes.push({ name, value });
-  }
-  clone(cloneChildren = true) {
-    const elem = new _Element();
+  };
+  Element3.prototype.clone = function(cloneChildren) {
+    if (cloneChildren === void 0) {
+      cloneChildren = true;
+    }
+    var elem = new Element3();
     if (this.attributes) {
       elem.attributes = [];
-      for (const attribute of this.attributes) {
+      for (var _i = 0, _a2 = this.attributes; _i < _a2.length; _i++) {
+        var attribute = _a2[_i];
         elem.addAttr(attribute.name, attribute.value);
       }
     }
     if (cloneChildren && this.children) {
       elem.children = [];
-      for (let index = 0; index < this.children.length; index++) {
+      for (var index = 0; index < this.children.length; index++) {
         elem.addChild(this.children[index].clone());
       }
     }
     return elem;
-  }
-  cloneWithParent() {
-    const clone = this.clone(false);
+  };
+  Element3.prototype.cloneWithParent = function() {
+    var clone = this.clone(false);
     if (this.parent && !(this.parent instanceof RootElement)) {
-      const parentClone = this.parent.cloneWithParent();
+      var parentClone = this.parent.cloneWithParent();
       parentClone.addChild(clone);
     }
     return clone;
+  };
+  return Element3;
+}();
+var RootElement = function(_super) {
+  __extends3(RootElement2, _super);
+  function RootElement2() {
+    return _super !== null && _super.apply(this, arguments) || this;
   }
-};
-var RootElement = class extends Element {
-};
-var LabelElement = class extends Element {
-  constructor(label) {
-    super();
-    this.addAttr("name", label);
+  return RootElement2;
+}(Element);
+var LabelElement = function(_super) {
+  __extends3(LabelElement2, _super);
+  function LabelElement2(label) {
+    var _this = _super.call(this) || this;
+    _this.addAttr("name", label);
+    return _this;
   }
-};
-var MarkedStringPrinter = class {
-  constructor(quote) {
+  return LabelElement2;
+}(Element);
+var MarkedStringPrinter = function() {
+  function MarkedStringPrinter2(quote) {
     this.quote = quote;
     this.result = [];
   }
-  print(element, flagOpts) {
+  MarkedStringPrinter2.prototype.print = function(element) {
     this.result = [];
     if (element instanceof RootElement) {
       if (element.children) {
@@ -8036,45 +8571,41 @@ var MarkedStringPrinter = class {
     } else {
       this.doPrint([element], 0);
     }
-    let value;
-    if (flagOpts) {
-      value = `${flagOpts.text}
- \u2026 ` + this.result.join("\n");
-    } else {
-      value = this.result.join("\n");
-    }
+    var value = this.result.join("\n");
     return [{ language: "html", value }];
-  }
-  doPrint(elements, indent) {
-    for (const element of elements) {
+  };
+  MarkedStringPrinter2.prototype.doPrint = function(elements, indent) {
+    for (var _i = 0, elements_1 = elements; _i < elements_1.length; _i++) {
+      var element = elements_1[_i];
       this.doPrintElement(element, indent);
       if (element.children) {
         this.doPrint(element.children, indent + 1);
       }
     }
-  }
-  writeLine(level, content) {
-    const indent = new Array(level + 1).join("  ");
+  };
+  MarkedStringPrinter2.prototype.writeLine = function(level, content) {
+    var indent = new Array(level + 1).join("  ");
     this.result.push(indent + content);
-  }
-  doPrintElement(element, indent) {
-    const name = element.findAttribute("name");
+  };
+  MarkedStringPrinter2.prototype.doPrintElement = function(element, indent) {
+    var name = element.findAttribute("name");
     if (element instanceof LabelElement || name === "\u2026") {
       this.writeLine(indent, name);
       return;
     }
-    const content = ["<"];
+    var content = ["<"];
     if (name) {
       content.push(name);
     } else {
       content.push("element");
     }
     if (element.attributes) {
-      for (const attr of element.attributes) {
+      for (var _i = 0, _a2 = element.attributes; _i < _a2.length; _i++) {
+        var attr = _a2[_i];
         if (attr.name !== "name") {
           content.push(" ");
           content.push(attr.name);
-          const value = attr.value;
+          var value = attr.value;
           if (value) {
             content.push("=");
             content.push(quotes.ensure(value, this.quote));
@@ -8084,8 +8615,9 @@ var MarkedStringPrinter = class {
     }
     content.push(">");
     this.writeLine(indent, content.join(""));
-  }
-};
+  };
+  return MarkedStringPrinter2;
+}();
 var quotes;
 (function(quotes2) {
   function ensure(value, which) {
@@ -8093,7 +8625,7 @@ var quotes;
   }
   quotes2.ensure = ensure;
   function remove(value) {
-    const match = value.match(/^['"](.*)["']$/);
+    var match = value.match(/^['"](.*)["']$/);
     if (match) {
       return match[1];
     }
@@ -8101,32 +8633,34 @@ var quotes;
   }
   quotes2.remove = remove;
 })(quotes || (quotes = {}));
-var Specificity = class {
-  constructor() {
+var Specificity = function() {
+  function Specificity2() {
     this.id = 0;
     this.attr = 0;
     this.tag = 0;
   }
-};
+  return Specificity2;
+}();
 function toElement(node, parentElement) {
-  let result = new Element();
-  for (const child of node.getChildren()) {
+  var result = new Element();
+  for (var _i = 0, _a2 = node.getChildren(); _i < _a2.length; _i++) {
+    var child = _a2[_i];
     switch (child.type) {
       case NodeType.SelectorCombinator:
         if (parentElement) {
-          const segments = child.getText().split("&");
+          var segments = child.getText().split("&");
           if (segments.length === 1) {
             result.addAttr("name", segments[0]);
             break;
           }
           result = parentElement.cloneWithParent();
           if (segments[0]) {
-            const root = result.findRoot();
+            var root = result.findRoot();
             root.prepend(segments[0]);
           }
-          for (let i = 1; i < segments.length; i++) {
+          for (var i = 1; i < segments.length; i++) {
             if (i > 1) {
-              const clone = parentElement.cloneWithParent();
+              var clone = parentElement.cloneWithParent();
               result.addChild(clone.findRoot());
               result = clone;
             }
@@ -8138,9 +8672,8 @@ function toElement(node, parentElement) {
         if (child.matches("@at-root")) {
           return result;
         }
-      // fall through
       case NodeType.ElementNameSelector:
-        const text = child.getText();
+        var text = child.getText();
         result.addAttr("name", text === "*" ? "element" : unescape(text));
         break;
       case NodeType.ClassSelector:
@@ -8156,28 +8689,28 @@ function toElement(node, parentElement) {
         result.addAttr(unescape(child.getText()), "");
         break;
       case NodeType.AttributeSelector:
-        const selector = child;
-        const identifier = selector.getIdentifier();
+        var selector = child;
+        var identifier = selector.getIdentifier();
         if (identifier) {
-          const expression = selector.getValue();
-          const operator = selector.getOperator();
-          let value;
+          var expression = selector.getValue();
+          var operator = selector.getOperator();
+          var value = void 0;
           if (expression && operator) {
             switch (unescape(operator.getText())) {
               case "|=":
-                value = `${quotes.remove(unescape(expression.getText()))}-\u2026`;
+                value = "".concat(quotes.remove(unescape(expression.getText())), "-\u2026");
                 break;
               case "^=":
-                value = `${quotes.remove(unescape(expression.getText()))}\u2026`;
+                value = "".concat(quotes.remove(unescape(expression.getText())), "\u2026");
                 break;
               case "$=":
-                value = `\u2026${quotes.remove(unescape(expression.getText()))}`;
+                value = "\u2026".concat(quotes.remove(unescape(expression.getText())));
                 break;
               case "~=":
-                value = ` \u2026 ${quotes.remove(unescape(expression.getText()))} \u2026 `;
+                value = " \u2026 ".concat(quotes.remove(unescape(expression.getText())), " \u2026 ");
                 break;
               case "*=":
-                value = `\u2026${quotes.remove(unescape(expression.getText()))}\u2026`;
+                value = "\u2026".concat(quotes.remove(unescape(expression.getText())), "\u2026");
                 break;
               default:
                 value = quotes.remove(unescape(expression.getText()));
@@ -8192,179 +8725,95 @@ function toElement(node, parentElement) {
   return result;
 }
 function unescape(content) {
-  const scanner = new Scanner();
+  var scanner = new Scanner();
   scanner.setSource(content);
-  const token = scanner.scanUnquotedString();
+  var token = scanner.scanUnquotedString();
   if (token) {
     return token.text;
   }
   return content;
 }
-var SelectorPrinting = class {
-  constructor(cssDataManager) {
+var SelectorPrinting = function() {
+  function SelectorPrinting2(cssDataManager) {
     this.cssDataManager = cssDataManager;
   }
-  selectorToMarkedString(node, flagOpts) {
-    const root = selectorToElement(node);
+  SelectorPrinting2.prototype.selectorToMarkedString = function(node) {
+    var root = selectorToElement(node);
     if (root) {
-      const markedStrings = new MarkedStringPrinter('"').print(root, flagOpts);
+      var markedStrings = new MarkedStringPrinter('"').print(root);
       markedStrings.push(this.selectorToSpecificityMarkedString(node));
       return markedStrings;
     } else {
       return [];
     }
-  }
-  simpleSelectorToMarkedString(node) {
-    const element = toElement(node);
-    const markedStrings = new MarkedStringPrinter('"').print(element);
+  };
+  SelectorPrinting2.prototype.simpleSelectorToMarkedString = function(node) {
+    var element = toElement(node);
+    var markedStrings = new MarkedStringPrinter('"').print(element);
     markedStrings.push(this.selectorToSpecificityMarkedString(node));
     return markedStrings;
-  }
-  isPseudoElementIdentifier(text) {
-    const match = text.match(/^::?([\w-]+)/);
+  };
+  SelectorPrinting2.prototype.isPseudoElementIdentifier = function(text) {
+    var match = text.match(/^::?([\w-]+)/);
     if (!match) {
       return false;
     }
     return !!this.cssDataManager.getPseudoElement("::" + match[1]);
-  }
-  selectorToSpecificityMarkedString(node) {
-    const calculateMostSpecificListItem = (childElements) => {
-      const specificity2 = new Specificity();
-      let mostSpecificListItem = new Specificity();
-      for (const containerElement of childElements) {
-        for (const childElement of containerElement.getChildren()) {
-          const itemSpecificity = calculateScore(childElement);
-          if (itemSpecificity.id > mostSpecificListItem.id) {
-            mostSpecificListItem = itemSpecificity;
-            continue;
-          } else if (itemSpecificity.id < mostSpecificListItem.id) {
-            continue;
-          }
-          if (itemSpecificity.attr > mostSpecificListItem.attr) {
-            mostSpecificListItem = itemSpecificity;
-            continue;
-          } else if (itemSpecificity.attr < mostSpecificListItem.attr) {
-            continue;
-          }
-          if (itemSpecificity.tag > mostSpecificListItem.tag) {
-            mostSpecificListItem = itemSpecificity;
-            continue;
-          }
-        }
-      }
-      specificity2.id += mostSpecificListItem.id;
-      specificity2.attr += mostSpecificListItem.attr;
-      specificity2.tag += mostSpecificListItem.tag;
-      return specificity2;
-    };
-    const calculateScore = (node2) => {
-      const specificity2 = new Specificity();
-      elementLoop: for (const element of node2.getChildren()) {
+  };
+  SelectorPrinting2.prototype.selectorToSpecificityMarkedString = function(node) {
+    var _this = this;
+    var calculateScore = function(node2) {
+      for (var _i = 0, _a2 = node2.getChildren(); _i < _a2.length; _i++) {
+        var element = _a2[_i];
         switch (element.type) {
           case NodeType.IdentifierSelector:
-            specificity2.id++;
+            specificity.id++;
             break;
           case NodeType.ClassSelector:
           case NodeType.AttributeSelector:
-            specificity2.attr++;
+            specificity.attr++;
             break;
           case NodeType.ElementNameSelector:
             if (element.matches("*")) {
               break;
             }
-            specificity2.tag++;
+            specificity.tag++;
             break;
           case NodeType.PseudoSelector:
-            const text = element.getText();
-            const childElements = element.getChildren();
-            if (this.isPseudoElementIdentifier(text)) {
-              if (text.match(/^::slotted/i) && childElements.length > 0) {
-                specificity2.tag++;
-                let mostSpecificListItem = calculateMostSpecificListItem(childElements);
-                specificity2.id += mostSpecificListItem.id;
-                specificity2.attr += mostSpecificListItem.attr;
-                specificity2.tag += mostSpecificListItem.tag;
-                continue elementLoop;
+            var text = element.getText();
+            if (_this.isPseudoElementIdentifier(text)) {
+              specificity.tag++;
+            } else {
+              if (text.match(/^:not/i)) {
+                break;
               }
-              specificity2.tag++;
-              continue elementLoop;
+              specificity.attr++;
             }
-            if (text.match(/^:where/i)) {
-              continue elementLoop;
-            }
-            if (text.match(/^:(?:not|has|is)/i) && childElements.length > 0) {
-              let mostSpecificListItem = calculateMostSpecificListItem(childElements);
-              specificity2.id += mostSpecificListItem.id;
-              specificity2.attr += mostSpecificListItem.attr;
-              specificity2.tag += mostSpecificListItem.tag;
-              continue elementLoop;
-            }
-            if (text.match(/^:(?:host|host-context)/i) && childElements.length > 0) {
-              specificity2.attr++;
-              let mostSpecificListItem = calculateMostSpecificListItem(childElements);
-              specificity2.id += mostSpecificListItem.id;
-              specificity2.attr += mostSpecificListItem.attr;
-              specificity2.tag += mostSpecificListItem.tag;
-              continue elementLoop;
-            }
-            if (text.match(/^:(?:nth-child|nth-last-child)/i) && childElements.length > 0) {
-              specificity2.attr++;
-              if (childElements.length === 3 && childElements[1].type === 23) {
-                let mostSpecificListItem = calculateMostSpecificListItem(childElements[2].getChildren());
-                specificity2.id += mostSpecificListItem.id;
-                specificity2.attr += mostSpecificListItem.attr;
-                specificity2.tag += mostSpecificListItem.tag;
-                continue elementLoop;
-              }
-              const parser = new Parser();
-              const pseudoSelectorText = childElements[1].getText();
-              parser.scanner.setSource(pseudoSelectorText);
-              const firstToken = parser.scanner.scan();
-              const secondToken = parser.scanner.scan();
-              if (firstToken.text === "n" || firstToken.text === "-n" && secondToken.text === "of") {
-                const complexSelectorListNodes = [];
-                const complexSelectorText = pseudoSelectorText.slice(secondToken.offset + 2);
-                const complexSelectorArray = complexSelectorText.split(",");
-                for (const selector of complexSelectorArray) {
-                  const node3 = parser.internalParse(selector, parser._parseSelector);
-                  if (node3) {
-                    complexSelectorListNodes.push(node3);
-                  }
-                }
-                let mostSpecificListItem = calculateMostSpecificListItem(complexSelectorListNodes);
-                specificity2.id += mostSpecificListItem.id;
-                specificity2.attr += mostSpecificListItem.attr;
-                specificity2.tag += mostSpecificListItem.tag;
-                continue elementLoop;
-              }
-              continue elementLoop;
-            }
-            specificity2.attr++;
-            continue elementLoop;
+            break;
         }
         if (element.getChildren().length > 0) {
-          const itemSpecificity = calculateScore(element);
-          specificity2.id += itemSpecificity.id;
-          specificity2.attr += itemSpecificity.attr;
-          specificity2.tag += itemSpecificity.tag;
+          calculateScore(element);
         }
       }
-      return specificity2;
     };
-    const specificity = calculateScore(node);
-    return `[${t("Selector Specificity")}](https://developer.mozilla.org/docs/Web/CSS/Specificity): (${specificity.id}, ${specificity.attr}, ${specificity.tag})`;
-  }
-};
-var SelectorElementBuilder = class {
-  constructor(element) {
+    var specificity = new Specificity();
+    calculateScore(node);
+    return localize5("specificity", "[Selector Specificity](https://developer.mozilla.org/en-US/docs/Web/CSS/Specificity): ({0}, {1}, {2})", specificity.id, specificity.attr, specificity.tag);
+  };
+  return SelectorPrinting2;
+}();
+var SelectorElementBuilder = function() {
+  function SelectorElementBuilder2(element) {
     this.prev = null;
     this.element = element;
   }
-  processSelector(selector) {
-    let parentElement = null;
+  SelectorElementBuilder2.prototype.processSelector = function(selector) {
+    var parentElement = null;
     if (!(this.element instanceof RootElement)) {
-      if (selector.getChildren().some((c) => c.hasChildren() && c.getChild(0).type === NodeType.SelectorCombinator)) {
-        const curr = this.element.findRoot();
+      if (selector.getChildren().some(function(c) {
+        return c.hasChildren() && c.getChild(0).type === NodeType.SelectorCombinator;
+      })) {
+        var curr = this.element.findRoot();
         if (curr.parent instanceof RootElement) {
           parentElement = this.element;
           this.element = curr.parent;
@@ -8373,10 +8822,11 @@ var SelectorElementBuilder = class {
         }
       }
     }
-    for (const selectorChild of selector.getChildren()) {
+    for (var _i = 0, _a2 = selector.getChildren(); _i < _a2.length; _i++) {
+      var selectorChild = _a2[_i];
       if (selectorChild instanceof SimpleSelector) {
         if (this.prev instanceof SimpleSelector) {
-          const labelElement = new LabelElement("\u2026");
+          var labelElement = new LabelElement("\u2026");
           this.element.addChild(labelElement);
           this.element = labelElement;
         } else if (this.prev && (this.prev.matches("+") || this.prev.matches("~")) && this.element.parent) {
@@ -8385,8 +8835,8 @@ var SelectorElementBuilder = class {
         if (this.prev && this.prev.matches("~")) {
           this.element.addChild(new LabelElement("\u22EE"));
         }
-        const thisElement = toElement(selectorChild, parentElement);
-        const root = thisElement.findRoot();
+        var thisElement = toElement(selectorChild, parentElement);
+        var root = thisElement.findRoot();
         this.element.addChild(root);
         this.element = thisElement;
       }
@@ -8394,8 +8844,9 @@ var SelectorElementBuilder = class {
         this.prev = selectorChild;
       }
     }
-  }
-};
+  };
+  return SelectorElementBuilder2;
+}();
 function isNewSelectorContext(node) {
   switch (node.type) {
     case NodeType.MixinDeclaration:
@@ -8408,11 +8859,11 @@ function selectorToElement(node) {
   if (node.matches("@at-root")) {
     return null;
   }
-  const root = new RootElement();
-  const parentRuleSets = [];
-  const ruleSet = node.getParent();
+  var root = new RootElement();
+  var parentRuleSets = [];
+  var ruleSet = node.getParent();
   if (ruleSet instanceof RuleSet) {
-    let parent = ruleSet.getParent();
+    var parent = ruleSet.getParent();
     while (parent && !isNewSelectorContext(parent)) {
       if (parent instanceof RuleSet) {
         if (parent.getSelectors().matches("@at-root")) {
@@ -8423,9 +8874,9 @@ function selectorToElement(node) {
       parent = parent.getParent();
     }
   }
-  const builder = new SelectorElementBuilder(root);
-  for (let i = parentRuleSets.length - 1; i >= 0; i--) {
-    const selector = parentRuleSets[i].getSelectors().getChild(0);
+  var builder = new SelectorElementBuilder(root);
+  for (var i = parentRuleSets.length - 1; i >= 0; i--) {
+    var selector = parentRuleSets[i].getSelectors().getChild(0);
     if (selector) {
       builder.processSelector(selector);
     }
@@ -8435,36 +8886,30 @@ function selectorToElement(node) {
 }
 
 // node_modules/vscode-css-languageservice/lib/esm/services/cssHover.js
-var CSSHover = class {
-  constructor(clientCapabilities, cssDataManager) {
+var CSSHover = function() {
+  function CSSHover2(clientCapabilities, cssDataManager) {
     this.clientCapabilities = clientCapabilities;
     this.cssDataManager = cssDataManager;
     this.selectorPrinting = new SelectorPrinting(cssDataManager);
   }
-  configure(settings) {
+  CSSHover2.prototype.configure = function(settings) {
     this.defaultSettings = settings;
-  }
-  doHover(document, position, stylesheet, settings = this.defaultSettings) {
-    function getRange2(node) {
-      return Range.create(document.positionAt(node.offset), document.positionAt(node.end));
+  };
+  CSSHover2.prototype.doHover = function(document, position, stylesheet, settings) {
+    if (settings === void 0) {
+      settings = this.defaultSettings;
     }
-    const offset = document.offsetAt(position);
-    const nodepath = getNodePath(stylesheet, offset);
-    let hover = null;
-    let flagOpts;
-    for (let i = 0; i < nodepath.length; i++) {
-      const node = nodepath[i];
-      if (node instanceof Media) {
-        const regex = /@media[^\{]+/g;
-        const matches2 = node.getText().match(regex);
-        flagOpts = {
-          isMedia: true,
-          text: matches2?.[0]
-        };
-      }
+    function getRange2(node2) {
+      return Range.create(document.positionAt(node2.offset), document.positionAt(node2.end));
+    }
+    var offset = document.offsetAt(position);
+    var nodepath = getNodePath(stylesheet, offset);
+    var hover = null;
+    for (var i = 0; i < nodepath.length; i++) {
+      var node = nodepath[i];
       if (node instanceof Selector) {
         hover = {
-          contents: this.selectorPrinting.selectorToMarkedString(node, flagOpts),
+          contents: this.selectorPrinting.selectorToMarkedString(node),
           range: getRange2(node)
         };
         break;
@@ -8479,10 +8924,10 @@ var CSSHover = class {
         break;
       }
       if (node instanceof Declaration) {
-        const propertyName = node.getFullPropertyName();
-        const entry = this.cssDataManager.getProperty(propertyName);
+        var propertyName = node.getFullPropertyName();
+        var entry = this.cssDataManager.getProperty(propertyName);
         if (entry) {
-          const contents = getEntryDescription(entry, this.doesSupportMarkdown(), settings);
+          var contents = getEntryDescription(entry, this.doesSupportMarkdown(), settings);
           if (contents) {
             hover = {
               contents,
@@ -8495,10 +8940,10 @@ var CSSHover = class {
         continue;
       }
       if (node instanceof UnknownAtRule) {
-        const atRuleName = node.getText();
-        const entry = this.cssDataManager.getAtDirective(atRuleName);
+        var atRuleName = node.getText();
+        var entry = this.cssDataManager.getAtDirective(atRuleName);
         if (entry) {
-          const contents = getEntryDescription(entry, this.doesSupportMarkdown(), settings);
+          var contents = getEntryDescription(entry, this.doesSupportMarkdown(), settings);
           if (contents) {
             hover = {
               contents,
@@ -8511,10 +8956,10 @@ var CSSHover = class {
         continue;
       }
       if (node instanceof Node && node.type === NodeType.PseudoSelector) {
-        const selectorName = node.getText();
-        const entry = selectorName.slice(0, 2) === "::" ? this.cssDataManager.getPseudoElement(selectorName) : this.cssDataManager.getPseudoClass(selectorName);
+        var selectorName = node.getText();
+        var entry = selectorName.slice(0, 2) === "::" ? this.cssDataManager.getPseudoElement(selectorName) : this.cssDataManager.getPseudoClass(selectorName);
         if (entry) {
-          const contents = getEntryDescription(entry, this.doesSupportMarkdown(), settings);
+          var contents = getEntryDescription(entry, this.doesSupportMarkdown(), settings);
           if (contents) {
             hover = {
               contents,
@@ -8531,8 +8976,8 @@ var CSSHover = class {
       hover.contents = this.convertContents(hover.contents);
     }
     return hover;
-  }
-  convertContents(contents) {
+  };
+  CSSHover2.prototype.convertContents = function(contents) {
     if (!this.doesSupportMarkdown()) {
       if (typeof contents === "string") {
         return contents;
@@ -8542,7 +8987,7 @@ var CSSHover = class {
           value: contents.value
         };
       } else if (Array.isArray(contents)) {
-        return contents.map((c) => {
+        return contents.map(function(c) {
           return typeof c === "string" ? c : c.value;
         });
       } else {
@@ -8550,39 +8995,141 @@ var CSSHover = class {
       }
     }
     return contents;
-  }
-  doesSupportMarkdown() {
+  };
+  CSSHover2.prototype.doesSupportMarkdown = function() {
     if (!isDefined(this.supportsMarkdown)) {
       if (!isDefined(this.clientCapabilities)) {
         this.supportsMarkdown = true;
         return this.supportsMarkdown;
       }
-      const hover = this.clientCapabilities.textDocument && this.clientCapabilities.textDocument.hover;
+      var hover = this.clientCapabilities.textDocument && this.clientCapabilities.textDocument.hover;
       this.supportsMarkdown = hover && hover.contentFormat && Array.isArray(hover.contentFormat) && hover.contentFormat.indexOf(MarkupKind.Markdown) !== -1;
     }
     return this.supportsMarkdown;
-  }
-};
+  };
+  return CSSHover2;
+}();
 
 // node_modules/vscode-css-languageservice/lib/esm/services/cssNavigation.js
+var __awaiter3 = function(thisArg, _arguments, P, generator) {
+  function adopt(value) {
+    return value instanceof P ? value : new P(function(resolve) {
+      resolve(value);
+    });
+  }
+  return new (P || (P = Promise))(function(resolve, reject) {
+    function fulfilled(value) {
+      try {
+        step(generator.next(value));
+      } catch (e) {
+        reject(e);
+      }
+    }
+    function rejected(value) {
+      try {
+        step(generator["throw"](value));
+      } catch (e) {
+        reject(e);
+      }
+    }
+    function step(result) {
+      result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected);
+    }
+    step((generator = generator.apply(thisArg, _arguments || [])).next());
+  });
+};
+var __generator3 = function(thisArg, body) {
+  var _ = { label: 0, sent: function() {
+    if (t[0] & 1)
+      throw t[1];
+    return t[1];
+  }, trys: [], ops: [] }, f2, y, t, g;
+  return g = { next: verb(0), "throw": verb(1), "return": verb(2) }, typeof Symbol === "function" && (g[Symbol.iterator] = function() {
+    return this;
+  }), g;
+  function verb(n) {
+    return function(v) {
+      return step([n, v]);
+    };
+  }
+  function step(op) {
+    if (f2)
+      throw new TypeError("Generator is already executing.");
+    while (_)
+      try {
+        if (f2 = 1, y && (t = op[0] & 2 ? y["return"] : op[0] ? y["throw"] || ((t = y["return"]) && t.call(y), 0) : y.next) && !(t = t.call(y, op[1])).done)
+          return t;
+        if (y = 0, t)
+          op = [op[0] & 2, t.value];
+        switch (op[0]) {
+          case 0:
+          case 1:
+            t = op;
+            break;
+          case 4:
+            _.label++;
+            return { value: op[1], done: false };
+          case 5:
+            _.label++;
+            y = op[1];
+            op = [0];
+            continue;
+          case 7:
+            op = _.ops.pop();
+            _.trys.pop();
+            continue;
+          default:
+            if (!(t = _.trys, t = t.length > 0 && t[t.length - 1]) && (op[0] === 6 || op[0] === 2)) {
+              _ = 0;
+              continue;
+            }
+            if (op[0] === 3 && (!t || op[1] > t[0] && op[1] < t[3])) {
+              _.label = op[1];
+              break;
+            }
+            if (op[0] === 6 && _.label < t[1]) {
+              _.label = t[1];
+              t = op;
+              break;
+            }
+            if (t && _.label < t[2]) {
+              _.label = t[2];
+              _.ops.push(op);
+              break;
+            }
+            if (t[2])
+              _.ops.pop();
+            _.trys.pop();
+            continue;
+        }
+        op = body.call(thisArg, _);
+      } catch (e) {
+        op = [6, e];
+        y = 0;
+      } finally {
+        f2 = t = 0;
+      }
+    if (op[0] & 5)
+      throw op[1];
+    return { value: op[0] ? op[1] : void 0, done: true };
+  }
+};
+var localize6 = loadMessageBundle();
 var startsWithSchemeRegex = /^\w+:\/\//;
 var startsWithData = /^data:/;
-var CSSNavigation = class {
-  constructor(fileSystemProvider, resolveModuleReferences) {
+var CSSNavigation = function() {
+  function CSSNavigation2(fileSystemProvider, resolveModuleReferences) {
     this.fileSystemProvider = fileSystemProvider;
     this.resolveModuleReferences = resolveModuleReferences;
   }
-  configure(settings) {
-    this.defaultSettings = settings;
-  }
-  findDefinition(document, position, stylesheet) {
-    const symbols = new Symbols(stylesheet);
-    const offset = document.offsetAt(position);
-    const node = getNodeAtOffset(stylesheet, offset);
+  CSSNavigation2.prototype.findDefinition = function(document, position, stylesheet) {
+    var symbols = new Symbols(stylesheet);
+    var offset = document.offsetAt(position);
+    var node = getNodeAtOffset(stylesheet, offset);
     if (!node) {
       return null;
     }
-    const symbol = symbols.findSymbolFromNode(node);
+    var symbol = symbols.findSymbolFromNode(node);
     if (!symbol) {
       return null;
     }
@@ -8590,37 +9137,30 @@ var CSSNavigation = class {
       uri: document.uri,
       range: getRange(symbol.node, document)
     };
-  }
-  findReferences(document, position, stylesheet) {
-    const highlights = this.findDocumentHighlights(document, position, stylesheet);
-    return highlights.map((h) => {
+  };
+  CSSNavigation2.prototype.findReferences = function(document, position, stylesheet) {
+    var highlights = this.findDocumentHighlights(document, position, stylesheet);
+    return highlights.map(function(h) {
       return {
         uri: document.uri,
         range: h.range
       };
     });
-  }
-  getHighlightNode(document, position, stylesheet) {
-    const offset = document.offsetAt(position);
-    let node = getNodeAtOffset(stylesheet, offset);
+  };
+  CSSNavigation2.prototype.findDocumentHighlights = function(document, position, stylesheet) {
+    var result = [];
+    var offset = document.offsetAt(position);
+    var node = getNodeAtOffset(stylesheet, offset);
     if (!node || node.type === NodeType.Stylesheet || node.type === NodeType.Declarations) {
-      return;
+      return result;
     }
     if (node.type === NodeType.Identifier && node.parent && node.parent.type === NodeType.ClassSelector) {
       node = node.parent;
     }
-    return node;
-  }
-  findDocumentHighlights(document, position, stylesheet) {
-    const result = [];
-    const node = this.getHighlightNode(document, position, stylesheet);
-    if (!node) {
-      return result;
-    }
-    const symbols = new Symbols(stylesheet);
-    const symbol = symbols.findSymbolFromNode(node);
-    const name = node.getText();
-    stylesheet.accept((candidate) => {
+    var symbols = new Symbols(stylesheet);
+    var symbol = symbols.findSymbolFromNode(node);
+    var name = node.getText();
+    stylesheet.accept(function(candidate) {
       if (symbol) {
         if (symbols.matchesSymbol(candidate, symbol)) {
           result.push({
@@ -8638,21 +9178,22 @@ var CSSNavigation = class {
       return true;
     });
     return result;
-  }
-  isRawStringDocumentLinkNode(node) {
+  };
+  CSSNavigation2.prototype.isRawStringDocumentLinkNode = function(node) {
     return node.type === NodeType.Import;
-  }
-  findDocumentLinks(document, stylesheet, documentContext) {
-    const linkData = this.findUnresolvedLinks(document, stylesheet);
-    const resolvedLinks = [];
-    for (let data of linkData) {
-      const link = data.link;
-      const target = link.target;
+  };
+  CSSNavigation2.prototype.findDocumentLinks = function(document, stylesheet, documentContext) {
+    var linkData = this.findUnresolvedLinks(document, stylesheet);
+    var resolvedLinks = [];
+    for (var _i = 0, linkData_1 = linkData; _i < linkData_1.length; _i++) {
+      var data = linkData_1[_i];
+      var link = data.link;
+      var target = link.target;
       if (!target || startsWithData.test(target)) {
       } else if (startsWithSchemeRegex.test(target)) {
         resolvedLinks.push(link);
       } else {
-        const resolved = documentContext.resolveReference(target, document.uri);
+        var resolved = documentContext.resolveReference(target, document.uri);
         if (resolved) {
           link.target = resolved;
         }
@@ -8660,51 +9201,75 @@ var CSSNavigation = class {
       }
     }
     return resolvedLinks;
-  }
-  async findDocumentLinks2(document, stylesheet, documentContext) {
-    const linkData = this.findUnresolvedLinks(document, stylesheet);
-    const resolvedLinks = [];
-    for (let data of linkData) {
-      const link = data.link;
-      const target = link.target;
-      if (!target || startsWithData.test(target)) {
-      } else if (startsWithSchemeRegex.test(target)) {
-        resolvedLinks.push(link);
-      } else {
-        const resolvedTarget = await this.resolveReference(target, document.uri, documentContext, data.isRawLink);
-        if (resolvedTarget !== void 0) {
-          link.target = resolvedTarget;
-          resolvedLinks.push(link);
+  };
+  CSSNavigation2.prototype.findDocumentLinks2 = function(document, stylesheet, documentContext) {
+    return __awaiter3(this, void 0, void 0, function() {
+      var linkData, resolvedLinks, _i, linkData_2, data, link, target, resolvedTarget;
+      return __generator3(this, function(_a2) {
+        switch (_a2.label) {
+          case 0:
+            linkData = this.findUnresolvedLinks(document, stylesheet);
+            resolvedLinks = [];
+            _i = 0, linkData_2 = linkData;
+            _a2.label = 1;
+          case 1:
+            if (!(_i < linkData_2.length))
+              return [3, 6];
+            data = linkData_2[_i];
+            link = data.link;
+            target = link.target;
+            if (!(!target || startsWithData.test(target)))
+              return [3, 2];
+            return [3, 5];
+          case 2:
+            if (!startsWithSchemeRegex.test(target))
+              return [3, 3];
+            resolvedLinks.push(link);
+            return [3, 5];
+          case 3:
+            return [4, this.resolveRelativeReference(target, document.uri, documentContext, data.isRawLink)];
+          case 4:
+            resolvedTarget = _a2.sent();
+            if (resolvedTarget !== void 0) {
+              link.target = resolvedTarget;
+              resolvedLinks.push(link);
+            }
+            _a2.label = 5;
+          case 5:
+            _i++;
+            return [3, 1];
+          case 6:
+            return [2, resolvedLinks];
         }
-      }
-    }
-    return resolvedLinks;
-  }
-  findUnresolvedLinks(document, stylesheet) {
-    const result = [];
-    const collect = (uriStringNode) => {
-      let rawUri = uriStringNode.getText();
-      const range = getRange(uriStringNode, document);
+      });
+    });
+  };
+  CSSNavigation2.prototype.findUnresolvedLinks = function(document, stylesheet) {
+    var _this = this;
+    var result = [];
+    var collect = function(uriStringNode) {
+      var rawUri = uriStringNode.getText();
+      var range = getRange(uriStringNode, document);
       if (range.start.line === range.end.line && range.start.character === range.end.character) {
         return;
       }
-      if (startsWith(rawUri, `'`) || startsWith(rawUri, `"`)) {
+      if (startsWith(rawUri, "'") || startsWith(rawUri, '"')) {
         rawUri = rawUri.slice(1, -1);
       }
-      const isRawLink = uriStringNode.parent ? this.isRawStringDocumentLinkNode(uriStringNode.parent) : false;
+      var isRawLink = uriStringNode.parent ? _this.isRawStringDocumentLinkNode(uriStringNode.parent) : false;
       result.push({ link: { target: rawUri, range }, isRawLink });
     };
-    stylesheet.accept((candidate) => {
+    stylesheet.accept(function(candidate) {
       if (candidate.type === NodeType.URILiteral) {
-        const first = candidate.getChild(0);
+        var first = candidate.getChild(0);
         if (first) {
           collect(first);
         }
         return false;
       }
-      if (candidate.parent && this.isRawStringDocumentLinkNode(candidate.parent)) {
-        const rawText = candidate.getText();
-        if (startsWith(rawText, `'`) || startsWith(rawText, `"`)) {
+      if (candidate.parent && _this.isRawStringDocumentLinkNode(candidate.parent)) {
+        var rawText = candidate.getText();
+        if (startsWith(rawText, "'") || startsWith(rawText, '"')) {
           collect(candidate);
         }
         return false;
@@ -8712,245 +9277,219 @@ var CSSNavigation = class {
       return true;
     });
     return result;
-  }
-  findSymbolInformations(document, stylesheet) {
-    const result = [];
-    const addSymbolInformation = (name, kind, symbolNodeOrRange) => {
-      const range = symbolNodeOrRange instanceof Node ? getRange(symbolNodeOrRange, document) : symbolNodeOrRange;
-      const entry = {
-        name: name || t("<undefined>"),
-        kind,
-        location: Location.create(document.uri, range)
+  };
+  CSSNavigation2.prototype.findDocumentSymbols = function(document, stylesheet) {
+    var result = [];
+    stylesheet.accept(function(node) {
+      var entry = {
+        name: null,
+        kind: SymbolKind.Class,
+        location: null
       };
-      result.push(entry);
-    };
-    this.collectDocumentSymbols(document, stylesheet, addSymbolInformation);
-    return result;
-  }
-  findDocumentSymbols(document, stylesheet) {
-    const result = [];
-    const parents = [];
-    const addDocumentSymbol = (name, kind, symbolNodeOrRange, nameNodeOrRange, bodyNode) => {
-      const range = symbolNodeOrRange instanceof Node ? getRange(symbolNodeOrRange, document) : symbolNodeOrRange;
-      let selectionRange = nameNodeOrRange instanceof Node ? getRange(nameNodeOrRange, document) : nameNodeOrRange;
-      if (!selectionRange || !containsRange(range, selectionRange)) {
-        selectionRange = Range.create(range.start, range.start);
-      }
-      const entry = {
-        name: name || t("<undefined>"),
-        kind,
-        range,
-        selectionRange
-      };
-      let top = parents.pop();
-      while (top && !containsRange(top[1], range)) {
-        top = parents.pop();
-      }
-      if (top) {
-        const topSymbol = top[0];
-        if (!topSymbol.children) {
-          topSymbol.children = [];
+      var locationNode = node;
+      if (node instanceof Selector) {
+        entry.name = node.getText();
+        locationNode = node.findAParent(NodeType.Ruleset, NodeType.ExtendsReference);
+        if (locationNode) {
+          entry.location = Location.create(document.uri, getRange(locationNode, document));
+          result.push(entry);
         }
-        topSymbol.children.push(entry);
-        parents.push(top);
-      } else {
-        result.push(entry);
-      }
-      if (bodyNode) {
-        parents.push([entry, getRange(bodyNode, document)]);
-      }
-    };
-    this.collectDocumentSymbols(document, stylesheet, addDocumentSymbol);
-    return result;
-  }
-  collectDocumentSymbols(document, stylesheet, collect) {
-    stylesheet.accept((node) => {
-      if (node instanceof RuleSet) {
-        for (const selector of node.getSelectors().getChildren()) {
-          if (selector instanceof Selector) {
-            const range = Range.create(document.positionAt(selector.offset), document.positionAt(node.end));
-            collect(selector.getText(), SymbolKind.Class, range, selector, node.getDeclarations());
-          }
-        }
+        return false;
       } else if (node instanceof VariableDeclaration) {
-        collect(node.getName(), SymbolKind.Variable, node, node.getVariable(), void 0);
+        entry.name = node.getName();
+        entry.kind = SymbolKind.Variable;
       } else if (node instanceof MixinDeclaration) {
-        collect(node.getName(), SymbolKind.Method, node, node.getIdentifier(), node.getDeclarations());
+        entry.name = node.getName();
+        entry.kind = SymbolKind.Method;
       } else if (node instanceof FunctionDeclaration) {
-        collect(node.getName(), SymbolKind.Function, node, node.getIdentifier(), node.getDeclarations());
+        entry.name = node.getName();
+        entry.kind = SymbolKind.Function;
       } else if (node instanceof Keyframe) {
-        const name = t("@keyframes {0}", node.getName());
-        collect(name, SymbolKind.Class, node, node.getIdentifier(), node.getDeclarations());
+        entry.name = localize6("literal.keyframes", "@keyframes {0}", node.getName());
       } else if (node instanceof FontFace) {
-        const name = t("@font-face");
-        collect(name, SymbolKind.Class, node, void 0, node.getDeclarations());
+        entry.name = localize6("literal.fontface", "@font-face");
       } else if (node instanceof Media) {
-        const mediaList = node.getChild(0);
+        var mediaList = node.getChild(0);
         if (mediaList instanceof Medialist) {
-          const name = "@media " + mediaList.getText();
-          collect(name, SymbolKind.Module, node, mediaList, node.getDeclarations());
+          entry.name = "@media " + mediaList.getText();
+          entry.kind = SymbolKind.Module;
         }
+      }
+      if (entry.name) {
+        entry.location = Location.create(document.uri, getRange(locationNode, document));
+        result.push(entry);
       }
       return true;
     });
-  }
-  findDocumentColors(document, stylesheet) {
-    const result = [];
-    stylesheet.accept((node) => {
-      const colorInfo = getColorInformation(node, document);
+    return result;
+  };
+  CSSNavigation2.prototype.findDocumentColors = function(document, stylesheet) {
+    var result = [];
+    stylesheet.accept(function(node) {
+      var colorInfo = getColorInformation(node, document);
       if (colorInfo) {
         result.push(colorInfo);
       }
       return true;
     });
     return result;
-  }
-  getColorPresentations(document, stylesheet, color, range) {
-    const result = [];
-    const red256 = Math.round(color.red * 255), green256 = Math.round(color.green * 255), blue256 = Math.round(color.blue * 255);
-    let label;
+  };
+  CSSNavigation2.prototype.getColorPresentations = function(document, stylesheet, color, range) {
+    var result = [];
+    var red256 = Math.round(color.red * 255), green256 = Math.round(color.green * 255), blue256 = Math.round(color.blue * 255);
+    var label;
     if (color.alpha === 1) {
-      label = `rgb(${red256}, ${green256}, ${blue256})`;
+      label = "rgb(".concat(red256, ", ").concat(green256, ", ").concat(blue256, ")");
     } else {
-      label = `rgba(${red256}, ${green256}, ${blue256}, ${color.alpha})`;
+      label = "rgba(".concat(red256, ", ").concat(green256, ", ").concat(blue256, ", ").concat(color.alpha, ")");
     }
     result.push({ label, textEdit: TextEdit.replace(range, label) });
     if (color.alpha === 1) {
-      label = `#${toTwoDigitHex(red256)}${toTwoDigitHex(green256)}${toTwoDigitHex(blue256)}`;
+      label = "#".concat(toTwoDigitHex(red256)).concat(toTwoDigitHex(green256)).concat(toTwoDigitHex(blue256));
     } else {
-      label = `#${toTwoDigitHex(red256)}${toTwoDigitHex(green256)}${toTwoDigitHex(blue256)}${toTwoDigitHex(Math.round(color.alpha * 255))}`;
+      label = "#".concat(toTwoDigitHex(red256)).concat(toTwoDigitHex(green256)).concat(toTwoDigitHex(blue256)).concat(toTwoDigitHex(Math.round(color.alpha * 255)));
     }
     result.push({ label, textEdit: TextEdit.replace(range, label) });
-    const hsl = hslFromColor(color);
+    var hsl = hslFromColor(color);
     if (hsl.a === 1) {
-      label = `hsl(${hsl.h}, ${Math.round(hsl.s * 100)}%, ${Math.round(hsl.l * 100)}%)`;
+      label = "hsl(".concat(hsl.h, ", ").concat(Math.round(hsl.s * 100), "%, ").concat(Math.round(hsl.l * 100), "%)");
     } else {
-      label = `hsla(${hsl.h}, ${Math.round(hsl.s * 100)}%, ${Math.round(hsl.l * 100)}%, ${hsl.a})`;
-    }
-    result.push({ label, textEdit: TextEdit.replace(range, label) });
-    const hwb = hwbFromColor(color);
-    if (hwb.a === 1) {
-      label = `hwb(${hwb.h} ${Math.round(hwb.w * 100)}% ${Math.round(hwb.b * 100)}%)`;
-    } else {
-      label = `hwb(${hwb.h} ${Math.round(hwb.w * 100)}% ${Math.round(hwb.b * 100)}% / ${hwb.a})`;
+      label = "hsla(".concat(hsl.h, ", ").concat(Math.round(hsl.s * 100), "%, ").concat(Math.round(hsl.l * 100), "%, ").concat(hsl.a, ")");
     }
     result.push({ label, textEdit: TextEdit.replace(range, label) });
     return result;
-  }
-  prepareRename(document, position, stylesheet) {
-    const node = this.getHighlightNode(document, position, stylesheet);
-    if (node) {
-      return Range.create(document.positionAt(node.offset), document.positionAt(node.end));
-    }
-  }
-  doRename(document, position, newName, stylesheet) {
-    const highlights = this.findDocumentHighlights(document, position, stylesheet);
-    const edits = highlights.map((h) => TextEdit.replace(h.range, newName));
+  };
+  CSSNavigation2.prototype.doRename = function(document, position, newName, stylesheet) {
+    var _a2;
+    var highlights = this.findDocumentHighlights(document, position, stylesheet);
+    var edits = highlights.map(function(h) {
+      return TextEdit.replace(h.range, newName);
+    });
     return {
-      changes: { [document.uri]: edits }
+      changes: (_a2 = {}, _a2[document.uri] = edits, _a2)
     };
-  }
-  async resolveModuleReference(ref, documentUri, documentContext) {
-    if (startsWith(documentUri, "file://")) {
-      const moduleName = getModuleNameFromPath(ref);
-      if (moduleName && moduleName !== "." && moduleName !== "..") {
-        const rootFolderUri = documentContext.resolveReference("/", documentUri);
-        const documentFolderUri = dirname(documentUri);
-        const modulePath = await this.resolvePathToModule(moduleName, documentFolderUri, rootFolderUri);
-        if (modulePath) {
-          const pathWithinModule = ref.substring(moduleName.length + 1);
-          return joinPath(modulePath, pathWithinModule);
+  };
+  CSSNavigation2.prototype.resolveModuleReference = function(ref, documentUri, documentContext) {
+    return __awaiter3(this, void 0, void 0, function() {
+      var moduleName, rootFolderUri, documentFolderUri, modulePath, pathWithinModule;
+      return __generator3(this, function(_a2) {
+        switch (_a2.label) {
+          case 0:
+            if (!startsWith(documentUri, "file://"))
+              return [3, 2];
+            moduleName = getModuleNameFromPath(ref);
+            rootFolderUri = documentContext.resolveReference("/", documentUri);
+            documentFolderUri = dirname(documentUri);
+            return [4, this.resolvePathToModule(moduleName, documentFolderUri, rootFolderUri)];
+          case 1:
+            modulePath = _a2.sent();
+            if (modulePath) {
+              pathWithinModule = ref.substring(moduleName.length + 1);
+              return [2, joinPath(modulePath, pathWithinModule)];
+            }
+            _a2.label = 2;
+          case 2:
+            return [2, void 0];
         }
-      }
-    }
-    return void 0;
-  }
-  async mapReference(target, isRawLink) {
-    return target;
-  }
-  async resolveReference(target, documentUri, documentContext, isRawLink = false, settings = this.defaultSettings) {
-    if (target[0] === "~" && target[1] !== "/" && this.fileSystemProvider) {
-      target = target.substring(1);
-      return this.mapReference(await this.resolveModuleReference(target, documentUri, documentContext), isRawLink);
-    }
-    const ref = await this.mapReference(documentContext.resolveReference(target, documentUri), isRawLink);
-    if (this.resolveModuleReferences) {
-      if (ref && await this.fileExists(ref)) {
-        return ref;
-      }
-      const moduleReference = await this.mapReference(await this.resolveModuleReference(target, documentUri, documentContext), isRawLink);
-      if (moduleReference) {
-        return moduleReference;
-      }
-    }
-    if (ref && !await this.fileExists(ref)) {
-      const rootFolderUri = documentContext.resolveReference("/", documentUri);
-      if (settings && rootFolderUri) {
-        if (target in settings) {
-          return this.mapReference(joinPath(rootFolderUri, settings[target]), isRawLink);
+      });
+    });
+  };
+  CSSNavigation2.prototype.resolveRelativeReference = function(ref, documentUri, documentContext, isRawLink) {
+    return __awaiter3(this, void 0, void 0, function() {
+      var relativeReference, _a2;
+      return __generator3(this, function(_b) {
+        switch (_b.label) {
+          case 0:
+            relativeReference = documentContext.resolveReference(ref, documentUri);
+            if (!(ref[0] === "~" && ref[1] !== "/" && this.fileSystemProvider))
+              return [3, 2];
+            ref = ref.substring(1);
+            return [4, this.resolveModuleReference(ref, documentUri, documentContext)];
+          case 1:
+            return [2, _b.sent() || relativeReference];
+          case 2:
+            if (!this.resolveModuleReferences)
+              return [3, 7];
+            _a2 = relativeReference;
+            if (!_a2)
+              return [3, 4];
+            return [4, this.fileExists(relativeReference)];
+          case 3:
+            _a2 = _b.sent();
+            _b.label = 4;
+          case 4:
+            if (!_a2)
+              return [3, 5];
+            return [2, relativeReference];
+          case 5:
+            return [4, this.resolveModuleReference(ref, documentUri, documentContext)];
+          case 6:
+            return [2, _b.sent() || relativeReference];
+          case 7:
+            return [2, relativeReference];
         }
-        const firstSlash = target.indexOf("/");
-        const prefix = `${target.substring(0, firstSlash)}/`;
-        if (prefix in settings) {
-          const aliasPath = settings[prefix].slice(0, -1);
-          let newPath = joinPath(rootFolderUri, aliasPath);
-          return this.mapReference(newPath = joinPath(newPath, target.substring(prefix.length - 1)), isRawLink);
+      });
+    });
+  };
+  CSSNavigation2.prototype.resolvePathToModule = function(_moduleName, documentFolderUri, rootFolderUri) {
+    return __awaiter3(this, void 0, void 0, function() {
+      var packPath;
+      return __generator3(this, function(_a2) {
+        switch (_a2.label) {
+          case 0:
+            packPath = joinPath(documentFolderUri, "node_modules", _moduleName, "package.json");
+            return [4, this.fileExists(packPath)];
+          case 1:
+            if (_a2.sent()) {
+              return [2, dirname(packPath)];
+            } else if (rootFolderUri && documentFolderUri.startsWith(rootFolderUri) && documentFolderUri.length !== rootFolderUri.length) {
+              return [2, this.resolvePathToModule(_moduleName, dirname(documentFolderUri), rootFolderUri)];
+            }
+            return [2, void 0];
         }
-      }
-    }
-    return ref;
-  }
-  async resolvePathToModule(_moduleName, documentFolderUri, rootFolderUri) {
-    const packPath = joinPath(documentFolderUri, "node_modules", _moduleName, "package.json");
-    if (await this.fileExists(packPath)) {
-      return dirname(packPath);
-    } else if (rootFolderUri && documentFolderUri.startsWith(rootFolderUri) && documentFolderUri.length !== rootFolderUri.length) {
-      return this.resolvePathToModule(_moduleName, dirname(documentFolderUri), rootFolderUri);
-    }
-    return void 0;
-  }
-  async fileExists(uri) {
-    if (!this.fileSystemProvider) {
-      return false;
-    }
-    try {
-      const stat = await this.fileSystemProvider.stat(uri);
-      if (stat.type === FileType.Unknown && stat.size === -1) {
-        return false;
-      }
-      return true;
-    } catch (err) {
-      return false;
-    }
-  }
-};
+      });
+    });
+  };
+  CSSNavigation2.prototype.fileExists = function(uri) {
+    return __awaiter3(this, void 0, void 0, function() {
+      var stat, err_1;
+      return __generator3(this, function(_a2) {
+        switch (_a2.label) {
+          case 0:
+            if (!this.fileSystemProvider) {
+              return [2, false];
+            }
+            _a2.label = 1;
+          case 1:
+            _a2.trys.push([1, 3, , 4]);
+            return [4, this.fileSystemProvider.stat(uri)];
+          case 2:
+            stat = _a2.sent();
+            if (stat.type === FileType.Unknown && stat.size === -1) {
+              return [2, false];
+            }
+            return [2, true];
+          case 3:
+            err_1 = _a2.sent();
+            return [2, false];
+          case 4:
+            return [2];
+        }
+      });
+    });
+  };
+  return CSSNavigation2;
+}();
 function getColorInformation(node, document) {
-  const color = getColorValue(node);
+  var color = getColorValue(node);
   if (color) {
-    const range = getRange(node, document);
+    var range = getRange(node, document);
     return { color, range };
   }
   return null;
 }
 function getRange(node, document) {
   return Range.create(document.positionAt(node.offset), document.positionAt(node.end));
-}
-function containsRange(range, otherRange) {
-  const otherStartLine = otherRange.start.line, otherEndLine = otherRange.end.line;
-  const rangeStartLine = range.start.line, rangeEndLine = range.end.line;
-  if (otherStartLine < rangeStartLine || otherEndLine < rangeStartLine) {
-    return false;
-  }
-  if (otherStartLine > rangeEndLine || otherEndLine > rangeEndLine) {
-    return false;
-  }
-  if (otherStartLine === rangeStartLine && otherRange.start.character < range.start.character) {
-    return false;
-  }
-  if (otherEndLine === rangeEndLine && otherRange.end.character > range.end.character) {
-    return false;
-  }
-  return true;
 }
 function getHighlightKind(node) {
   if (node.type === NodeType.Selector) {
@@ -8976,83 +9515,82 @@ function getHighlightKind(node) {
   return DocumentHighlightKind.Read;
 }
 function toTwoDigitHex(n) {
-  const r = n.toString(16);
+  var r = n.toString(16);
   return r.length !== 2 ? "0" + r : r;
 }
 function getModuleNameFromPath(path) {
-  const firstSlash = path.indexOf("/");
-  if (firstSlash === -1) {
-    return "";
-  }
   if (path[0] === "@") {
-    const secondSlash = path.indexOf("/", firstSlash + 1);
-    if (secondSlash === -1) {
-      return path;
-    }
-    return path.substring(0, secondSlash);
+    return path.substring(0, path.indexOf("/", path.indexOf("/") + 1));
   }
-  return path.substring(0, firstSlash);
+  return path.substring(0, path.indexOf("/"));
 }
 
 // node_modules/vscode-css-languageservice/lib/esm/services/lintRules.js
+var localize7 = loadMessageBundle();
 var Warning = Level.Warning;
 var Error2 = Level.Error;
 var Ignore = Level.Ignore;
-var Rule = class {
-  constructor(id, message, defaultValue) {
+var Rule = function() {
+  function Rule2(id, message, defaultValue) {
     this.id = id;
     this.message = message;
     this.defaultValue = defaultValue;
   }
-};
-var Setting = class {
-  constructor(id, message, defaultValue) {
+  return Rule2;
+}();
+var Setting = function() {
+  function Setting2(id, message, defaultValue) {
     this.id = id;
     this.message = message;
     this.defaultValue = defaultValue;
   }
-};
+  return Setting2;
+}();
 var Rules = {
-  AllVendorPrefixes: new Rule("compatibleVendorPrefixes", t("When using a vendor-specific prefix make sure to also include all other vendor-specific properties"), Ignore),
-  IncludeStandardPropertyWhenUsingVendorPrefix: new Rule("vendorPrefix", t("When using a vendor-specific prefix also include the standard property"), Warning),
-  DuplicateDeclarations: new Rule("duplicateProperties", t("Do not use duplicate style definitions"), Ignore),
-  EmptyRuleSet: new Rule("emptyRules", t("Do not use empty rulesets"), Warning),
-  ImportStatemement: new Rule("importStatement", t("Import statements do not load in parallel"), Ignore),
-  BewareOfBoxModelSize: new Rule("boxModel", t("Do not use width or height when using padding or border"), Ignore),
-  UniversalSelector: new Rule("universalSelector", t("The universal selector (*) is known to be slow"), Ignore),
-  ZeroWithUnit: new Rule("zeroUnits", t("No unit for zero needed"), Ignore),
-  RequiredPropertiesForFontFace: new Rule("fontFaceProperties", t("@font-face rule must define 'src' and 'font-family' properties"), Warning),
-  HexColorLength: new Rule("hexColorLength", t("Hex colors must consist of three, four, six or eight hex numbers"), Error2),
-  ArgsInColorFunction: new Rule("argumentsInColorFunction", t("Invalid number of parameters"), Error2),
-  UnknownProperty: new Rule("unknownProperties", t("Unknown property."), Warning),
-  UnknownAtRules: new Rule("unknownAtRules", t("Unknown at-rule."), Warning),
-  IEStarHack: new Rule("ieHack", t("IE hacks are only necessary when supporting IE7 and older"), Ignore),
-  UnknownVendorSpecificProperty: new Rule("unknownVendorSpecificProperties", t("Unknown vendor specific property."), Ignore),
-  PropertyIgnoredDueToDisplay: new Rule("propertyIgnoredDueToDisplay", t("Property is ignored due to the display."), Warning),
-  AvoidImportant: new Rule("important", t("Avoid using !important. It is an indication that the specificity of the entire CSS has gotten out of control and needs to be refactored."), Ignore),
-  AvoidFloat: new Rule("float", t("Avoid using 'float'. Floats lead to fragile CSS that is easy to break if one aspect of the layout changes."), Ignore),
-  AvoidIdSelector: new Rule("idSelector", t("Selectors should not contain IDs because these rules are too tightly coupled with the HTML."), Ignore)
+  AllVendorPrefixes: new Rule("compatibleVendorPrefixes", localize7("rule.vendorprefixes.all", "When using a vendor-specific prefix make sure to also include all other vendor-specific properties"), Ignore),
+  IncludeStandardPropertyWhenUsingVendorPrefix: new Rule("vendorPrefix", localize7("rule.standardvendorprefix.all", "When using a vendor-specific prefix also include the standard property"), Warning),
+  DuplicateDeclarations: new Rule("duplicateProperties", localize7("rule.duplicateDeclarations", "Do not use duplicate style definitions"), Ignore),
+  EmptyRuleSet: new Rule("emptyRules", localize7("rule.emptyRuleSets", "Do not use empty rulesets"), Warning),
+  ImportStatemement: new Rule("importStatement", localize7("rule.importDirective", "Import statements do not load in parallel"), Ignore),
+  BewareOfBoxModelSize: new Rule("boxModel", localize7("rule.bewareOfBoxModelSize", "Do not use width or height when using padding or border"), Ignore),
+  UniversalSelector: new Rule("universalSelector", localize7("rule.universalSelector", "The universal selector (*) is known to be slow"), Ignore),
+  ZeroWithUnit: new Rule("zeroUnits", localize7("rule.zeroWidthUnit", "No unit for zero needed"), Ignore),
+  RequiredPropertiesForFontFace: new Rule("fontFaceProperties", localize7("rule.fontFaceProperties", "@font-face rule must define 'src' and 'font-family' properties"), Warning),
+  HexColorLength: new Rule("hexColorLength", localize7("rule.hexColor", "Hex colors must consist of three, four, six or eight hex numbers"), Error2),
+  ArgsInColorFunction: new Rule("argumentsInColorFunction", localize7("rule.colorFunction", "Invalid number of parameters"), Error2),
+  UnknownProperty: new Rule("unknownProperties", localize7("rule.unknownProperty", "Unknown property."), Warning),
+  UnknownAtRules: new Rule("unknownAtRules", localize7("rule.unknownAtRules", "Unknown at-rule."), Warning),
+  IEStarHack: new Rule("ieHack", localize7("rule.ieHack", "IE hacks are only necessary when supporting IE7 and older"), Ignore),
+  UnknownVendorSpecificProperty: new Rule("unknownVendorSpecificProperties", localize7("rule.unknownVendorSpecificProperty", "Unknown vendor specific property."), Ignore),
+  PropertyIgnoredDueToDisplay: new Rule("propertyIgnoredDueToDisplay", localize7("rule.propertyIgnoredDueToDisplay", "Property is ignored due to the display."), Warning),
+  AvoidImportant: new Rule("important", localize7("rule.avoidImportant", "Avoid using !important. It is an indication that the specificity of the entire CSS has gotten out of control and needs to be refactored."), Ignore),
+  AvoidFloat: new Rule("float", localize7("rule.avoidFloat", "Avoid using 'float'. Floats lead to fragile CSS that is easy to break if one aspect of the layout changes."), Ignore),
+  AvoidIdSelector: new Rule("idSelector", localize7("rule.avoidIdSelector", "Selectors should not contain IDs because these rules are too tightly coupled with the HTML."), Ignore)
 };
 var Settings = {
-  ValidProperties: new Setting("validProperties", t("A list of properties that are not validated against the `unknownProperties` rule."), [])
+  ValidProperties: new Setting("validProperties", localize7("rule.validProperties", "A list of properties that are not validated against the `unknownProperties` rule."), [])
 };
-var LintConfigurationSettings = class {
-  constructor(conf = {}) {
+var LintConfigurationSettings = function() {
+  function LintConfigurationSettings2(conf) {
+    if (conf === void 0) {
+      conf = {};
+    }
     this.conf = conf;
   }
-  getRule(rule) {
+  LintConfigurationSettings2.prototype.getRule = function(rule) {
     if (this.conf.hasOwnProperty(rule.id)) {
-      const level = toLevel(this.conf[rule.id]);
+      var level = toLevel(this.conf[rule.id]);
       if (level) {
         return level;
       }
     }
     return rule.defaultValue;
-  }
-  getSetting(setting) {
+  };
+  LintConfigurationSettings2.prototype.getSetting = function(setting) {
     return this.conf[setting.id];
-  }
-};
+  };
+  return LintConfigurationSettings2;
+}();
 function toLevel(level) {
   switch (level) {
     case "ignore":
@@ -9066,81 +9604,86 @@ function toLevel(level) {
 }
 
 // node_modules/vscode-css-languageservice/lib/esm/services/cssCodeActions.js
-var CSSCodeActions = class {
-  constructor(cssDataManager) {
+var localize8 = loadMessageBundle();
+var CSSCodeActions = function() {
+  function CSSCodeActions2(cssDataManager) {
     this.cssDataManager = cssDataManager;
   }
-  doCodeActions(document, range, context, stylesheet) {
-    return this.doCodeActions2(document, range, context, stylesheet).map((ca) => {
-      const textDocumentEdit = ca.edit && ca.edit.documentChanges && ca.edit.documentChanges[0];
+  CSSCodeActions2.prototype.doCodeActions = function(document, range, context, stylesheet) {
+    return this.doCodeActions2(document, range, context, stylesheet).map(function(ca) {
+      var textDocumentEdit = ca.edit && ca.edit.documentChanges && ca.edit.documentChanges[0];
       return Command.create(ca.title, "_css.applyCodeAction", document.uri, document.version, textDocumentEdit && textDocumentEdit.edits);
     });
-  }
-  doCodeActions2(document, range, context, stylesheet) {
-    const result = [];
+  };
+  CSSCodeActions2.prototype.doCodeActions2 = function(document, range, context, stylesheet) {
+    var result = [];
     if (context.diagnostics) {
-      for (const diagnostic of context.diagnostics) {
+      for (var _i = 0, _a2 = context.diagnostics; _i < _a2.length; _i++) {
+        var diagnostic = _a2[_i];
         this.appendFixesForMarker(document, stylesheet, diagnostic, result);
       }
     }
     return result;
-  }
-  getFixesForUnknownProperty(document, property, marker, result) {
-    const propertyName = property.getName();
-    const candidates = [];
-    this.cssDataManager.getProperties().forEach((p) => {
-      const score = difference(propertyName, p.name);
+  };
+  CSSCodeActions2.prototype.getFixesForUnknownProperty = function(document, property, marker, result) {
+    var propertyName = property.getName();
+    var candidates = [];
+    this.cssDataManager.getProperties().forEach(function(p) {
+      var score = difference(propertyName, p.name);
       if (score >= propertyName.length / 2) {
         candidates.push({ property: p.name, score });
       }
     });
-    candidates.sort((a2, b) => {
+    candidates.sort(function(a2, b) {
       return b.score - a2.score || a2.property.localeCompare(b.property);
     });
-    let maxActions = 3;
-    for (const candidate of candidates) {
-      const propertyName2 = candidate.property;
-      const title = t("Rename to '{0}'", propertyName2);
-      const edit = TextEdit.replace(marker.range, propertyName2);
-      const documentIdentifier = VersionedTextDocumentIdentifier.create(document.uri, document.version);
-      const workspaceEdit = { documentChanges: [TextDocumentEdit.create(documentIdentifier, [edit])] };
-      const codeAction = CodeAction.create(title, workspaceEdit, CodeActionKind.QuickFix);
+    var maxActions = 3;
+    for (var _i = 0, candidates_1 = candidates; _i < candidates_1.length; _i++) {
+      var candidate = candidates_1[_i];
+      var propertyName_1 = candidate.property;
+      var title = localize8("css.codeaction.rename", "Rename to '{0}'", propertyName_1);
+      var edit = TextEdit.replace(marker.range, propertyName_1);
+      var documentIdentifier = VersionedTextDocumentIdentifier.create(document.uri, document.version);
+      var workspaceEdit = { documentChanges: [TextDocumentEdit.create(documentIdentifier, [edit])] };
+      var codeAction = CodeAction.create(title, workspaceEdit, CodeActionKind.QuickFix);
       codeAction.diagnostics = [marker];
       result.push(codeAction);
       if (--maxActions <= 0) {
         return;
       }
     }
-  }
-  appendFixesForMarker(document, stylesheet, marker, result) {
+  };
+  CSSCodeActions2.prototype.appendFixesForMarker = function(document, stylesheet, marker, result) {
     if (marker.code !== Rules.UnknownProperty.id) {
       return;
     }
-    const offset = document.offsetAt(marker.range.start);
-    const end = document.offsetAt(marker.range.end);
-    const nodepath = getNodePath(stylesheet, offset);
-    for (let i = nodepath.length - 1; i >= 0; i--) {
-      const node = nodepath[i];
+    var offset = document.offsetAt(marker.range.start);
+    var end = document.offsetAt(marker.range.end);
+    var nodepath = getNodePath(stylesheet, offset);
+    for (var i = nodepath.length - 1; i >= 0; i--) {
+      var node = nodepath[i];
       if (node instanceof Declaration) {
-        const property = node.getProperty();
+        var property = node.getProperty();
         if (property && property.offset === offset && property.end === end) {
           this.getFixesForUnknownProperty(document, property, marker, result);
           return;
         }
       }
     }
-  }
-};
+  };
+  return CSSCodeActions2;
+}();
 
 // node_modules/vscode-css-languageservice/lib/esm/services/lintUtil.js
-var Element2 = class {
-  constructor(decl) {
+var Element2 = function() {
+  function Element3(decl) {
     this.fullPropertyName = decl.getFullPropertyName().toLowerCase();
     this.node = decl;
   }
-};
+  return Element3;
+}();
 function setSide(model, side, value, property) {
-  const state = model[side];
+  var state = model[side];
   state.value = value;
   if (value) {
     if (!includes(state.properties, property)) {
@@ -9187,23 +9730,35 @@ function updateModelWithList(model, values2, property) {
   }
 }
 function matches(value, candidates) {
-  for (let candidate of candidates) {
+  for (var _i = 0, candidates_1 = candidates; _i < candidates_1.length; _i++) {
+    var candidate = candidates_1[_i];
     if (value.matches(candidate)) {
       return true;
     }
   }
   return false;
 }
-function checkLineWidth(value, allowsKeywords = true) {
+function checkLineWidth(value, allowsKeywords) {
+  if (allowsKeywords === void 0) {
+    allowsKeywords = true;
+  }
   if (allowsKeywords && matches(value, ["initial", "unset"])) {
     return false;
   }
   return parseFloat(value.getText()) !== 0;
 }
-function checkLineWidthList(nodes, allowsKeywords = true) {
-  return nodes.map((node) => checkLineWidth(node, allowsKeywords));
+function checkLineWidthList(nodes, allowsKeywords) {
+  if (allowsKeywords === void 0) {
+    allowsKeywords = true;
+  }
+  return nodes.map(function(node) {
+    return checkLineWidth(node, allowsKeywords);
+  });
 }
-function checkLineStyle(valueNode, allowsKeywords = true) {
+function checkLineStyle(valueNode, allowsKeywords) {
+  if (allowsKeywords === void 0) {
+    allowsKeywords = true;
+  }
   if (matches(valueNode, ["none", "hidden"])) {
     return false;
   }
@@ -9212,40 +9767,39 @@ function checkLineStyle(valueNode, allowsKeywords = true) {
   }
   return true;
 }
-function checkLineStyleList(nodes, allowsKeywords = true) {
-  return nodes.map((node) => checkLineStyle(node, allowsKeywords));
+function checkLineStyleList(nodes, allowsKeywords) {
+  if (allowsKeywords === void 0) {
+    allowsKeywords = true;
+  }
+  return nodes.map(function(node) {
+    return checkLineStyle(node, allowsKeywords);
+  });
 }
 function checkBorderShorthand(node) {
-  const children = node.getChildren();
+  var children = node.getChildren();
   if (children.length === 1) {
-    const value = children[0];
+    var value = children[0];
     return checkLineWidth(value) && checkLineStyle(value);
   }
-  for (const child of children) {
-    const value = child;
-    if (!checkLineWidth(
-      value,
-      /* allowsKeywords: */
-      false
-    ) || !checkLineStyle(
-      value,
-      /* allowsKeywords: */
-      false
-    )) {
+  for (var _i = 0, children_1 = children; _i < children_1.length; _i++) {
+    var child = children_1[_i];
+    var value = child;
+    if (!checkLineWidth(value, false) || !checkLineStyle(value, false)) {
       return false;
     }
   }
   return true;
 }
 function calculateBoxModel(propertyTable) {
-  const model = {
+  var model = {
     top: { value: false, properties: [] },
     right: { value: false, properties: [] },
     bottom: { value: false, properties: [] },
     left: { value: false, properties: [] }
   };
-  for (const property of propertyTable) {
-    const value = property.node.value;
+  for (var _i = 0, propertyTable_1 = propertyTable; _i < propertyTable_1.length; _i++) {
+    var property = propertyTable_1[_i];
+    var value = property.node.value;
     if (typeof value === "undefined") {
       continue;
     }
@@ -9264,7 +9818,7 @@ function calculateBoxModel(propertyTable) {
         model.height = property;
         break;
       default:
-        const segments = property.fullPropertyName.split("-");
+        var segments = property.fullPropertyName.split("-");
         switch (segments[0]) {
           case "border":
             switch (segments[1]) {
@@ -9308,12 +9862,13 @@ function calculateBoxModel(propertyTable) {
 }
 
 // node_modules/vscode-css-languageservice/lib/esm/services/lint.js
-var NodesByRootMap = class {
-  constructor() {
+var localize9 = loadMessageBundle();
+var NodesByRootMap = function() {
+  function NodesByRootMap2() {
     this.data = {};
   }
-  add(root, name, node) {
-    let entry = this.data[root];
+  NodesByRootMap2.prototype.add = function(root, name, node) {
+    var entry = this.data[root];
     if (!entry) {
       entry = { nodes: [], names: [] };
       this.data[root] = entry;
@@ -9322,100 +9877,107 @@ var NodesByRootMap = class {
     if (node) {
       entry.nodes.push(node);
     }
-  }
-};
-var LintVisitor = class _LintVisitor {
-  static entries(node, document, settings, cssDataManager, entryFilter) {
-    const visitor = new _LintVisitor(document, settings, cssDataManager);
-    node.acceptVisitor(visitor);
-    visitor.completeValidations();
-    return visitor.getEntries(entryFilter);
-  }
-  constructor(document, settings, cssDataManager) {
+  };
+  return NodesByRootMap2;
+}();
+var LintVisitor = function() {
+  function LintVisitor2(document, settings, cssDataManager) {
+    var _this = this;
     this.cssDataManager = cssDataManager;
     this.warnings = [];
     this.settings = settings;
     this.documentText = document.getText();
     this.keyframes = new NodesByRootMap();
     this.validProperties = {};
-    const properties = settings.getSetting(Settings.ValidProperties);
+    var properties = settings.getSetting(Settings.ValidProperties);
     if (Array.isArray(properties)) {
-      properties.forEach((p) => {
+      properties.forEach(function(p) {
         if (typeof p === "string") {
-          const name = p.trim().toLowerCase();
+          var name = p.trim().toLowerCase();
           if (name.length) {
-            this.validProperties[name] = true;
+            _this.validProperties[name] = true;
           }
         }
       });
     }
   }
-  isValidPropertyDeclaration(element) {
-    const propertyName = element.fullPropertyName;
+  LintVisitor2.entries = function(node, document, settings, cssDataManager, entryFilter) {
+    var visitor = new LintVisitor2(document, settings, cssDataManager);
+    node.acceptVisitor(visitor);
+    visitor.completeValidations();
+    return visitor.getEntries(entryFilter);
+  };
+  LintVisitor2.prototype.isValidPropertyDeclaration = function(element) {
+    var propertyName = element.fullPropertyName;
     return this.validProperties[propertyName];
-  }
-  fetch(input, s) {
-    const elements = [];
-    for (const curr of input) {
+  };
+  LintVisitor2.prototype.fetch = function(input, s) {
+    var elements = [];
+    for (var _i = 0, input_1 = input; _i < input_1.length; _i++) {
+      var curr = input_1[_i];
       if (curr.fullPropertyName === s) {
         elements.push(curr);
       }
     }
     return elements;
-  }
-  fetchWithValue(input, s, v) {
-    const elements = [];
-    for (const inputElement of input) {
+  };
+  LintVisitor2.prototype.fetchWithValue = function(input, s, v) {
+    var elements = [];
+    for (var _i = 0, input_2 = input; _i < input_2.length; _i++) {
+      var inputElement = input_2[_i];
       if (inputElement.fullPropertyName === s) {
-        const expression = inputElement.node.getValue();
+        var expression = inputElement.node.getValue();
         if (expression && this.findValueInExpression(expression, v)) {
           elements.push(inputElement);
         }
       }
     }
     return elements;
-  }
-  findValueInExpression(expression, v) {
-    let found = false;
-    expression.accept((node) => {
+  };
+  LintVisitor2.prototype.findValueInExpression = function(expression, v) {
+    var found = false;
+    expression.accept(function(node) {
       if (node.type === NodeType.Identifier && node.matches(v)) {
         found = true;
       }
       return !found;
     });
     return found;
-  }
-  getEntries(filter = Level.Warning | Level.Error) {
-    return this.warnings.filter((entry) => {
+  };
+  LintVisitor2.prototype.getEntries = function(filter) {
+    if (filter === void 0) {
+      filter = Level.Warning | Level.Error;
+    }
+    return this.warnings.filter(function(entry) {
       return (entry.getLevel() & filter) !== 0;
     });
-  }
-  addEntry(node, rule, details) {
-    const entry = new Marker(node, rule, this.settings.getRule(rule), details);
+  };
+  LintVisitor2.prototype.addEntry = function(node, rule, details) {
+    var entry = new Marker(node, rule, this.settings.getRule(rule), details);
     this.warnings.push(entry);
-  }
-  getMissingNames(expected, actual) {
-    const expectedClone = expected.slice(0);
-    for (let i = 0; i < actual.length; i++) {
-      const k = expectedClone.indexOf(actual[i]);
+  };
+  LintVisitor2.prototype.getMissingNames = function(expected, actual) {
+    var expectedClone = expected.slice(0);
+    for (var i = 0; i < actual.length; i++) {
+      var k = expectedClone.indexOf(actual[i]);
       if (k !== -1) {
         expectedClone[k] = null;
       }
     }
-    let result = null;
-    for (let i = 0; i < expectedClone.length; i++) {
-      const curr = expectedClone[i];
+    var result = null;
+    for (var i = 0; i < expectedClone.length; i++) {
+      var curr = expectedClone[i];
       if (curr) {
         if (result === null) {
-          result = t("'{0}'", curr);
+          result = localize9("namelist.single", "'{0}'", curr);
         } else {
-          result = t("{0}, '{1}'", result, curr);
+          result = localize9("namelist.concatenated", "{0}, '{1}'", result, curr);
         }
       }
     }
     return result;
-  }
-  visitNode(node) {
+  };
+  LintVisitor2.prototype.visitNode = function(node) {
     switch (node.type) {
       case NodeType.UnknownAtRule:
         return this.visitUnknownAtRule(node);
@@ -9441,87 +10003,89 @@ var LintVisitor = class _LintVisitor {
         return this.visitIdentifierSelector(node);
     }
     return true;
-  }
-  completeValidations() {
+  };
+  LintVisitor2.prototype.completeValidations = function() {
     this.validateKeyframes();
-  }
-  visitUnknownAtRule(node) {
-    const atRuleName = node.getChild(0);
+  };
+  LintVisitor2.prototype.visitUnknownAtRule = function(node) {
+    var atRuleName = node.getChild(0);
     if (!atRuleName) {
       return false;
     }
-    const atDirective = this.cssDataManager.getAtDirective(atRuleName.getText());
+    var atDirective = this.cssDataManager.getAtDirective(atRuleName.getText());
     if (atDirective) {
       return false;
     }
-    this.addEntry(atRuleName, Rules.UnknownAtRules, `Unknown at rule ${atRuleName.getText()}`);
+    this.addEntry(atRuleName, Rules.UnknownAtRules, "Unknown at rule ".concat(atRuleName.getText()));
     return true;
-  }
-  visitKeyframe(node) {
-    const keyword = node.getKeyword();
+  };
+  LintVisitor2.prototype.visitKeyframe = function(node) {
+    var keyword = node.getKeyword();
     if (!keyword) {
       return false;
     }
-    const text = keyword.getText();
+    var text = keyword.getText();
     this.keyframes.add(node.getName(), text, text !== "@keyframes" ? keyword : null);
     return true;
-  }
-  validateKeyframes() {
-    const expected = ["@-webkit-keyframes", "@-moz-keyframes", "@-o-keyframes"];
-    for (const name in this.keyframes.data) {
-      const actual = this.keyframes.data[name].names;
-      const needsStandard = actual.indexOf("@keyframes") === -1;
+  };
+  LintVisitor2.prototype.validateKeyframes = function() {
+    var expected = ["@-webkit-keyframes", "@-moz-keyframes", "@-o-keyframes"];
+    for (var name in this.keyframes.data) {
+      var actual = this.keyframes.data[name].names;
+      var needsStandard = actual.indexOf("@keyframes") === -1;
       if (!needsStandard && actual.length === 1) {
         continue;
       }
-      const missingVendorSpecific = this.getMissingNames(expected, actual);
+      var missingVendorSpecific = this.getMissingNames(expected, actual);
       if (missingVendorSpecific || needsStandard) {
-        for (const node of this.keyframes.data[name].nodes) {
+        for (var _i = 0, _a2 = this.keyframes.data[name].nodes; _i < _a2.length; _i++) {
+          var node = _a2[_i];
           if (needsStandard) {
-            const message = t("Always define standard rule '@keyframes' when defining keyframes.");
+            var message = localize9("keyframes.standardrule.missing", "Always define standard rule '@keyframes' when defining keyframes.");
             this.addEntry(node, Rules.IncludeStandardPropertyWhenUsingVendorPrefix, message);
           }
           if (missingVendorSpecific) {
-            const message = t("Always include all vendor specific rules: Missing: {0}", missingVendorSpecific);
+            var message = localize9("keyframes.vendorspecific.missing", "Always include all vendor specific rules: Missing: {0}", missingVendorSpecific);
             this.addEntry(node, Rules.AllVendorPrefixes, message);
           }
         }
       }
     }
     return true;
-  }
-  visitSimpleSelector(node) {
-    const firstChar = this.documentText.charAt(node.offset);
+  };
+  LintVisitor2.prototype.visitSimpleSelector = function(node) {
+    var firstChar = this.documentText.charAt(node.offset);
     if (node.length === 1 && firstChar === "*") {
       this.addEntry(node, Rules.UniversalSelector);
     }
     return true;
-  }
-  visitIdentifierSelector(node) {
+  };
+  LintVisitor2.prototype.visitIdentifierSelector = function(node) {
     this.addEntry(node, Rules.AvoidIdSelector);
     return true;
-  }
-  visitImport(node) {
+  };
+  LintVisitor2.prototype.visitImport = function(node) {
     this.addEntry(node, Rules.ImportStatemement);
     return true;
-  }
-  visitRuleSet(node) {
-    const declarations = node.getDeclarations();
+  };
+  LintVisitor2.prototype.visitRuleSet = function(node) {
+    var declarations = node.getDeclarations();
     if (!declarations) {
       return false;
     }
     if (!declarations.hasChildren()) {
       this.addEntry(node.getSelectors(), Rules.EmptyRuleSet);
     }
-    const propertyTable = [];
-    for (const element of declarations.getChildren()) {
+    var propertyTable = [];
+    for (var _i = 0, _a2 = declarations.getChildren(); _i < _a2.length; _i++) {
+      var element = _a2[_i];
       if (element instanceof Declaration) {
         propertyTable.push(new Element2(element));
       }
     }
-    const boxModel = calculateBoxModel(propertyTable);
+    var boxModel = calculateBoxModel(propertyTable);
     if (boxModel.width) {
-      let properties = [];
+      var properties = [];
       if (boxModel.right.value) {
         properties = union(properties, boxModel.right.properties);
       }
@@ -9529,14 +10093,15 @@ var LintVisitor = class _LintVisitor {
         properties = union(properties, boxModel.left.properties);
       }
       if (properties.length !== 0) {
-        for (const item of properties) {
+        for (var _b = 0, properties_1 = properties; _b < properties_1.length; _b++) {
+          var item = properties_1[_b];
           this.addEntry(item.node, Rules.BewareOfBoxModelSize);
         }
         this.addEntry(boxModel.width.node, Rules.BewareOfBoxModelSize);
       }
     }
     if (boxModel.height) {
-      let properties = [];
+      var properties = [];
       if (boxModel.top.value) {
         properties = union(properties, boxModel.top.properties);
       }
@@ -9544,47 +10109,48 @@ var LintVisitor = class _LintVisitor {
         properties = union(properties, boxModel.bottom.properties);
       }
       if (properties.length !== 0) {
-        for (const item of properties) {
+        for (var _c = 0, properties_2 = properties; _c < properties_2.length; _c++) {
+          var item = properties_2[_c];
           this.addEntry(item.node, Rules.BewareOfBoxModelSize);
         }
         this.addEntry(boxModel.height.node, Rules.BewareOfBoxModelSize);
       }
     }
-    let displayElems = this.fetchWithValue(propertyTable, "display", "inline-block");
+    var displayElems = this.fetchWithValue(propertyTable, "display", "inline-block");
     if (displayElems.length > 0) {
-      const elem = this.fetch(propertyTable, "float");
-      for (let index = 0; index < elem.length; index++) {
-        const node2 = elem[index].node;
-        const value = node2.getValue();
+      var elem = this.fetch(propertyTable, "float");
+      for (var index = 0; index < elem.length; index++) {
+        var node_1 = elem[index].node;
+        var value = node_1.getValue();
         if (value && !value.matches("none")) {
-          this.addEntry(node2, Rules.PropertyIgnoredDueToDisplay, t("inline-block is ignored due to the float. If 'float' has a value other than 'none', the box is floated and 'display' is treated as 'block'"));
+          this.addEntry(node_1, Rules.PropertyIgnoredDueToDisplay, localize9("rule.propertyIgnoredDueToDisplayInlineBlock", "inline-block is ignored due to the float. If 'float' has a value other than 'none', the box is floated and 'display' is treated as 'block'"));
         }
       }
     }
     displayElems = this.fetchWithValue(propertyTable, "display", "block");
     if (displayElems.length > 0) {
-      const elem = this.fetch(propertyTable, "vertical-align");
-      for (let index = 0; index < elem.length; index++) {
-        this.addEntry(elem[index].node, Rules.PropertyIgnoredDueToDisplay, t("Property is ignored due to the display. With 'display: block', vertical-align should not be used."));
+      var elem = this.fetch(propertyTable, "vertical-align");
+      for (var index = 0; index < elem.length; index++) {
+        this.addEntry(elem[index].node, Rules.PropertyIgnoredDueToDisplay, localize9("rule.propertyIgnoredDueToDisplayBlock", "Property is ignored due to the display. With 'display: block', vertical-align should not be used."));
       }
     }
-    const elements = this.fetch(propertyTable, "float");
-    for (let index = 0; index < elements.length; index++) {
-      const element = elements[index];
+    var elements = this.fetch(propertyTable, "float");
+    for (var index = 0; index < elements.length; index++) {
+      var element = elements[index];
       if (!this.isValidPropertyDeclaration(element)) {
         this.addEntry(element.node, Rules.AvoidFloat);
       }
     }
-    for (let i = 0; i < propertyTable.length; i++) {
-      const element = propertyTable[i];
+    for (var i = 0; i < propertyTable.length; i++) {
+      var element = propertyTable[i];
       if (element.fullPropertyName !== "background" && !this.validProperties[element.fullPropertyName]) {
-        const value = element.node.getValue();
+        var value = element.node.getValue();
         if (value && this.documentText.charAt(value.offset) !== "-") {
-          const elements2 = this.fetch(propertyTable, element.fullPropertyName);
-          if (elements2.length > 1) {
-            for (let k = 0; k < elements2.length; k++) {
-              const value2 = elements2[k].node.getValue();
-              if (value2 && this.documentText.charAt(value2.offset) !== "-" && elements2[k] !== element) {
+          var elements_1 = this.fetch(propertyTable, element.fullPropertyName);
+          if (elements_1.length > 1) {
+            for (var k = 0; k < elements_1.length; k++) {
+              var value_1 = elements_1[k].node.getValue();
+              if (value_1 && this.documentText.charAt(value_1.offset) !== "-" && elements_1[k] !== element) {
                 this.addEntry(element.node, Rules.DuplicateDeclarations);
               }
             }
@@ -9592,32 +10158,33 @@ var LintVisitor = class _LintVisitor {
         }
       }
     }
-    const isExportBlock = node.getSelectors().matches(":export");
+    var isExportBlock = node.getSelectors().matches(":export");
     if (!isExportBlock) {
-      const propertiesBySuffix = new NodesByRootMap();
-      let containsUnknowns = false;
-      for (const element of propertyTable) {
-        const decl = element.node;
+      var propertiesBySuffix = new NodesByRootMap();
+      var containsUnknowns = false;
+      for (var _d = 0, propertyTable_1 = propertyTable; _d < propertyTable_1.length; _d++) {
+        var element = propertyTable_1[_d];
+        var decl = element.node;
         if (this.isCSSDeclaration(decl)) {
-          let name = element.fullPropertyName;
-          const firstChar = name.charAt(0);
+          var name = element.fullPropertyName;
+          var firstChar = name.charAt(0);
           if (firstChar === "-") {
             if (name.charAt(1) !== "-") {
               if (!this.cssDataManager.isKnownProperty(name) && !this.validProperties[name]) {
                 this.addEntry(decl.getProperty(), Rules.UnknownVendorSpecificProperty);
               }
-              const nonPrefixedName = decl.getNonPrefixedPropertyName();
+              var nonPrefixedName = decl.getNonPrefixedPropertyName();
               propertiesBySuffix.add(nonPrefixedName, name, decl.getProperty());
             }
           } else {
-            const fullName = name;
+            var fullName = name;
             if (firstChar === "*" || firstChar === "_") {
               this.addEntry(decl.getProperty(), Rules.IEStarHack);
               name = name.substr(1);
             }
             if (!this.cssDataManager.isKnownProperty(fullName) && !this.cssDataManager.isKnownProperty(name)) {
               if (!this.validProperties[name]) {
-                this.addEntry(decl.getProperty(), Rules.UnknownProperty, t("Unknown property: '{0}'", decl.getFullPropertyName()));
+                this.addEntry(decl.getProperty(), Rules.UnknownProperty, localize9("property.unknownproperty.detailed", "Unknown property: '{0}'", decl.getFullPropertyName()));
               }
             }
             propertiesBySuffix.add(name, name, null);
@@ -9627,41 +10194,31 @@ var LintVisitor = class _LintVisitor {
         }
       }
       if (!containsUnknowns) {
-        for (const suffix in propertiesBySuffix.data) {
-          const entry = propertiesBySuffix.data[suffix];
-          const actual = entry.names;
-          const needsStandard = this.cssDataManager.isStandardProperty(suffix) && actual.indexOf(suffix) === -1;
+        for (var suffix in propertiesBySuffix.data) {
+          var entry = propertiesBySuffix.data[suffix];
+          var actual = entry.names;
+          var needsStandard = this.cssDataManager.isStandardProperty(suffix) && actual.indexOf(suffix) === -1;
           if (!needsStandard && actual.length === 1) {
             continue;
           }
-          const entriesThatNeedStandard = new Set(needsStandard ? entry.nodes : []);
-          if (needsStandard) {
-            const pseudoElements = this.getContextualVendorSpecificPseudoElements(node);
-            for (const node2 of entry.nodes) {
-              const propertyName = node2.getName();
-              const prefix = propertyName.substring(0, propertyName.length - suffix.length);
-              if (pseudoElements.some((x) => x.startsWith(prefix))) {
-                entriesThatNeedStandard.delete(node2);
-              }
-            }
-          }
-          const expected = [];
-          for (let i = 0, len = _LintVisitor.prefixes.length; i < len; i++) {
-            const prefix = _LintVisitor.prefixes[i];
+          var expected = [];
+          for (var i = 0, len = LintVisitor2.prefixes.length; i < len; i++) {
+            var prefix = LintVisitor2.prefixes[i];
             if (this.cssDataManager.isStandardProperty(prefix + suffix)) {
               expected.push(prefix + suffix);
             }
           }
-          const missingVendorSpecific = this.getMissingNames(expected, actual);
+          var missingVendorSpecific = this.getMissingNames(expected, actual);
           if (missingVendorSpecific || needsStandard) {
-            for (const node2 of entry.nodes) {
-              if (needsStandard && entriesThatNeedStandard.has(node2)) {
-                const message = t("Also define the standard property '{0}' for compatibility", suffix);
-                this.addEntry(node2, Rules.IncludeStandardPropertyWhenUsingVendorPrefix, message);
+            for (var _e = 0, _f2 = entry.nodes; _e < _f2.length; _e++) {
+              var node_2 = _f2[_e];
+              if (needsStandard) {
+                var message = localize9("property.standard.missing", "Also define the standard property '{0}' for compatibility", suffix);
+                this.addEntry(node_2, Rules.IncludeStandardPropertyWhenUsingVendorPrefix, message);
               }
               if (missingVendorSpecific) {
-                const message = t("Always include all vendor specific properties: Missing: {0}", missingVendorSpecific);
-                this.addEntry(node2, Rules.AllVendorPrefixes, message);
+                var message = localize9("property.vendorspecific.missing", "Always include all vendor specific properties: Missing: {0}", missingVendorSpecific);
+                this.addEntry(node_2, Rules.AllVendorPrefixes, message);
               }
             }
           }
@@ -9669,51 +10226,21 @@ var LintVisitor = class _LintVisitor {
       }
     }
     return true;
-  }
-  /**
-   * Walks up the syntax tree (starting from given `node`) and captures vendor
-   * specific pseudo-element selectors.
-   * @returns An array of vendor specific pseudo-elements; or empty if none
-   * was found.
-   */
-  getContextualVendorSpecificPseudoElements(node) {
-    function walkDown(s, n) {
-      for (const child of n.getChildren()) {
-        if (child.type === NodeType.PseudoSelector) {
-          const pseudoElement = child.getChildren()[0]?.getText();
-          if (pseudoElement) {
-            s.add(pseudoElement);
-          }
-        }
-        walkDown(s, child);
-      }
-    }
-    function walkUp(s, n) {
-      if (n.type === NodeType.Ruleset) {
-        for (const selector of n.getSelectors().getChildren()) {
-          walkDown(s, selector);
-        }
-      }
-      return n.parent ? walkUp(s, n.parent) : void 0;
-    }
-    const result = /* @__PURE__ */ new Set();
-    walkUp(result, node);
-    return Array.from(result);
-  }
-  visitPrio(node) {
+  };
+  LintVisitor2.prototype.visitPrio = function(node) {
     this.addEntry(node, Rules.AvoidImportant);
     return true;
-  }
-  visitNumericValue(node) {
-    const funcDecl = node.findParent(NodeType.Function);
+  };
+  LintVisitor2.prototype.visitNumericValue = function(node) {
+    var funcDecl = node.findParent(NodeType.Function);
     if (funcDecl && funcDecl.getName() === "calc") {
       return true;
     }
-    const decl = node.findParent(NodeType.Declaration);
+    var decl = node.findParent(NodeType.Declaration);
     if (decl) {
-      const declValue = decl.getValue();
+      var declValue = decl.getValue();
       if (declValue) {
-        const value = node.getValue();
+        var value = node.getValue();
         if (!value.unit || units.length.indexOf(value.unit.toLowerCase()) === -1) {
           return true;
         }
@@ -9723,17 +10250,18 @@ var LintVisitor = class _LintVisitor {
       }
     }
     return true;
-  }
-  visitFontFace(node) {
-    const declarations = node.getDeclarations();
+  };
+  LintVisitor2.prototype.visitFontFace = function(node) {
+    var declarations = node.getDeclarations();
     if (!declarations) {
       return false;
     }
-    let definesSrc = false, definesFontFamily = false;
-    let containsUnknowns = false;
-    for (const node2 of declarations.getChildren()) {
-      if (this.isCSSDeclaration(node2)) {
-        const name = node2.getProperty().getName().toLowerCase();
+    var definesSrc = false, definesFontFamily = false;
+    var containsUnknowns = false;
+    for (var _i = 0, _a2 = declarations.getChildren(); _i < _a2.length; _i++) {
+      var node_3 = _a2[_i];
+      if (this.isCSSDeclaration(node_3)) {
+        var name = node_3.getProperty().getName().toLowerCase();
         if (name === "src") {
           definesSrc = true;
         }
@@ -9748,35 +10276,35 @@ var LintVisitor = class _LintVisitor {
       this.addEntry(node, Rules.RequiredPropertiesForFontFace);
     }
     return true;
-  }
-  isCSSDeclaration(node) {
+  };
+  LintVisitor2.prototype.isCSSDeclaration = function(node) {
     if (node instanceof Declaration) {
       if (!node.getValue()) {
         return false;
       }
-      const property = node.getProperty();
+      var property = node.getProperty();
       if (!property) {
         return false;
       }
-      const identifier = property.getIdentifier();
+      var identifier = property.getIdentifier();
       if (!identifier || identifier.containsInterpolation()) {
         return false;
       }
       return true;
     }
     return false;
-  }
-  visitHexColorValue(node) {
-    const length = node.length;
+  };
+  LintVisitor2.prototype.visitHexColorValue = function(node) {
+    var length = node.length;
     if (length !== 9 && length !== 7 && length !== 5 && length !== 4) {
       this.addEntry(node, Rules.HexColorLength);
     }
     return false;
-  }
-  visitFunction(node) {
-    const fnName = node.getName().toLowerCase();
-    let expectedAttrCount = -1;
-    let actualAttrCount = 0;
+  };
+  LintVisitor2.prototype.visitFunction = function(node) {
+    var fnName = node.getName().toLowerCase();
+    var expectedAttrCount = -1;
+    var actualAttrCount = 0;
     switch (fnName) {
       case "rgb(":
       case "hsl(":
@@ -9788,7 +10316,7 @@ var LintVisitor = class _LintVisitor {
         break;
     }
     if (expectedAttrCount !== -1) {
-      node.getArguments().accept((n) => {
+      node.getArguments().accept(function(n) {
         if (n instanceof BinaryExpression) {
           actualAttrCount += 1;
           return false;
@@ -9800,39 +10328,41 @@ var LintVisitor = class _LintVisitor {
       }
     }
     return true;
-  }
-};
-LintVisitor.prefixes = [
-  "-ms-",
-  "-moz-",
-  "-o-",
-  "-webkit-"
-  // Quite common
-  //		'-xv-', '-atsc-', '-wap-', '-khtml-', 'mso-', 'prince-', '-ah-', '-hp-', '-ro-', '-rim-', '-tc-' // Quite un-common
-];
+  };
+  LintVisitor2.prefixes = [
+    "-ms-",
+    "-moz-",
+    "-o-",
+    "-webkit-"
+  ];
+  return LintVisitor2;
+}();
 
 // node_modules/vscode-css-languageservice/lib/esm/services/cssValidation.js
-var CSSValidation = class {
-  constructor(cssDataManager) {
+var CSSValidation = function() {
+  function CSSValidation2(cssDataManager) {
     this.cssDataManager = cssDataManager;
   }
-  configure(settings) {
+  CSSValidation2.prototype.configure = function(settings) {
     this.settings = settings;
-  }
-  doValidation(document, stylesheet, settings = this.settings) {
+  };
+  CSSValidation2.prototype.doValidation = function(document, stylesheet, settings) {
+    if (settings === void 0) {
+      settings = this.settings;
+    }
     if (settings && settings.validate === false) {
       return [];
     }
-    const entries = [];
+    var entries = [];
     entries.push.apply(entries, ParseErrorCollector.entries(stylesheet));
     entries.push.apply(entries, LintVisitor.entries(stylesheet, document, new LintConfigurationSettings(settings && settings.lint), this.cssDataManager));
-    const ruleIds = [];
-    for (const r in Rules) {
+    var ruleIds = [];
+    for (var r in Rules) {
       ruleIds.push(Rules[r].id);
     }
     function toDiagnostic(marker) {
-      const range = Range.create(document.positionAt(marker.getOffset()), document.positionAt(marker.getOffset() + marker.getLength()));
-      const source = document.languageId;
+      var range = Range.create(document.positionAt(marker.getOffset()), document.positionAt(marker.getOffset() + marker.getLength()));
+      var source = document.languageId;
       return {
         code: marker.getRule().id,
         source,
@@ -9841,11 +10371,35 @@ var CSSValidation = class {
         range
       };
     }
-    return entries.filter((entry) => entry.getLevel() !== Level.Ignore).map(toDiagnostic);
-  }
-};
+    return entries.filter(function(entry) {
+      return entry.getLevel() !== Level.Ignore;
+    }).map(toDiagnostic);
+  };
+  return CSSValidation2;
+}();
 
 // node_modules/vscode-css-languageservice/lib/esm/parser/scssScanner.js
+var __extends4 = function() {
+  var extendStatics = function(d, b) {
+    extendStatics = Object.setPrototypeOf || { __proto__: [] } instanceof Array && function(d2, b2) {
+      d2.__proto__ = b2;
+    } || function(d2, b2) {
+      for (var p in b2)
+        if (Object.prototype.hasOwnProperty.call(b2, p))
+          d2[p] = b2[p];
+    };
+    return extendStatics(d, b);
+  };
+  return function(d, b) {
+    if (typeof b !== "function" && b !== null)
+      throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
+    extendStatics(d, b);
+    function __() {
+      this.constructor = d;
+    }
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+  };
+}();
 var _FSL2 = "/".charCodeAt(0);
 var _NWL2 = "\n".charCodeAt(0);
 var _CAR2 = "\r".charCodeAt(0);
@@ -9869,10 +10423,14 @@ var GreaterEqualsOperator = customTokenValue++;
 var SmallerEqualsOperator = customTokenValue++;
 var Ellipsis = customTokenValue++;
 var Module2 = customTokenValue++;
-var SCSSScanner = class extends Scanner {
-  scanNext(offset) {
+var SCSSScanner = function(_super) {
+  __extends4(SCSSScanner2, _super);
+  function SCSSScanner2() {
+    return _super !== null && _super.apply(this, arguments) || this;
+  }
+  SCSSScanner2.prototype.scanNext = function(offset) {
     if (this.stream.advanceIfChar(_DLR2)) {
-      const content = ["$"];
+      var content = ["$"];
       if (this.ident(content)) {
         return this.finishToken(offset, VariableName, content.join(""));
       } else {
@@ -9903,14 +10461,14 @@ var SCSSScanner = class extends Scanner {
     if (this.stream.advanceIfChars([_DOT2, _DOT2, _DOT2])) {
       return this.finishToken(offset, Ellipsis);
     }
-    return super.scanNext(offset);
-  }
-  comment() {
-    if (super.comment()) {
+    return _super.prototype.scanNext.call(this, offset);
+  };
+  SCSSScanner2.prototype.comment = function() {
+    if (_super.prototype.comment.call(this)) {
       return true;
     }
     if (!this.inURL && this.stream.advanceIfChars([_FSL2, _FSL2])) {
-      this.stream.advanceWhileChar((ch) => {
+      this.stream.advanceWhileChar(function(ch) {
         switch (ch) {
           case _NWL2:
           case _CAR2:
@@ -9924,38 +10482,66 @@ var SCSSScanner = class extends Scanner {
     } else {
       return false;
     }
-  }
-};
+  };
+  return SCSSScanner2;
+}(Scanner);
 
 // node_modules/vscode-css-languageservice/lib/esm/parser/scssErrors.js
-var SCSSIssueType = class {
-  constructor(id, message) {
+var localize10 = loadMessageBundle();
+var SCSSIssueType = function() {
+  function SCSSIssueType2(id, message) {
     this.id = id;
     this.message = message;
   }
-};
+  return SCSSIssueType2;
+}();
 var SCSSParseError = {
-  FromExpected: new SCSSIssueType("scss-fromexpected", t("'from' expected")),
-  ThroughOrToExpected: new SCSSIssueType("scss-throughexpected", t("'through' or 'to' expected")),
-  InExpected: new SCSSIssueType("scss-fromexpected", t("'in' expected"))
+  FromExpected: new SCSSIssueType("scss-fromexpected", localize10("expected.from", "'from' expected")),
+  ThroughOrToExpected: new SCSSIssueType("scss-throughexpected", localize10("expected.through", "'through' or 'to' expected")),
+  InExpected: new SCSSIssueType("scss-fromexpected", localize10("expected.in", "'in' expected"))
 };
 
 // node_modules/vscode-css-languageservice/lib/esm/parser/scssParser.js
-var SCSSParser = class extends Parser {
-  constructor() {
-    super(new SCSSScanner());
+var __extends5 = function() {
+  var extendStatics = function(d, b) {
+    extendStatics = Object.setPrototypeOf || { __proto__: [] } instanceof Array && function(d2, b2) {
+      d2.__proto__ = b2;
+    } || function(d2, b2) {
+      for (var p in b2)
+        if (Object.prototype.hasOwnProperty.call(b2, p))
+          d2[p] = b2[p];
+    };
+    return extendStatics(d, b);
+  };
+  return function(d, b) {
+    if (typeof b !== "function" && b !== null)
+      throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
+    extendStatics(d, b);
+    function __() {
+      this.constructor = d;
+    }
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+  };
+}();
+var SCSSParser = function(_super) {
+  __extends5(SCSSParser2, _super);
+  function SCSSParser2() {
+    return _super.call(this, new SCSSScanner()) || this;
   }
-  _parseStylesheetStatement(isNested = false) {
+  SCSSParser2.prototype._parseStylesheetStatement = function(isNested) {
+    if (isNested === void 0) {
+      isNested = false;
+    }
     if (this.peek(TokenType.AtKeyword)) {
-      return this._parseWarnAndDebug() || this._parseControlStatement() || this._parseMixinDeclaration() || this._parseMixinContent() || this._parseMixinReference() || this._parseFunctionDeclaration() || this._parseForward() || this._parseUse() || this._parseRuleset(isNested) || super._parseStylesheetAtStatement(isNested);
+      return this._parseWarnAndDebug() || this._parseControlStatement() || this._parseMixinDeclaration() || this._parseMixinContent() || this._parseMixinReference() || this._parseFunctionDeclaration() || this._parseForward() || this._parseUse() || this._parseRuleset(isNested) || _super.prototype._parseStylesheetAtStatement.call(this, isNested);
     }
     return this._parseRuleset(true) || this._parseVariableDeclaration();
-  }
-  _parseImport() {
+  };
+  SCSSParser2.prototype._parseImport = function() {
     if (!this.peekKeyword("@import")) {
       return null;
     }
-    const node = this.create(Import);
+    var node = this.create(Import);
     this.consumeToken();
     if (!node.addChild(this._parseURILiteral()) && !node.addChild(this._parseStringLiteral())) {
       return this.finish(node, ParseError.URIOrStringExpected);
@@ -9965,14 +10551,19 @@ var SCSSParser = class extends Parser {
         return this.finish(node, ParseError.URIOrStringExpected);
       }
     }
-    return this._completeParseImport(node);
-  }
-  // scss variables: $font-size: 12px;
-  _parseVariableDeclaration(panic = []) {
+    if (!this.peek(TokenType.SemiColon) && !this.peek(TokenType.EOF)) {
+      node.setMedialist(this._parseMediaQueryList());
+    }
+    return this.finish(node);
+  };
+  SCSSParser2.prototype._parseVariableDeclaration = function(panic) {
+    if (panic === void 0) {
+      panic = [];
+    }
     if (!this.peek(VariableName)) {
       return null;
     }
-    const node = this.create(VariableDeclaration);
+    var node = this.create(VariableDeclaration);
     if (!node.setVariable(this._parseVariable())) {
       return null;
     }
@@ -9999,30 +10590,27 @@ var SCSSParser = class extends Parser {
       node.semicolonPosition = this.token.offset;
     }
     return this.finish(node);
-  }
-  _parseMediaCondition() {
-    return this._parseInterpolation() || super._parseMediaCondition();
-  }
-  _parseMediaFeatureRangeOperator() {
-    return this.accept(SmallerEqualsOperator) || this.accept(GreaterEqualsOperator) || super._parseMediaFeatureRangeOperator();
-  }
-  _parseMediaFeatureName() {
+  };
+  SCSSParser2.prototype._parseMediaCondition = function() {
+    return this._parseInterpolation() || _super.prototype._parseMediaCondition.call(this);
+  };
+  SCSSParser2.prototype._parseMediaFeatureName = function() {
     return this._parseModuleMember() || this._parseFunction() || this._parseIdent() || this._parseVariable();
-  }
-  _parseKeyframeSelector() {
-    return this._tryParseKeyframeSelector() || this._parseControlStatement(this._parseKeyframeSelector.bind(this)) || this._parseWarnAndDebug() || this._parseMixinReference() || this._parseFunctionDeclaration() || this._parseVariableDeclaration() || this._parseMixinContent();
-  }
-  _parseVariable() {
+  };
+  SCSSParser2.prototype._parseKeyframeSelector = function() {
+    return this._tryParseKeyframeSelector() || this._parseControlStatement(this._parseKeyframeSelector.bind(this)) || this._parseVariableDeclaration() || this._parseMixinContent();
+  };
+  SCSSParser2.prototype._parseVariable = function() {
     if (!this.peek(VariableName)) {
       return null;
     }
-    const node = this.create(Variable);
+    var node = this.create(Variable);
     this.consumeToken();
     return node;
-  }
-  _parseModuleMember() {
-    const pos = this.mark();
-    const node = this.create(Module);
+  };
+  SCSSParser2.prototype._parseModuleMember = function() {
+    var pos = this.mark();
+    var node = this.create(Module);
     if (!node.setIdentifier(this._parseIdent([ReferenceType.Module]))) {
       return null;
     }
@@ -10034,27 +10622,28 @@ var SCSSParser = class extends Parser {
       return this.finish(node, ParseError.IdentifierOrVariableExpected);
     }
     return node;
-  }
-  _parseIdent(referenceTypes) {
+  };
+  SCSSParser2.prototype._parseIdent = function(referenceTypes) {
+    var _this = this;
     if (!this.peek(TokenType.Ident) && !this.peek(InterpolationFunction) && !this.peekDelim("-")) {
       return null;
     }
-    const node = this.create(Identifier);
+    var node = this.create(Identifier);
     node.referenceTypes = referenceTypes;
     node.isCustomProperty = this.peekRegExp(TokenType.Ident, /^--/);
-    let hasContent = false;
-    const indentInterpolation = () => {
-      const pos = this.mark();
-      if (this.acceptDelim("-")) {
-        if (!this.hasWhitespace()) {
-          this.acceptDelim("-");
+    var hasContent = false;
+    var indentInterpolation = function() {
+      var pos = _this.mark();
+      if (_this.acceptDelim("-")) {
+        if (!_this.hasWhitespace()) {
+          _this.acceptDelim("-");
         }
-        if (this.hasWhitespace()) {
-          this.restoreAtMark(pos);
+        if (_this.hasWhitespace()) {
+          _this.restoreAtMark(pos);
           return null;
         }
       }
-      return this._parseInterpolation();
+      return _this._parseInterpolation();
     };
     while (this.accept(TokenType.Ident) || node.addChild(indentInterpolation()) || hasContent && this.acceptRegexp(/^[\w-]/)) {
       hasContent = true;
@@ -10063,16 +10652,15 @@ var SCSSParser = class extends Parser {
       }
     }
     return hasContent ? this.finish(node) : null;
-  }
-  _parseTermExpression() {
-    return this._parseModuleMember() || this._parseVariable() || this._parseNestingSelector() || //this._tryParsePrio() ||
-    super._parseTermExpression();
-  }
-  _parseInterpolation() {
+  };
+  SCSSParser2.prototype._parseTermExpression = function() {
+    return this._parseModuleMember() || this._parseVariable() || this._parseSelectorCombinator() || _super.prototype._parseTermExpression.call(this);
+  };
+  SCSSParser2.prototype._parseInterpolation = function() {
     if (this.peek(InterpolationFunction)) {
-      const node = this.create(Interpolation);
+      var node = this.create(Interpolation);
       this.consumeToken();
-      if (!node.addChild(this._parseExpr()) && !this._parseNestingSelector()) {
+      if (!node.addChild(this._parseExpr()) && !this._parseSelectorCombinator()) {
         if (this.accept(TokenType.CurlyR)) {
           return this.finish(node);
         }
@@ -10084,35 +10672,35 @@ var SCSSParser = class extends Parser {
       return this.finish(node);
     }
     return null;
-  }
-  _parseOperator() {
+  };
+  SCSSParser2.prototype._parseOperator = function() {
     if (this.peek(EqualsOperator) || this.peek(NotEqualsOperator) || this.peek(GreaterEqualsOperator) || this.peek(SmallerEqualsOperator) || this.peekDelim(">") || this.peekDelim("<") || this.peekIdent("and") || this.peekIdent("or") || this.peekDelim("%")) {
-      const node = this.createNode(NodeType.Operator);
+      var node = this.createNode(NodeType.Operator);
       this.consumeToken();
       return this.finish(node);
     }
-    return super._parseOperator();
-  }
-  _parseUnaryOperator() {
+    return _super.prototype._parseOperator.call(this);
+  };
+  SCSSParser2.prototype._parseUnaryOperator = function() {
     if (this.peekIdent("not")) {
-      const node = this.create(Node);
+      var node = this.create(Node);
       this.consumeToken();
       return this.finish(node);
     }
-    return super._parseUnaryOperator();
-  }
-  _parseRuleSetDeclaration() {
+    return _super.prototype._parseUnaryOperator.call(this);
+  };
+  SCSSParser2.prototype._parseRuleSetDeclaration = function() {
     if (this.peek(TokenType.AtKeyword)) {
-      return this._parseKeyframe() || this._parseImport() || this._parseMedia(true) || this._parseFontFace() || this._parseWarnAndDebug() || this._parseControlStatement() || this._parseFunctionDeclaration() || this._parseExtends() || this._parseMixinReference() || this._parseMixinContent() || this._parseMixinDeclaration() || this._parseRuleset(true) || this._parseSupports(true) || this._parseLayer() || this._parsePropertyAtRule() || this._parseContainer(true) || this._parseRuleSetDeclarationAtStatement();
+      return this._parseKeyframe() || this._parseImport() || this._parseMedia(true) || this._parseFontFace() || this._parseWarnAndDebug() || this._parseControlStatement() || this._parseFunctionDeclaration() || this._parseExtends() || this._parseMixinReference() || this._parseMixinContent() || this._parseMixinDeclaration() || this._parseRuleset(true) || this._parseSupports(true) || _super.prototype._parseRuleSetDeclarationAtStatement.call(this);
     }
-    return this._parseVariableDeclaration() || this._tryParseRuleset(true) || this._parseDeclaration();
-  }
-  _parseDeclaration(stopTokens) {
-    const custonProperty = this._tryParseCustomPropertyDeclaration(stopTokens);
+    return this._parseVariableDeclaration() || this._tryParseRuleset(true) || _super.prototype._parseRuleSetDeclaration.call(this);
+  };
+  SCSSParser2.prototype._parseDeclaration = function(stopTokens) {
+    var custonProperty = this._tryParseCustomPropertyDeclaration(stopTokens);
     if (custonProperty) {
       return custonProperty;
     }
-    const node = this.create(Declaration);
+    var node = this.create(Declaration);
     if (!node.setProperty(this._parseProperty())) {
       return null;
     }
@@ -10122,7 +10710,7 @@ var SCSSParser = class extends Parser {
     if (this.prevToken) {
       node.colonPosition = this.prevToken.offset;
     }
-    let hasContent = false;
+    var hasContent = false;
     if (node.setValue(this._parseExpr())) {
       hasContent = true;
       node.addChild(this._parsePrio());
@@ -10138,14 +10726,14 @@ var SCSSParser = class extends Parser {
       node.semicolonPosition = this.token.offset;
     }
     return this.finish(node);
-  }
-  _parseNestedProperties() {
-    const node = this.create(NestedProperties);
+  };
+  SCSSParser2.prototype._parseNestedProperties = function() {
+    var node = this.create(NestedProperties);
     return this._parseBody(node, this._parseDeclaration.bind(this));
-  }
-  _parseExtends() {
+  };
+  SCSSParser2.prototype._parseExtends = function() {
     if (this.peekKeyword("@extend")) {
-      const node = this.create(ExtendsReference);
+      var node = this.create(ExtendsReference);
       this.consumeToken();
       if (!node.getSelectors().addChild(this._parseSimpleSelector())) {
         return this.finish(node, ParseError.SelectorExpected);
@@ -10161,82 +10749,71 @@ var SCSSParser = class extends Parser {
       return this.finish(node);
     }
     return null;
-  }
-  _parseSimpleSelectorBody() {
-    return this._parseSelectorPlaceholder() || super._parseSimpleSelectorBody();
-  }
-  _parseNestingSelector() {
+  };
+  SCSSParser2.prototype._parseSimpleSelectorBody = function() {
+    return this._parseSelectorCombinator() || this._parseSelectorPlaceholder() || _super.prototype._parseSimpleSelectorBody.call(this);
+  };
+  SCSSParser2.prototype._parseSelectorCombinator = function() {
     if (this.peekDelim("&")) {
-      const node = this.createNode(NodeType.SelectorCombinator);
+      var node = this.createNode(NodeType.SelectorCombinator);
       this.consumeToken();
       while (!this.hasWhitespace() && (this.acceptDelim("-") || this.accept(TokenType.Num) || this.accept(TokenType.Dimension) || node.addChild(this._parseIdent()) || this.acceptDelim("&"))) {
       }
       return this.finish(node);
     }
     return null;
-  }
-  _parseSelectorPlaceholder() {
+  };
+  SCSSParser2.prototype._parseSelectorPlaceholder = function() {
     if (this.peekDelim("%")) {
-      const node = this.createNode(NodeType.SelectorPlaceholder);
+      var node = this.createNode(NodeType.SelectorPlaceholder);
       this.consumeToken();
       this._parseIdent();
       return this.finish(node);
     } else if (this.peekKeyword("@at-root")) {
-      const node = this.createNode(NodeType.SelectorPlaceholder);
+      var node = this.createNode(NodeType.SelectorPlaceholder);
       this.consumeToken();
-      if (this.accept(TokenType.ParenthesisL)) {
-        if (!this.acceptIdent("with") && !this.acceptIdent("without")) {
-          return this.finish(node, ParseError.IdentifierExpected);
-        }
-        if (!this.accept(TokenType.Colon)) {
-          return this.finish(node, ParseError.ColonExpected);
-        }
-        if (!node.addChild(this._parseIdent())) {
-          return this.finish(node, ParseError.IdentifierExpected);
-        }
-        if (!this.accept(TokenType.ParenthesisR)) {
-          return this.finish(node, ParseError.RightParenthesisExpected, [TokenType.CurlyR]);
-        }
-      }
       return this.finish(node);
     }
     return null;
-  }
-  _parseElementName() {
-    const pos = this.mark();
-    const node = super._parseElementName();
+  };
+  SCSSParser2.prototype._parseElementName = function() {
+    var pos = this.mark();
+    var node = _super.prototype._parseElementName.call(this);
     if (node && !this.hasWhitespace() && this.peek(TokenType.ParenthesisL)) {
       this.restoreAtMark(pos);
       return null;
     }
     return node;
-  }
-  _tryParsePseudoIdentifier() {
-    return this._parseInterpolation() || super._tryParsePseudoIdentifier();
-  }
-  _parseWarnAndDebug() {
+  };
+  SCSSParser2.prototype._tryParsePseudoIdentifier = function() {
+    return this._parseInterpolation() || _super.prototype._tryParsePseudoIdentifier.call(this);
+  };
+  SCSSParser2.prototype._parseWarnAndDebug = function() {
     if (!this.peekKeyword("@debug") && !this.peekKeyword("@warn") && !this.peekKeyword("@error")) {
       return null;
     }
-    const node = this.createNode(NodeType.Debug);
+    var node = this.createNode(NodeType.Debug);
     this.consumeToken();
     node.addChild(this._parseExpr());
     return this.finish(node);
-  }
-  _parseControlStatement(parseStatement = this._parseRuleSetDeclaration.bind(this)) {
+  };
+  SCSSParser2.prototype._parseControlStatement = function(parseStatement) {
+    if (parseStatement === void 0) {
+      parseStatement = this._parseRuleSetDeclaration.bind(this);
+    }
     if (!this.peek(TokenType.AtKeyword)) {
       return null;
     }
     return this._parseIfStatement(parseStatement) || this._parseForStatement(parseStatement) || this._parseEachStatement(parseStatement) || this._parseWhileStatement(parseStatement);
-  }
-  _parseIfStatement(parseStatement) {
+  };
+  SCSSParser2.prototype._parseIfStatement = function(parseStatement) {
     if (!this.peekKeyword("@if")) {
       return null;
     }
     return this._internalParseIfStatement(parseStatement);
-  }
-  _internalParseIfStatement(parseStatement) {
-    const node = this.create(IfStatement);
+  };
+  SCSSParser2.prototype._internalParseIfStatement = function(parseStatement) {
+    var node = this.create(IfStatement);
     this.consumeToken();
     if (!node.setExpression(this._parseExpr(true))) {
       return this.finish(node, ParseError.ExpressionExpected);
@@ -10246,18 +10823,18 @@ var SCSSParser = class extends Parser {
       if (this.peekIdent("if")) {
         node.setElseClause(this._internalParseIfStatement(parseStatement));
       } else if (this.peek(TokenType.CurlyL)) {
-        const elseNode = this.create(ElseStatement);
+        var elseNode = this.create(ElseStatement);
         this._parseBody(elseNode, parseStatement);
         node.setElseClause(elseNode);
       }
     }
     return this.finish(node);
-  }
-  _parseForStatement(parseStatement) {
+  };
+  SCSSParser2.prototype._parseForStatement = function(parseStatement) {
     if (!this.peekKeyword("@for")) {
       return null;
     }
-    const node = this.create(ForStatement);
+    var node = this.create(ForStatement);
     this.consumeToken();
     if (!node.setVariable(this._parseVariable())) {
       return this.finish(node, ParseError.VariableNameExpected, [TokenType.CurlyR]);
@@ -10275,14 +10852,14 @@ var SCSSParser = class extends Parser {
       return this.finish(node, ParseError.ExpressionExpected, [TokenType.CurlyR]);
     }
     return this._parseBody(node, parseStatement);
-  }
-  _parseEachStatement(parseStatement) {
+  };
+  SCSSParser2.prototype._parseEachStatement = function(parseStatement) {
     if (!this.peekKeyword("@each")) {
       return null;
     }
-    const node = this.create(EachStatement);
+    var node = this.create(EachStatement);
     this.consumeToken();
-    const variables = node.getVariables();
+    var variables = node.getVariables();
     if (!variables.addChild(this._parseVariable())) {
       return this.finish(node, ParseError.VariableNameExpected, [TokenType.CurlyR]);
     }
@@ -10299,26 +10876,26 @@ var SCSSParser = class extends Parser {
       return this.finish(node, ParseError.ExpressionExpected, [TokenType.CurlyR]);
     }
     return this._parseBody(node, parseStatement);
-  }
-  _parseWhileStatement(parseStatement) {
+  };
+  SCSSParser2.prototype._parseWhileStatement = function(parseStatement) {
     if (!this.peekKeyword("@while")) {
       return null;
     }
-    const node = this.create(WhileStatement);
+    var node = this.create(WhileStatement);
     this.consumeToken();
     if (!node.addChild(this._parseBinaryExpr())) {
       return this.finish(node, ParseError.ExpressionExpected, [TokenType.CurlyR]);
     }
     return this._parseBody(node, parseStatement);
-  }
-  _parseFunctionBodyDeclaration() {
+  };
+  SCSSParser2.prototype._parseFunctionBodyDeclaration = function() {
     return this._parseVariableDeclaration() || this._parseReturnStatement() || this._parseWarnAndDebug() || this._parseControlStatement(this._parseFunctionBodyDeclaration.bind(this));
-  }
-  _parseFunctionDeclaration() {
+  };
+  SCSSParser2.prototype._parseFunctionDeclaration = function() {
     if (!this.peekKeyword("@function")) {
       return null;
     }
-    const node = this.create(FunctionDeclaration);
+    var node = this.create(FunctionDeclaration);
     this.consumeToken();
     if (!node.setIdentifier(this._parseIdent([ReferenceType.Function]))) {
       return this.finish(node, ParseError.IdentifierExpected, [TokenType.CurlyR]);
@@ -10340,23 +10917,23 @@ var SCSSParser = class extends Parser {
       return this.finish(node, ParseError.RightParenthesisExpected, [TokenType.CurlyR]);
     }
     return this._parseBody(node, this._parseFunctionBodyDeclaration.bind(this));
-  }
-  _parseReturnStatement() {
+  };
+  SCSSParser2.prototype._parseReturnStatement = function() {
     if (!this.peekKeyword("@return")) {
       return null;
     }
-    const node = this.createNode(NodeType.ReturnStatement);
+    var node = this.createNode(NodeType.ReturnStatement);
     this.consumeToken();
     if (!node.addChild(this._parseExpr())) {
       return this.finish(node, ParseError.ExpressionExpected);
     }
     return this.finish(node);
-  }
-  _parseMixinDeclaration() {
+  };
+  SCSSParser2.prototype._parseMixinDeclaration = function() {
     if (!this.peekKeyword("@mixin")) {
       return null;
     }
-    const node = this.create(MixinDeclaration);
+    var node = this.create(MixinDeclaration);
     this.consumeToken();
     if (!node.setIdentifier(this._parseIdent([ReferenceType.Mixin]))) {
       return this.finish(node, ParseError.IdentifierExpected, [TokenType.CurlyR]);
@@ -10377,9 +10954,9 @@ var SCSSParser = class extends Parser {
       }
     }
     return this._parseBody(node, this._parseRuleSetDeclaration.bind(this));
-  }
-  _parseParameterDeclaration() {
-    const node = this.create(FunctionParameter);
+  };
+  SCSSParser2.prototype._parseParameterDeclaration = function() {
+    var node = this.create(FunctionParameter);
     if (!node.setIdentifier(this._parseVariable())) {
       return null;
     }
@@ -10391,12 +10968,12 @@ var SCSSParser = class extends Parser {
       }
     }
     return this.finish(node);
-  }
-  _parseMixinContent() {
+  };
+  SCSSParser2.prototype._parseMixinContent = function() {
     if (!this.peekKeyword("@content")) {
       return null;
     }
-    const node = this.create(MixinContentReference);
+    var node = this.create(MixinContentReference);
     this.consumeToken();
     if (this.accept(TokenType.ParenthesisL)) {
       if (node.getArguments().addChild(this._parseFunctionArgument())) {
@@ -10414,23 +10991,23 @@ var SCSSParser = class extends Parser {
       }
     }
     return this.finish(node);
-  }
-  _parseMixinReference() {
+  };
+  SCSSParser2.prototype._parseMixinReference = function() {
     if (!this.peekKeyword("@include")) {
       return null;
     }
-    const node = this.create(MixinReference);
+    var node = this.create(MixinReference);
     this.consumeToken();
-    const firstIdent = this._parseIdent([ReferenceType.Mixin]);
+    var firstIdent = this._parseIdent([ReferenceType.Mixin]);
     if (!node.setIdentifier(firstIdent)) {
       return this.finish(node, ParseError.IdentifierExpected, [TokenType.CurlyR]);
     }
     if (!this.hasWhitespace() && this.acceptDelim(".") && !this.hasWhitespace()) {
-      const secondIdent = this._parseIdent([ReferenceType.Mixin]);
+      var secondIdent = this._parseIdent([ReferenceType.Mixin]);
       if (!secondIdent) {
         return this.finish(node, ParseError.IdentifierExpected, [TokenType.CurlyR]);
       }
-      const moduleToken = this.create(Module);
+      var moduleToken = this.create(Module);
       firstIdent.referenceTypes = [ReferenceType.Module];
       moduleToken.setIdentifier(firstIdent);
       node.setIdentifier(secondIdent);
@@ -10455,9 +11032,9 @@ var SCSSParser = class extends Parser {
       node.setContent(this._parseMixinContentDeclaration());
     }
     return this.finish(node);
-  }
-  _parseMixinContentDeclaration() {
-    const node = this.create(MixinContentDeclaration);
+  };
+  SCSSParser2.prototype._parseMixinContentDeclaration = function() {
+    var node = this.create(MixinContentDeclaration);
     if (this.acceptIdent("using")) {
       if (!this.accept(TokenType.ParenthesisL)) {
         return this.finish(node, ParseError.LeftParenthesisExpected, [TokenType.CurlyL]);
@@ -10480,14 +11057,14 @@ var SCSSParser = class extends Parser {
       this._parseBody(node, this._parseMixinReferenceBodyStatement.bind(this));
     }
     return this.finish(node);
-  }
-  _parseMixinReferenceBodyStatement() {
+  };
+  SCSSParser2.prototype._parseMixinReferenceBodyStatement = function() {
     return this._tryParseKeyframeSelector() || this._parseRuleSetDeclaration();
-  }
-  _parseFunctionArgument() {
-    const node = this.create(FunctionArgument);
-    const pos = this.mark();
-    const argument = this._parseVariable();
+  };
+  SCSSParser2.prototype._parseFunctionArgument = function() {
+    var node = this.create(FunctionArgument);
+    var pos = this.mark();
+    var argument = this._parseVariable();
     if (argument) {
       if (!this.accept(TokenType.Colon)) {
         if (this.accept(Ellipsis)) {
@@ -10508,23 +11085,23 @@ var SCSSParser = class extends Parser {
       return this.finish(node);
     }
     return null;
-  }
-  _parseURLArgument() {
-    const pos = this.mark();
-    const node = super._parseURLArgument();
+  };
+  SCSSParser2.prototype._parseURLArgument = function() {
+    var pos = this.mark();
+    var node = _super.prototype._parseURLArgument.call(this);
     if (!node || !this.peek(TokenType.ParenthesisR)) {
       this.restoreAtMark(pos);
-      const node2 = this.create(Node);
-      node2.addChild(this._parseBinaryExpr());
-      return this.finish(node2);
+      var node_1 = this.create(Node);
+      node_1.addChild(this._parseBinaryExpr());
+      return this.finish(node_1);
     }
     return node;
-  }
-  _parseOperation() {
+  };
+  SCSSParser2.prototype._parseOperation = function() {
     if (!this.peek(TokenType.ParenthesisL)) {
       return null;
     }
-    const node = this.create(Node);
+    var node = this.create(Node);
     this.consumeToken();
     while (node.addChild(this._parseListElement())) {
       this.accept(TokenType.Comma);
@@ -10533,10 +11110,10 @@ var SCSSParser = class extends Parser {
       return this.finish(node, ParseError.RightParenthesisExpected);
     }
     return this.finish(node);
-  }
-  _parseListElement() {
-    const node = this.create(ListEntry);
-    const child = this._parseBinaryExpr();
+  };
+  SCSSParser2.prototype._parseListElement = function() {
+    var node = this.create(ListEntry);
+    var child = this._parseBinaryExpr();
     if (!child) {
       return null;
     }
@@ -10549,12 +11126,12 @@ var SCSSParser = class extends Parser {
       node.setValue(child);
     }
     return this.finish(node);
-  }
-  _parseUse() {
+  };
+  SCSSParser2.prototype._parseUse = function() {
     if (!this.peekKeyword("@use")) {
       return null;
     }
-    const node = this.create(Use);
+    var node = this.create(Use);
     this.consumeToken();
     if (!node.addChild(this._parseStringLiteral())) {
       return this.finish(node, ParseError.StringLiteralExpected);
@@ -10590,9 +11167,9 @@ var SCSSParser = class extends Parser {
       return this.finish(node, ParseError.SemiColonExpected);
     }
     return this.finish(node);
-  }
-  _parseModuleConfigDeclaration() {
-    const node = this.create(ModuleConfiguration);
+  };
+  SCSSParser2.prototype._parseModuleConfigDeclaration = function() {
+    var node = this.create(ModuleConfiguration);
     if (!node.setIdentifier(this._parseVariable())) {
       return null;
     }
@@ -10605,24 +11182,15 @@ var SCSSParser = class extends Parser {
       }
     }
     return this.finish(node);
-  }
-  _parseForward() {
+  };
+  SCSSParser2.prototype._parseForward = function() {
     if (!this.peekKeyword("@forward")) {
       return null;
     }
-    const node = this.create(Forward);
+    var node = this.create(Forward);
     this.consumeToken();
     if (!node.addChild(this._parseStringLiteral())) {
       return this.finish(node, ParseError.StringLiteralExpected);
-    }
-    if (this.acceptIdent("as")) {
-      const identifier = this._parseIdent([ReferenceType.Forward]);
-      if (!node.setIdentifier(identifier)) {
-        return this.finish(node, ParseError.IdentifierExpected);
-      }
-      if (this.hasWhitespace() || !this.acceptDelim("*")) {
-        return this.finish(node, ParseError.WildcardExpected);
-      }
     }
     if (this.acceptIdent("with")) {
       if (!this.accept(TokenType.ParenthesisL)) {
@@ -10642,66 +11210,107 @@ var SCSSParser = class extends Parser {
       if (!this.accept(TokenType.ParenthesisR)) {
         return this.finish(node, ParseError.RightParenthesisExpected);
       }
-    } else if (this.peekIdent("hide") || this.peekIdent("show")) {
-      if (!node.addChild(this._parseForwardVisibility())) {
-        return this.finish(node, ParseError.IdentifierOrVariableExpected);
+    }
+    if (!this.peek(TokenType.SemiColon) && !this.peek(TokenType.EOF)) {
+      if (!this.peekRegExp(TokenType.Ident, /as|hide|show/)) {
+        return this.finish(node, ParseError.UnknownKeyword);
+      }
+      if (this.acceptIdent("as")) {
+        var identifier = this._parseIdent([ReferenceType.Forward]);
+        if (!node.setIdentifier(identifier)) {
+          return this.finish(node, ParseError.IdentifierExpected);
+        }
+        if (this.hasWhitespace() || !this.acceptDelim("*")) {
+          return this.finish(node, ParseError.WildcardExpected);
+        }
+      }
+      if (this.peekIdent("hide") || this.peekIdent("show")) {
+        if (!node.addChild(this._parseForwardVisibility())) {
+          return this.finish(node, ParseError.IdentifierOrVariableExpected);
+        }
       }
     }
     if (!this.accept(TokenType.SemiColon) && !this.accept(TokenType.EOF)) {
       return this.finish(node, ParseError.SemiColonExpected);
     }
     return this.finish(node);
-  }
-  _parseForwardVisibility() {
-    const node = this.create(ForwardVisibility);
+  };
+  SCSSParser2.prototype._parseForwardVisibility = function() {
+    var node = this.create(ForwardVisibility);
     node.setIdentifier(this._parseIdent());
     while (node.addChild(this._parseVariable() || this._parseIdent())) {
       this.accept(TokenType.Comma);
     }
     return node.getChildren().length > 1 ? node : null;
-  }
-  _parseSupportsCondition() {
-    return this._parseInterpolation() || super._parseSupportsCondition();
-  }
-};
+  };
+  SCSSParser2.prototype._parseSupportsCondition = function() {
+    return this._parseInterpolation() || _super.prototype._parseSupportsCondition.call(this);
+  };
+  return SCSSParser2;
+}(Parser);
 
 // node_modules/vscode-css-languageservice/lib/esm/services/scssCompletion.js
-var sassDocumentationName = t("Sass documentation");
-var SCSSCompletion = class _SCSSCompletion extends CSSCompletion {
-  constructor(lsServiceOptions, cssDataManager) {
-    super("$", lsServiceOptions, cssDataManager);
-    addReferencesToDocumentation(_SCSSCompletion.scssModuleLoaders);
-    addReferencesToDocumentation(_SCSSCompletion.scssModuleBuiltIns);
+var __extends6 = function() {
+  var extendStatics = function(d, b) {
+    extendStatics = Object.setPrototypeOf || { __proto__: [] } instanceof Array && function(d2, b2) {
+      d2.__proto__ = b2;
+    } || function(d2, b2) {
+      for (var p in b2)
+        if (Object.prototype.hasOwnProperty.call(b2, p))
+          d2[p] = b2[p];
+    };
+    return extendStatics(d, b);
+  };
+  return function(d, b) {
+    if (typeof b !== "function" && b !== null)
+      throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
+    extendStatics(d, b);
+    function __() {
+      this.constructor = d;
+    }
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+  };
+}();
+var localize11 = loadMessageBundle();
+var SCSSCompletion = function(_super) {
+  __extends6(SCSSCompletion2, _super);
+  function SCSSCompletion2(lsServiceOptions, cssDataManager) {
+    var _this = _super.call(this, "$", lsServiceOptions, cssDataManager) || this;
+    addReferencesToDocumentation(SCSSCompletion2.scssModuleLoaders);
+    addReferencesToDocumentation(SCSSCompletion2.scssModuleBuiltIns);
+    return _this;
   }
-  isImportPathParent(type) {
-    return type === NodeType.Forward || type === NodeType.Use || super.isImportPathParent(type);
-  }
-  getCompletionForImportPath(importPathNode, result) {
-    const parentType = importPathNode.getParent().type;
+  SCSSCompletion2.prototype.isImportPathParent = function(type) {
+    return type === NodeType.Forward || type === NodeType.Use || _super.prototype.isImportPathParent.call(this, type);
+  };
+  SCSSCompletion2.prototype.getCompletionForImportPath = function(importPathNode, result) {
+    var parentType = importPathNode.getParent().type;
     if (parentType === NodeType.Forward || parentType === NodeType.Use) {
-      for (let p of _SCSSCompletion.scssModuleBuiltIns) {
-        const item = {
+      for (var _i = 0, _a2 = SCSSCompletion2.scssModuleBuiltIns; _i < _a2.length; _i++) {
+        var p = _a2[_i];
+        var item = {
           label: p.label,
           documentation: p.documentation,
-          textEdit: TextEdit.replace(this.getCompletionRange(importPathNode), `'${p.label}'`),
+          textEdit: TextEdit.replace(this.getCompletionRange(importPathNode), "'".concat(p.label, "'")),
           kind: CompletionItemKind.Module
         };
         result.items.push(item);
       }
     }
-    return super.getCompletionForImportPath(importPathNode, result);
-  }
-  createReplaceFunction() {
-    let tabStopCounter = 1;
-    return (_match, p1) => {
-      return "\\" + p1 + ": ${" + tabStopCounter++ + ":" + (_SCSSCompletion.variableDefaults[p1] || "") + "}";
+    return _super.prototype.getCompletionForImportPath.call(this, importPathNode, result);
+  };
+  SCSSCompletion2.prototype.createReplaceFunction = function() {
+    var tabStopCounter = 1;
+    return function(_match, p1) {
+      return "\\" + p1 + ": ${" + tabStopCounter++ + ":" + (SCSSCompletion2.variableDefaults[p1] || "") + "}";
     };
-  }
-  createFunctionProposals(proposals, existingNode, sortToEnd, result) {
-    for (const p of proposals) {
-      const insertText = p.func.replace(/\[?(\$\w+)\]?/g, this.createReplaceFunction());
-      const label = p.func.substr(0, p.func.indexOf("("));
-      const item = {
+  };
+  SCSSCompletion2.prototype.createFunctionProposals = function(proposals, existingNode, sortToEnd, result) {
+    for (var _i = 0, proposals_1 = proposals; _i < proposals_1.length; _i++) {
+      var p = proposals_1[_i];
+      var insertText = p.func.replace(/\[?(\$\w+)\]?/g, this.createReplaceFunction());
+      var label = p.func.substr(0, p.func.indexOf("("));
+      var item = {
         label,
         detail: p.func,
         documentation: p.desc,
@@ -10715,32 +11324,35 @@ var SCSSCompletion = class _SCSSCompletion extends CSSCompletion {
       result.items.push(item);
     }
     return result;
-  }
-  getCompletionsForSelector(ruleSet, isNested, result) {
-    this.createFunctionProposals(_SCSSCompletion.selectorFuncs, null, true, result);
-    return super.getCompletionsForSelector(ruleSet, isNested, result);
-  }
-  getTermProposals(entry, existingNode, result) {
-    let functions = _SCSSCompletion.builtInFuncs;
+  };
+  SCSSCompletion2.prototype.getCompletionsForSelector = function(ruleSet, isNested, result) {
+    this.createFunctionProposals(SCSSCompletion2.selectorFuncs, null, true, result);
+    return _super.prototype.getCompletionsForSelector.call(this, ruleSet, isNested, result);
+  };
+  SCSSCompletion2.prototype.getTermProposals = function(entry, existingNode, result) {
+    var functions = SCSSCompletion2.builtInFuncs;
     if (entry) {
-      functions = functions.filter((f2) => !f2.type || !entry.restrictions || entry.restrictions.indexOf(f2.type) !== -1);
+      functions = functions.filter(function(f2) {
+        return !f2.type || !entry.restrictions || entry.restrictions.indexOf(f2.type) !== -1;
+      });
     }
     this.createFunctionProposals(functions, existingNode, true, result);
-    return super.getTermProposals(entry, existingNode, result);
-  }
-  getColorProposals(entry, existingNode, result) {
-    this.createFunctionProposals(_SCSSCompletion.colorProposals, existingNode, false, result);
-    return super.getColorProposals(entry, existingNode, result);
-  }
-  getCompletionsForDeclarationProperty(declaration, result) {
+    return _super.prototype.getTermProposals.call(this, entry, existingNode, result);
+  };
+  SCSSCompletion2.prototype.getColorProposals = function(entry, existingNode, result) {
+    this.createFunctionProposals(SCSSCompletion2.colorProposals, existingNode, false, result);
+    return _super.prototype.getColorProposals.call(this, entry, existingNode, result);
+  };
+  SCSSCompletion2.prototype.getCompletionsForDeclarationProperty = function(declaration, result) {
     this.getCompletionForAtDirectives(result);
     this.getCompletionsForSelector(null, true, result);
-    return super.getCompletionsForDeclarationProperty(declaration, result);
-  }
-  getCompletionsForExtendsReference(_extendsRef, existingNode, result) {
-    const symbols = this.getSymbolContext().findSymbolsAtOffset(this.offset, ReferenceType.Rule);
-    for (const symbol of symbols) {
-      const suggest = {
+    return _super.prototype.getCompletionsForDeclarationProperty.call(this, declaration, result);
+  };
+  SCSSCompletion2.prototype.getCompletionsForExtendsReference = function(_extendsRef, existingNode, result) {
+    var symbols = this.getSymbolContext().findSymbolsAtOffset(this.offset, ReferenceType.Rule);
+    for (var _i = 0, symbols_1 = symbols; _i < symbols_1.length; _i++) {
+      var symbol = symbols_1[_i];
+      var suggest = {
         label: symbol.name,
         textEdit: TextEdit.replace(this.getCompletionRange(existingNode), symbol.name),
         kind: CompletionItemKind.Function
@@ -10748,255 +11360,258 @@ var SCSSCompletion = class _SCSSCompletion extends CSSCompletion {
       result.items.push(suggest);
     }
     return result;
-  }
-  getCompletionForAtDirectives(result) {
-    result.items.push(..._SCSSCompletion.scssAtDirectives);
+  };
+  SCSSCompletion2.prototype.getCompletionForAtDirectives = function(result) {
+    var _a2;
+    (_a2 = result.items).push.apply(_a2, SCSSCompletion2.scssAtDirectives);
     return result;
-  }
-  getCompletionForTopLevel(result) {
+  };
+  SCSSCompletion2.prototype.getCompletionForTopLevel = function(result) {
     this.getCompletionForAtDirectives(result);
     this.getCompletionForModuleLoaders(result);
-    super.getCompletionForTopLevel(result);
+    _super.prototype.getCompletionForTopLevel.call(this, result);
     return result;
-  }
-  getCompletionForModuleLoaders(result) {
-    result.items.push(..._SCSSCompletion.scssModuleLoaders);
+  };
+  SCSSCompletion2.prototype.getCompletionForModuleLoaders = function(result) {
+    var _a2;
+    (_a2 = result.items).push.apply(_a2, SCSSCompletion2.scssModuleLoaders);
     return result;
-  }
-};
-SCSSCompletion.variableDefaults = {
-  "$red": "1",
-  "$green": "2",
-  "$blue": "3",
-  "$alpha": "1.0",
-  "$color": "#000000",
-  "$weight": "0.5",
-  "$hue": "0",
-  "$saturation": "0%",
-  "$lightness": "0%",
-  "$degrees": "0",
-  "$amount": "0",
-  "$string": '""',
-  "$substring": '"s"',
-  "$number": "0",
-  "$limit": "1"
-};
-SCSSCompletion.colorProposals = [
-  { func: "red($color)", desc: t("Gets the red component of a color.") },
-  { func: "green($color)", desc: t("Gets the green component of a color.") },
-  { func: "blue($color)", desc: t("Gets the blue component of a color.") },
-  { func: "mix($color, $color, [$weight])", desc: t("Mixes two colors together.") },
-  { func: "hue($color)", desc: t("Gets the hue component of a color.") },
-  { func: "saturation($color)", desc: t("Gets the saturation component of a color.") },
-  { func: "lightness($color)", desc: t("Gets the lightness component of a color.") },
-  { func: "adjust-hue($color, $degrees)", desc: t("Changes the hue of a color.") },
-  { func: "lighten($color, $amount)", desc: t("Makes a color lighter.") },
-  { func: "darken($color, $amount)", desc: t("Makes a color darker.") },
-  { func: "saturate($color, $amount)", desc: t("Makes a color more saturated.") },
-  { func: "desaturate($color, $amount)", desc: t("Makes a color less saturated.") },
-  { func: "grayscale($color)", desc: t("Converts a color to grayscale.") },
-  { func: "complement($color)", desc: t("Returns the complement of a color.") },
-  { func: "invert($color)", desc: t("Returns the inverse of a color.") },
-  { func: "alpha($color)", desc: t("Gets the opacity component of a color.") },
-  { func: "opacity($color)", desc: "Gets the alpha component (opacity) of a color." },
-  { func: "rgba($color, $alpha)", desc: t("Changes the alpha component for a color.") },
-  { func: "opacify($color, $amount)", desc: t("Makes a color more opaque.") },
-  { func: "fade-in($color, $amount)", desc: t("Makes a color more opaque.") },
-  { func: "transparentize($color, $amount)", desc: t("Makes a color more transparent.") },
-  { func: "fade-out($color, $amount)", desc: t("Makes a color more transparent.") },
-  { func: "adjust-color($color, [$red], [$green], [$blue], [$hue], [$saturation], [$lightness], [$alpha])", desc: t("Increases or decreases one or more components of a color.") },
-  { func: "scale-color($color, [$red], [$green], [$blue], [$saturation], [$lightness], [$alpha])", desc: t("Fluidly scales one or more properties of a color.") },
-  { func: "change-color($color, [$red], [$green], [$blue], [$hue], [$saturation], [$lightness], [$alpha])", desc: t("Changes one or more properties of a color.") },
-  { func: "ie-hex-str($color)", desc: t("Converts a color into the format understood by IE filters.") }
-];
-SCSSCompletion.selectorFuncs = [
-  { func: "selector-nest($selectors\u2026)", desc: t("Nests selector beneath one another like they would be nested in the stylesheet.") },
-  { func: "selector-append($selectors\u2026)", desc: t("Appends selectors to one another without spaces in between.") },
-  { func: "selector-extend($selector, $extendee, $extender)", desc: t("Extends $extendee with $extender within $selector.") },
-  { func: "selector-replace($selector, $original, $replacement)", desc: t("Replaces $original with $replacement within $selector.") },
-  { func: "selector-unify($selector1, $selector2)", desc: t("Unifies two selectors to produce a selector that matches elements matched by both.") },
-  { func: "is-superselector($super, $sub)", desc: t("Returns whether $super matches all the elements $sub does, and possibly more.") },
-  { func: "simple-selectors($selector)", desc: t("Returns the simple selectors that comprise a compound selector.") },
-  { func: "selector-parse($selector)", desc: t("Parses a selector into the format returned by &.") }
-];
-SCSSCompletion.builtInFuncs = [
-  { func: "unquote($string)", desc: t("Removes quotes from a string.") },
-  { func: "quote($string)", desc: t("Adds quotes to a string.") },
-  { func: "str-length($string)", desc: t("Returns the number of characters in a string.") },
-  { func: "str-insert($string, $insert, $index)", desc: t("Inserts $insert into $string at $index.") },
-  { func: "str-index($string, $substring)", desc: t("Returns the index of the first occurance of $substring in $string.") },
-  { func: "str-slice($string, $start-at, [$end-at])", desc: t("Extracts a substring from $string.") },
-  { func: "to-upper-case($string)", desc: t("Converts a string to upper case.") },
-  { func: "to-lower-case($string)", desc: t("Converts a string to lower case.") },
-  { func: "percentage($number)", desc: t("Converts a unitless number to a percentage."), type: "percentage" },
-  { func: "round($number)", desc: t("Rounds a number to the nearest whole number.") },
-  { func: "ceil($number)", desc: t("Rounds a number up to the next whole number.") },
-  { func: "floor($number)", desc: t("Rounds a number down to the previous whole number.") },
-  { func: "abs($number)", desc: t("Returns the absolute value of a number.") },
-  { func: "min($numbers)", desc: t("Finds the minimum of several numbers.") },
-  { func: "max($numbers)", desc: t("Finds the maximum of several numbers.") },
-  { func: "random([$limit])", desc: t("Returns a random number.") },
-  { func: "length($list)", desc: t("Returns the length of a list.") },
-  { func: "nth($list, $n)", desc: t("Returns a specific item in a list.") },
-  { func: "set-nth($list, $n, $value)", desc: t("Replaces the nth item in a list.") },
-  { func: "join($list1, $list2, [$separator])", desc: t("Joins together two lists into one.") },
-  { func: "append($list1, $val, [$separator])", desc: t("Appends a single value onto the end of a list.") },
-  { func: "zip($lists)", desc: t("Combines several lists into a single multidimensional list.") },
-  { func: "index($list, $value)", desc: t("Returns the position of a value within a list.") },
-  { func: "list-separator(#list)", desc: t("Returns the separator of a list.") },
-  { func: "map-get($map, $key)", desc: t("Returns the value in a map associated with a given key.") },
-  { func: "map-merge($map1, $map2)", desc: t("Merges two maps together into a new map.") },
-  { func: "map-remove($map, $keys)", desc: t("Returns a new map with keys removed.") },
-  { func: "map-keys($map)", desc: t("Returns a list of all keys in a map.") },
-  { func: "map-values($map)", desc: t("Returns a list of all values in a map.") },
-  { func: "map-has-key($map, $key)", desc: t("Returns whether a map has a value associated with a given key.") },
-  { func: "keywords($args)", desc: t("Returns the keywords passed to a function that takes variable arguments.") },
-  { func: "feature-exists($feature)", desc: t("Returns whether a feature exists in the current Sass runtime.") },
-  { func: "variable-exists($name)", desc: t("Returns whether a variable with the given name exists in the current scope.") },
-  { func: "global-variable-exists($name)", desc: t("Returns whether a variable with the given name exists in the global scope.") },
-  { func: "function-exists($name)", desc: t("Returns whether a function with the given name exists.") },
-  { func: "mixin-exists($name)", desc: t("Returns whether a mixin with the given name exists.") },
-  { func: "inspect($value)", desc: t("Returns the string representation of a value as it would be represented in Sass.") },
-  { func: "type-of($value)", desc: t("Returns the type of a value.") },
-  { func: "unit($number)", desc: t("Returns the unit(s) associated with a number.") },
-  { func: "unitless($number)", desc: t("Returns whether a number has units.") },
-  { func: "comparable($number1, $number2)", desc: t("Returns whether two numbers can be added, subtracted, or compared.") },
-  { func: "call($name, $args\u2026)", desc: t("Dynamically calls a Sass function.") }
-];
-SCSSCompletion.scssAtDirectives = [
-  {
-    label: "@extend",
-    documentation: t("Inherits the styles of another selector."),
-    kind: CompletionItemKind.Keyword
-  },
-  {
-    label: "@at-root",
-    documentation: t("Causes one or more rules to be emitted at the root of the document."),
-    kind: CompletionItemKind.Keyword
-  },
-  {
-    label: "@debug",
-    documentation: t("Prints the value of an expression to the standard error output stream. Useful for debugging complicated Sass files."),
-    kind: CompletionItemKind.Keyword
-  },
-  {
-    label: "@warn",
-    documentation: t("Prints the value of an expression to the standard error output stream. Useful for libraries that need to warn users of deprecations or recovering from minor mixin usage mistakes. Warnings can be turned off with the `--quiet` command-line option or the `:quiet` Sass option."),
-    kind: CompletionItemKind.Keyword
-  },
-  {
-    label: "@error",
-    documentation: t("Throws the value of an expression as a fatal error with stack trace. Useful for validating arguments to mixins and functions."),
-    kind: CompletionItemKind.Keyword
-  },
-  {
-    label: "@if",
-    documentation: t("Includes the body if the expression does not evaluate to `false` or `null`."),
-    insertText: "@if ${1:expr} {\n	$0\n}",
-    insertTextFormat: InsertTextFormat.Snippet,
-    kind: CompletionItemKind.Keyword
-  },
-  {
-    label: "@for",
-    documentation: t("For loop that repeatedly outputs a set of styles for each `$var` in the `from/through` or `from/to` clause."),
-    insertText: "@for \\$${1:var} from ${2:start} ${3|to,through|} ${4:end} {\n	$0\n}",
-    insertTextFormat: InsertTextFormat.Snippet,
-    kind: CompletionItemKind.Keyword
-  },
-  {
-    label: "@each",
-    documentation: t("Each loop that sets `$var` to each item in the list or map, then outputs the styles it contains using that value of `$var`."),
-    insertText: "@each \\$${1:var} in ${2:list} {\n	$0\n}",
-    insertTextFormat: InsertTextFormat.Snippet,
-    kind: CompletionItemKind.Keyword
-  },
-  {
-    label: "@while",
-    documentation: t("While loop that takes an expression and repeatedly outputs the nested styles until the statement evaluates to `false`."),
-    insertText: "@while ${1:condition} {\n	$0\n}",
-    insertTextFormat: InsertTextFormat.Snippet,
-    kind: CompletionItemKind.Keyword
-  },
-  {
-    label: "@mixin",
-    documentation: t("Defines styles that can be re-used throughout the stylesheet with `@include`."),
-    insertText: "@mixin ${1:name} {\n	$0\n}",
-    insertTextFormat: InsertTextFormat.Snippet,
-    kind: CompletionItemKind.Keyword
-  },
-  {
-    label: "@include",
-    documentation: t("Includes the styles defined by another mixin into the current rule."),
-    kind: CompletionItemKind.Keyword
-  },
-  {
-    label: "@function",
-    documentation: t("Defines complex operations that can be re-used throughout stylesheets."),
-    kind: CompletionItemKind.Keyword
-  }
-];
-SCSSCompletion.scssModuleLoaders = [
-  {
-    label: "@use",
-    documentation: t("Loads mixins, functions, and variables from other Sass stylesheets as 'modules', and combines CSS from multiple stylesheets together."),
-    references: [{ name: sassDocumentationName, url: "https://sass-lang.com/documentation/at-rules/use" }],
-    insertText: "@use $0;",
-    insertTextFormat: InsertTextFormat.Snippet,
-    kind: CompletionItemKind.Keyword
-  },
-  {
-    label: "@forward",
-    documentation: t("Loads a Sass stylesheet and makes its mixins, functions, and variables available when this stylesheet is loaded with the @use rule."),
-    references: [{ name: sassDocumentationName, url: "https://sass-lang.com/documentation/at-rules/forward" }],
-    insertText: "@forward $0;",
-    insertTextFormat: InsertTextFormat.Snippet,
-    kind: CompletionItemKind.Keyword
-  }
-];
-SCSSCompletion.scssModuleBuiltIns = [
-  {
-    label: "sass:math",
-    documentation: t("Provides functions that operate on numbers."),
-    references: [{ name: sassDocumentationName, url: "https://sass-lang.com/documentation/modules/math" }]
-  },
-  {
-    label: "sass:string",
-    documentation: t("Makes it easy to combine, search, or split apart strings."),
-    references: [{ name: sassDocumentationName, url: "https://sass-lang.com/documentation/modules/string" }]
-  },
-  {
-    label: "sass:color",
-    documentation: t("Generates new colors based on existing ones, making it easy to build color themes."),
-    references: [{ name: sassDocumentationName, url: "https://sass-lang.com/documentation/modules/color" }]
-  },
-  {
-    label: "sass:list",
-    documentation: t("Lets you access and modify values in lists."),
-    references: [{ name: sassDocumentationName, url: "https://sass-lang.com/documentation/modules/list" }]
-  },
-  {
-    label: "sass:map",
-    documentation: t("Makes it possible to look up the value associated with a key in a map, and much more."),
-    references: [{ name: sassDocumentationName, url: "https://sass-lang.com/documentation/modules/map" }]
-  },
-  {
-    label: "sass:selector",
-    documentation: t("Provides access to Sass\u2019s powerful selector engine."),
-    references: [{ name: sassDocumentationName, url: "https://sass-lang.com/documentation/modules/selector" }]
-  },
-  {
-    label: "sass:meta",
-    documentation: t("Exposes the details of Sass\u2019s inner workings."),
-    references: [{ name: sassDocumentationName, url: "https://sass-lang.com/documentation/modules/meta" }]
-  }
-];
+  };
+  SCSSCompletion2.variableDefaults = {
+    "$red": "1",
+    "$green": "2",
+    "$blue": "3",
+    "$alpha": "1.0",
+    "$color": "#000000",
+    "$weight": "0.5",
+    "$hue": "0",
+    "$saturation": "0%",
+    "$lightness": "0%",
+    "$degrees": "0",
+    "$amount": "0",
+    "$string": '""',
+    "$substring": '"s"',
+    "$number": "0",
+    "$limit": "1"
+  };
+  SCSSCompletion2.colorProposals = [
+    { func: "red($color)", desc: localize11("scss.builtin.red", "Gets the red component of a color.") },
+    { func: "green($color)", desc: localize11("scss.builtin.green", "Gets the green component of a color.") },
+    { func: "blue($color)", desc: localize11("scss.builtin.blue", "Gets the blue component of a color.") },
+    { func: "mix($color, $color, [$weight])", desc: localize11("scss.builtin.mix", "Mixes two colors together.") },
+    { func: "hue($color)", desc: localize11("scss.builtin.hue", "Gets the hue component of a color.") },
+    { func: "saturation($color)", desc: localize11("scss.builtin.saturation", "Gets the saturation component of a color.") },
+    { func: "lightness($color)", desc: localize11("scss.builtin.lightness", "Gets the lightness component of a color.") },
+    { func: "adjust-hue($color, $degrees)", desc: localize11("scss.builtin.adjust-hue", "Changes the hue of a color.") },
+    { func: "lighten($color, $amount)", desc: localize11("scss.builtin.lighten", "Makes a color lighter.") },
+    { func: "darken($color, $amount)", desc: localize11("scss.builtin.darken", "Makes a color darker.") },
+    { func: "saturate($color, $amount)", desc: localize11("scss.builtin.saturate", "Makes a color more saturated.") },
+    { func: "desaturate($color, $amount)", desc: localize11("scss.builtin.desaturate", "Makes a color less saturated.") },
+    { func: "grayscale($color)", desc: localize11("scss.builtin.grayscale", "Converts a color to grayscale.") },
+    { func: "complement($color)", desc: localize11("scss.builtin.complement", "Returns the complement of a color.") },
+    { func: "invert($color)", desc: localize11("scss.builtin.invert", "Returns the inverse of a color.") },
+    { func: "alpha($color)", desc: localize11("scss.builtin.alpha", "Gets the opacity component of a color.") },
+    { func: "opacity($color)", desc: "Gets the alpha component (opacity) of a color." },
+    { func: "rgba($color, $alpha)", desc: localize11("scss.builtin.rgba", "Changes the alpha component for a color.") },
+    { func: "opacify($color, $amount)", desc: localize11("scss.builtin.opacify", "Makes a color more opaque.") },
+    { func: "fade-in($color, $amount)", desc: localize11("scss.builtin.fade-in", "Makes a color more opaque.") },
+    { func: "transparentize($color, $amount)", desc: localize11("scss.builtin.transparentize", "Makes a color more transparent.") },
+    { func: "fade-out($color, $amount)", desc: localize11("scss.builtin.fade-out", "Makes a color more transparent.") },
+    { func: "adjust-color($color, [$red], [$green], [$blue], [$hue], [$saturation], [$lightness], [$alpha])", desc: localize11("scss.builtin.adjust-color", "Increases or decreases one or more components of a color.") },
+    { func: "scale-color($color, [$red], [$green], [$blue], [$saturation], [$lightness], [$alpha])", desc: localize11("scss.builtin.scale-color", "Fluidly scales one or more properties of a color.") },
+    { func: "change-color($color, [$red], [$green], [$blue], [$hue], [$saturation], [$lightness], [$alpha])", desc: localize11("scss.builtin.change-color", "Changes one or more properties of a color.") },
+    { func: "ie-hex-str($color)", desc: localize11("scss.builtin.ie-hex-str", "Converts a color into the format understood by IE filters.") }
+  ];
+  SCSSCompletion2.selectorFuncs = [
+    { func: "selector-nest($selectors\u2026)", desc: localize11("scss.builtin.selector-nest", "Nests selector beneath one another like they would be nested in the stylesheet.") },
+    { func: "selector-append($selectors\u2026)", desc: localize11("scss.builtin.selector-append", "Appends selectors to one another without spaces in between.") },
+    { func: "selector-extend($selector, $extendee, $extender)", desc: localize11("scss.builtin.selector-extend", "Extends $extendee with $extender within $selector.") },
+    { func: "selector-replace($selector, $original, $replacement)", desc: localize11("scss.builtin.selector-replace", "Replaces $original with $replacement within $selector.") },
+    { func: "selector-unify($selector1, $selector2)", desc: localize11("scss.builtin.selector-unify", "Unifies two selectors to produce a selector that matches elements matched by both.") },
+    { func: "is-superselector($super, $sub)", desc: localize11("scss.builtin.is-superselector", "Returns whether $super matches all the elements $sub does, and possibly more.") },
+    { func: "simple-selectors($selector)", desc: localize11("scss.builtin.simple-selectors", "Returns the simple selectors that comprise a compound selector.") },
+    { func: "selector-parse($selector)", desc: localize11("scss.builtin.selector-parse", "Parses a selector into the format returned by &.") }
+  ];
+  SCSSCompletion2.builtInFuncs = [
+    { func: "unquote($string)", desc: localize11("scss.builtin.unquote", "Removes quotes from a string.") },
+    { func: "quote($string)", desc: localize11("scss.builtin.quote", "Adds quotes to a string.") },
+    { func: "str-length($string)", desc: localize11("scss.builtin.str-length", "Returns the number of characters in a string.") },
+    { func: "str-insert($string, $insert, $index)", desc: localize11("scss.builtin.str-insert", "Inserts $insert into $string at $index.") },
+    { func: "str-index($string, $substring)", desc: localize11("scss.builtin.str-index", "Returns the index of the first occurance of $substring in $string.") },
+    { func: "str-slice($string, $start-at, [$end-at])", desc: localize11("scss.builtin.str-slice", "Extracts a substring from $string.") },
+    { func: "to-upper-case($string)", desc: localize11("scss.builtin.to-upper-case", "Converts a string to upper case.") },
+    { func: "to-lower-case($string)", desc: localize11("scss.builtin.to-lower-case", "Converts a string to lower case.") },
+    { func: "percentage($number)", desc: localize11("scss.builtin.percentage", "Converts a unitless number to a percentage."), type: "percentage" },
+    { func: "round($number)", desc: localize11("scss.builtin.round", "Rounds a number to the nearest whole number.") },
+    { func: "ceil($number)", desc: localize11("scss.builtin.ceil", "Rounds a number up to the next whole number.") },
+    { func: "floor($number)", desc: localize11("scss.builtin.floor", "Rounds a number down to the previous whole number.") },
+    { func: "abs($number)", desc: localize11("scss.builtin.abs", "Returns the absolute value of a number.") },
+    { func: "min($numbers)", desc: localize11("scss.builtin.min", "Finds the minimum of several numbers.") },
+    { func: "max($numbers)", desc: localize11("scss.builtin.max", "Finds the maximum of several numbers.") },
+    { func: "random([$limit])", desc: localize11("scss.builtin.random", "Returns a random number.") },
+    { func: "length($list)", desc: localize11("scss.builtin.length", "Returns the length of a list.") },
+    { func: "nth($list, $n)", desc: localize11("scss.builtin.nth", "Returns a specific item in a list.") },
+    { func: "set-nth($list, $n, $value)", desc: localize11("scss.builtin.set-nth", "Replaces the nth item in a list.") },
+    { func: "join($list1, $list2, [$separator])", desc: localize11("scss.builtin.join", "Joins together two lists into one.") },
+    { func: "append($list1, $val, [$separator])", desc: localize11("scss.builtin.append", "Appends a single value onto the end of a list.") },
+    { func: "zip($lists)", desc: localize11("scss.builtin.zip", "Combines several lists into a single multidimensional list.") },
+    { func: "index($list, $value)", desc: localize11("scss.builtin.index", "Returns the position of a value within a list.") },
+    { func: "list-separator(#list)", desc: localize11("scss.builtin.list-separator", "Returns the separator of a list.") },
+    { func: "map-get($map, $key)", desc: localize11("scss.builtin.map-get", "Returns the value in a map associated with a given key.") },
+    { func: "map-merge($map1, $map2)", desc: localize11("scss.builtin.map-merge", "Merges two maps together into a new map.") },
+    { func: "map-remove($map, $keys)", desc: localize11("scss.builtin.map-remove", "Returns a new map with keys removed.") },
+    { func: "map-keys($map)", desc: localize11("scss.builtin.map-keys", "Returns a list of all keys in a map.") },
+    { func: "map-values($map)", desc: localize11("scss.builtin.map-values", "Returns a list of all values in a map.") },
+    { func: "map-has-key($map, $key)", desc: localize11("scss.builtin.map-has-key", "Returns whether a map has a value associated with a given key.") },
+    { func: "keywords($args)", desc: localize11("scss.builtin.keywords", "Returns the keywords passed to a function that takes variable arguments.") },
+    { func: "feature-exists($feature)", desc: localize11("scss.builtin.feature-exists", "Returns whether a feature exists in the current Sass runtime.") },
+    { func: "variable-exists($name)", desc: localize11("scss.builtin.variable-exists", "Returns whether a variable with the given name exists in the current scope.") },
+    { func: "global-variable-exists($name)", desc: localize11("scss.builtin.global-variable-exists", "Returns whether a variable with the given name exists in the global scope.") },
+    { func: "function-exists($name)", desc: localize11("scss.builtin.function-exists", "Returns whether a function with the given name exists.") },
+    { func: "mixin-exists($name)", desc: localize11("scss.builtin.mixin-exists", "Returns whether a mixin with the given name exists.") },
+    { func: "inspect($value)", desc: localize11("scss.builtin.inspect", "Returns the string representation of a value as it would be represented in Sass.") },
+    { func: "type-of($value)", desc: localize11("scss.builtin.type-of", "Returns the type of a value.") },
+    { func: "unit($number)", desc: localize11("scss.builtin.unit", "Returns the unit(s) associated with a number.") },
+    { func: "unitless($number)", desc: localize11("scss.builtin.unitless", "Returns whether a number has units.") },
+    { func: "comparable($number1, $number2)", desc: localize11("scss.builtin.comparable", "Returns whether two numbers can be added, subtracted, or compared.") },
+    { func: "call($name, $args\u2026)", desc: localize11("scss.builtin.call", "Dynamically calls a Sass function.") }
+  ];
+  SCSSCompletion2.scssAtDirectives = [
+    {
+      label: "@extend",
+      documentation: localize11("scss.builtin.@extend", "Inherits the styles of another selector."),
+      kind: CompletionItemKind.Keyword
+    },
+    {
+      label: "@at-root",
+      documentation: localize11("scss.builtin.@at-root", "Causes one or more rules to be emitted at the root of the document."),
+      kind: CompletionItemKind.Keyword
+    },
+    {
+      label: "@debug",
+      documentation: localize11("scss.builtin.@debug", "Prints the value of an expression to the standard error output stream. Useful for debugging complicated Sass files."),
+      kind: CompletionItemKind.Keyword
+    },
+    {
+      label: "@warn",
+      documentation: localize11("scss.builtin.@warn", "Prints the value of an expression to the standard error output stream. Useful for libraries that need to warn users of deprecations or recovering from minor mixin usage mistakes. Warnings can be turned off with the `--quiet` command-line option or the `:quiet` Sass option."),
+      kind: CompletionItemKind.Keyword
+    },
+    {
+      label: "@error",
+      documentation: localize11("scss.builtin.@error", "Throws the value of an expression as a fatal error with stack trace. Useful for validating arguments to mixins and functions."),
+      kind: CompletionItemKind.Keyword
+    },
+    {
+      label: "@if",
+      documentation: localize11("scss.builtin.@if", "Includes the body if the expression does not evaluate to `false` or `null`."),
+      insertText: "@if ${1:expr} {\n	$0\n}",
+      insertTextFormat: InsertTextFormat.Snippet,
+      kind: CompletionItemKind.Keyword
+    },
+    {
+      label: "@for",
+      documentation: localize11("scss.builtin.@for", "For loop that repeatedly outputs a set of styles for each `$var` in the `from/through` or `from/to` clause."),
+      insertText: "@for \\$${1:var} from ${2:start} ${3|to,through|} ${4:end} {\n	$0\n}",
+      insertTextFormat: InsertTextFormat.Snippet,
+      kind: CompletionItemKind.Keyword
+    },
+    {
+      label: "@each",
+      documentation: localize11("scss.builtin.@each", "Each loop that sets `$var` to each item in the list or map, then outputs the styles it contains using that value of `$var`."),
+      insertText: "@each \\$${1:var} in ${2:list} {\n	$0\n}",
+      insertTextFormat: InsertTextFormat.Snippet,
+      kind: CompletionItemKind.Keyword
+    },
+    {
+      label: "@while",
+      documentation: localize11("scss.builtin.@while", "While loop that takes an expression and repeatedly outputs the nested styles until the statement evaluates to `false`."),
+      insertText: "@while ${1:condition} {\n	$0\n}",
+      insertTextFormat: InsertTextFormat.Snippet,
+      kind: CompletionItemKind.Keyword
+    },
+    {
+      label: "@mixin",
+      documentation: localize11("scss.builtin.@mixin", "Defines styles that can be re-used throughout the stylesheet with `@include`."),
+      insertText: "@mixin ${1:name} {\n	$0\n}",
+      insertTextFormat: InsertTextFormat.Snippet,
+      kind: CompletionItemKind.Keyword
+    },
+    {
+      label: "@include",
+      documentation: localize11("scss.builtin.@include", "Includes the styles defined by another mixin into the current rule."),
+      kind: CompletionItemKind.Keyword
+    },
+    {
+      label: "@function",
+      documentation: localize11("scss.builtin.@function", "Defines complex operations that can be re-used throughout stylesheets."),
+      kind: CompletionItemKind.Keyword
+    }
+  ];
+  SCSSCompletion2.scssModuleLoaders = [
+    {
+      label: "@use",
+      documentation: localize11("scss.builtin.@use", "Loads mixins, functions, and variables from other Sass stylesheets as 'modules', and combines CSS from multiple stylesheets together."),
+      references: [{ name: "Sass documentation", url: "https://sass-lang.com/documentation/at-rules/use" }],
+      insertText: "@use $0;",
+      insertTextFormat: InsertTextFormat.Snippet,
+      kind: CompletionItemKind.Keyword
+    },
+    {
+      label: "@forward",
+      documentation: localize11("scss.builtin.@forward", "Loads a Sass stylesheet and makes its mixins, functions, and variables available when this stylesheet is loaded with the @use rule."),
+      references: [{ name: "Sass documentation", url: "https://sass-lang.com/documentation/at-rules/forward" }],
+      insertText: "@forward $0;",
+      insertTextFormat: InsertTextFormat.Snippet,
+      kind: CompletionItemKind.Keyword
+    }
+  ];
+  SCSSCompletion2.scssModuleBuiltIns = [
+    {
+      label: "sass:math",
+      documentation: localize11("scss.builtin.sass:math", "Provides functions that operate on numbers."),
+      references: [{ name: "Sass documentation", url: "https://sass-lang.com/documentation/modules/math" }]
+    },
+    {
+      label: "sass:string",
+      documentation: localize11("scss.builtin.sass:string", "Makes it easy to combine, search, or split apart strings."),
+      references: [{ name: "Sass documentation", url: "https://sass-lang.com/documentation/modules/string" }]
+    },
+    {
+      label: "sass:color",
+      documentation: localize11("scss.builtin.sass:color", "Generates new colors based on existing ones, making it easy to build color themes."),
+      references: [{ name: "Sass documentation", url: "https://sass-lang.com/documentation/modules/color" }]
+    },
+    {
+      label: "sass:list",
+      documentation: localize11("scss.builtin.sass:list", "Lets you access and modify values in lists."),
+      references: [{ name: "Sass documentation", url: "https://sass-lang.com/documentation/modules/list" }]
+    },
+    {
+      label: "sass:map",
+      documentation: localize11("scss.builtin.sass:map", "Makes it possible to look up the value associated with a key in a map, and much more."),
+      references: [{ name: "Sass documentation", url: "https://sass-lang.com/documentation/modules/map" }]
+    },
+    {
+      label: "sass:selector",
+      documentation: localize11("scss.builtin.sass:selector", "Provides access to Sass\u2019s powerful selector engine."),
+      references: [{ name: "Sass documentation", url: "https://sass-lang.com/documentation/modules/selector" }]
+    },
+    {
+      label: "sass:meta",
+      documentation: localize11("scss.builtin.sass:meta", "Exposes the details of Sass\u2019s inner workings."),
+      references: [{ name: "Sass documentation", url: "https://sass-lang.com/documentation/modules/meta" }]
+    }
+  ];
+  return SCSSCompletion2;
+}(CSSCompletion);
 function addReferencesToDocumentation(items) {
-  items.forEach((i) => {
+  items.forEach(function(i) {
     if (i.documentation && i.references && i.references.length > 0) {
-      const markdownDoc = typeof i.documentation === "string" ? { kind: "markdown", value: i.documentation } : { kind: "markdown", value: i.documentation.value };
+      var markdownDoc = typeof i.documentation === "string" ? { kind: "markdown", value: i.documentation } : { kind: "markdown", value: i.documentation.value };
       markdownDoc.value += "\n\n";
-      markdownDoc.value += i.references.map((r) => {
-        return `[${r.name}](${r.url})`;
+      markdownDoc.value += i.references.map(function(r) {
+        return "[".concat(r.name, "](").concat(r.url, ")");
       }).join(" | ");
       i.documentation = markdownDoc;
     }
@@ -11004,6 +11619,27 @@ function addReferencesToDocumentation(items) {
 }
 
 // node_modules/vscode-css-languageservice/lib/esm/parser/lessScanner.js
+var __extends7 = function() {
+  var extendStatics = function(d, b) {
+    extendStatics = Object.setPrototypeOf || { __proto__: [] } instanceof Array && function(d2, b2) {
+      d2.__proto__ = b2;
+    } || function(d2, b2) {
+      for (var p in b2)
+        if (Object.prototype.hasOwnProperty.call(b2, p))
+          d2[p] = b2[p];
+    };
+    return extendStatics(d, b);
+  };
+  return function(d, b) {
+    if (typeof b !== "function" && b !== null)
+      throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
+    extendStatics(d, b);
+    function __() {
+      this.constructor = d;
+    }
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+  };
+}();
 var _FSL3 = "/".charCodeAt(0);
 var _NWL3 = "\n".charCodeAt(0);
 var _CAR3 = "\r".charCodeAt(0);
@@ -11012,23 +11648,27 @@ var _TIC = "`".charCodeAt(0);
 var _DOT3 = ".".charCodeAt(0);
 var customTokenValue2 = TokenType.CustomToken;
 var Ellipsis2 = customTokenValue2++;
-var LESSScanner = class extends Scanner {
-  scanNext(offset) {
-    const tokenType = this.escapedJavaScript();
+var LESSScanner = function(_super) {
+  __extends7(LESSScanner2, _super);
+  function LESSScanner2() {
+    return _super !== null && _super.apply(this, arguments) || this;
+  }
+  LESSScanner2.prototype.scanNext = function(offset) {
+    var tokenType = this.escapedJavaScript();
     if (tokenType !== null) {
       return this.finishToken(offset, tokenType);
     }
     if (this.stream.advanceIfChars([_DOT3, _DOT3, _DOT3])) {
       return this.finishToken(offset, Ellipsis2);
     }
-    return super.scanNext(offset);
-  }
-  comment() {
-    if (super.comment()) {
+    return _super.prototype.scanNext.call(this, offset);
+  };
+  LESSScanner2.prototype.comment = function() {
+    if (_super.prototype.comment.call(this)) {
       return true;
     }
     if (!this.inURL && this.stream.advanceIfChars([_FSL3, _FSL3])) {
-      this.stream.advanceWhileChar((ch) => {
+      this.stream.advanceWhileChar(function(ch) {
         switch (ch) {
           case _NWL3:
           case _CAR3:
@@ -11042,36 +11682,62 @@ var LESSScanner = class extends Scanner {
     } else {
       return false;
     }
-  }
-  escapedJavaScript() {
-    const ch = this.stream.peekChar();
+  };
+  LESSScanner2.prototype.escapedJavaScript = function() {
+    var ch = this.stream.peekChar();
     if (ch === _TIC) {
       this.stream.advance(1);
-      this.stream.advanceWhileChar((ch2) => {
+      this.stream.advanceWhileChar(function(ch2) {
         return ch2 !== _TIC;
       });
       return this.stream.advanceIfChar(_TIC) ? TokenType.EscapedJavaScript : TokenType.BadEscapedJavaScript;
     }
     return null;
-  }
-};
+  };
+  return LESSScanner2;
+}(Scanner);
 
 // node_modules/vscode-css-languageservice/lib/esm/parser/lessParser.js
-var LESSParser = class extends Parser {
-  constructor() {
-    super(new LESSScanner());
+var __extends8 = function() {
+  var extendStatics = function(d, b) {
+    extendStatics = Object.setPrototypeOf || { __proto__: [] } instanceof Array && function(d2, b2) {
+      d2.__proto__ = b2;
+    } || function(d2, b2) {
+      for (var p in b2)
+        if (Object.prototype.hasOwnProperty.call(b2, p))
+          d2[p] = b2[p];
+    };
+    return extendStatics(d, b);
+  };
+  return function(d, b) {
+    if (typeof b !== "function" && b !== null)
+      throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
+    extendStatics(d, b);
+    function __() {
+      this.constructor = d;
+    }
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+  };
+}();
+var LESSParser = function(_super) {
+  __extends8(LESSParser2, _super);
+  function LESSParser2() {
+    return _super.call(this, new LESSScanner()) || this;
   }
-  _parseStylesheetStatement(isNested = false) {
+  LESSParser2.prototype._parseStylesheetStatement = function(isNested) {
+    if (isNested === void 0) {
+      isNested = false;
+    }
     if (this.peek(TokenType.AtKeyword)) {
-      return this._parseVariableDeclaration() || this._parsePlugin() || super._parseStylesheetAtStatement(isNested);
+      return this._parseVariableDeclaration() || this._parsePlugin() || _super.prototype._parseStylesheetAtStatement.call(this, isNested);
     }
     return this._tryParseMixinDeclaration() || this._tryParseMixinReference() || this._parseFunction() || this._parseRuleset(true);
-  }
-  _parseImport() {
+  };
+  LESSParser2.prototype._parseImport = function() {
     if (!this.peekKeyword("@import") && !this.peekKeyword("@import-once")) {
       return null;
     }
-    const node = this.create(Import);
+    var node = this.create(Import);
     this.consumeToken();
     if (this.accept(TokenType.ParenthesisL)) {
       if (!this.accept(TokenType.Ident)) {
@@ -11092,13 +11758,13 @@ var LESSParser = class extends Parser {
     if (!this.peek(TokenType.SemiColon) && !this.peek(TokenType.EOF)) {
       node.setMedialist(this._parseMediaQueryList());
     }
-    return this._completeParseImport(node);
-  }
-  _parsePlugin() {
+    return this.finish(node);
+  };
+  LESSParser2.prototype._parsePlugin = function() {
     if (!this.peekKeyword("@plugin")) {
       return null;
     }
-    const node = this.createNode(NodeType.Plugin);
+    var node = this.createNode(NodeType.Plugin);
     this.consumeToken();
     if (!node.addChild(this._parseStringLiteral())) {
       return this.finish(node, ParseError.StringLiteralExpected);
@@ -11107,27 +11773,33 @@ var LESSParser = class extends Parser {
       return this.finish(node, ParseError.SemiColonExpected);
     }
     return this.finish(node);
-  }
-  _parseMediaQuery() {
-    const node = super._parseMediaQuery();
+  };
+  LESSParser2.prototype._parseMediaQuery = function() {
+    var node = _super.prototype._parseMediaQuery.call(this);
     if (!node) {
-      const node2 = this.create(MediaQuery);
-      if (node2.addChild(this._parseVariable())) {
-        return this.finish(node2);
+      var node_1 = this.create(MediaQuery);
+      if (node_1.addChild(this._parseVariable())) {
+        return this.finish(node_1);
       }
       return null;
     }
     return node;
-  }
-  _parseMediaDeclaration(isNested = false) {
+  };
+  LESSParser2.prototype._parseMediaDeclaration = function(isNested) {
+    if (isNested === void 0) {
+      isNested = false;
+    }
     return this._tryParseRuleset(isNested) || this._tryToParseDeclaration() || this._tryParseMixinDeclaration() || this._tryParseMixinReference() || this._parseDetachedRuleSetMixin() || this._parseStylesheetStatement(isNested);
-  }
-  _parseMediaFeatureName() {
+  };
+  LESSParser2.prototype._parseMediaFeatureName = function() {
     return this._parseIdent() || this._parseVariable();
-  }
-  _parseVariableDeclaration(panic = []) {
-    const node = this.create(VariableDeclaration);
-    const mark = this.mark();
+  };
+  LESSParser2.prototype._parseVariableDeclaration = function(panic) {
+    if (panic === void 0) {
+      panic = [];
+    }
+    var node = this.create(VariableDeclaration);
+    var mark = this.mark();
     if (!node.setVariable(this._parseVariable(true))) {
       return null;
     }
@@ -11149,13 +11821,13 @@ var LESSParser = class extends Parser {
       node.semicolonPosition = this.token.offset;
     }
     return this.finish(node);
-  }
-  _parseDetachedRuleSet() {
-    let mark = this.mark();
+  };
+  LESSParser2.prototype._parseDetachedRuleSet = function() {
+    var mark = this.mark();
     if (this.peekDelim("#") || this.peekDelim(".")) {
       this.consumeToken();
       if (!this.hasWhitespace() && this.accept(TokenType.ParenthesisL)) {
-        let node = this.create(MixinDeclaration);
+        var node = this.create(MixinDeclaration);
         if (node.getParameters().addChild(this._parseMixinParameter())) {
           while (this.accept(TokenType.Comma) || this.accept(TokenType.SemiColon)) {
             if (this.peek(TokenType.ParenthesisR)) {
@@ -11178,18 +11850,18 @@ var LESSParser = class extends Parser {
     if (!this.peek(TokenType.CurlyL)) {
       return null;
     }
-    const content = this.create(BodyDeclaration);
+    var content = this.create(BodyDeclaration);
     this._parseBody(content, this._parseDetachedRuleSetBody.bind(this));
     return this.finish(content);
-  }
-  _parseDetachedRuleSetBody() {
+  };
+  LESSParser2.prototype._parseDetachedRuleSetBody = function() {
     return this._tryParseKeyframeSelector() || this._parseRuleSetDeclaration();
-  }
-  _addLookupChildren(node) {
+  };
+  LESSParser2.prototype._addLookupChildren = function(node) {
     if (!node.addChild(this._parseLookupValue())) {
       return false;
     }
-    let expectsValue = false;
+    var expectsValue = false;
     while (true) {
       if (this.peek(TokenType.BracketL)) {
         expectsValue = true;
@@ -11200,10 +11872,10 @@ var LESSParser = class extends Parser {
       expectsValue = false;
     }
     return !expectsValue;
-  }
-  _parseLookupValue() {
-    const node = this.create(Node);
-    const mark = this.mark();
+  };
+  LESSParser2.prototype._parseLookupValue = function() {
+    var node = this.create(Node);
+    var mark = this.mark();
     if (!this.accept(TokenType.BracketL)) {
       this.restoreAtMark(mark);
       return null;
@@ -11213,14 +11885,20 @@ var LESSParser = class extends Parser {
     }
     this.restoreAtMark(mark);
     return null;
-  }
-  _parseVariable(declaration = false, insideLookup = false) {
-    const isPropertyReference = !declaration && this.peekDelim("$");
+  };
+  LESSParser2.prototype._parseVariable = function(declaration, insideLookup) {
+    if (declaration === void 0) {
+      declaration = false;
+    }
+    if (insideLookup === void 0) {
+      insideLookup = false;
+    }
+    var isPropertyReference = !declaration && this.peekDelim("$");
     if (!this.peekDelim("@") && !isPropertyReference && !this.peek(TokenType.AtKeyword)) {
       return null;
     }
-    const node = this.create(Variable);
-    const mark = this.mark();
+    var node = this.create(Variable);
+    var mark = this.mark();
     while (this.acceptDelim("@") || !declaration && this.acceptDelim("$")) {
       if (this.hasWhitespace()) {
         this.restoreAtMark(mark);
@@ -11238,19 +11916,18 @@ var LESSParser = class extends Parser {
       }
     }
     return node;
-  }
-  _parseTermExpression() {
-    return this._parseVariable() || this._parseEscaped() || super._parseTermExpression() || // preference for colors before mixin references
-    this._tryParseMixinReference(false);
-  }
-  _parseEscaped() {
+  };
+  LESSParser2.prototype._parseTermExpression = function() {
+    return this._parseVariable() || this._parseEscaped() || _super.prototype._parseTermExpression.call(this) || this._tryParseMixinReference(false);
+  };
+  LESSParser2.prototype._parseEscaped = function() {
     if (this.peek(TokenType.EscapedJavaScript) || this.peek(TokenType.BadEscapedJavaScript)) {
-      const node = this.createNode(NodeType.EscapedValue);
+      var node = this.createNode(NodeType.EscapedValue);
       this.consumeToken();
       return this.finish(node);
     }
     if (this.peekDelim("~")) {
-      const node = this.createNode(NodeType.EscapedValue);
+      var node = this.createNode(NodeType.EscapedValue);
       this.consumeToken();
       if (this.accept(TokenType.String) || this.accept(TokenType.EscapedJavaScript)) {
         return this.finish(node);
@@ -11259,58 +11936,58 @@ var LESSParser = class extends Parser {
       }
     }
     return null;
-  }
-  _parseOperator() {
-    const node = this._parseGuardOperator();
+  };
+  LESSParser2.prototype._parseOperator = function() {
+    var node = this._parseGuardOperator();
     if (node) {
       return node;
     } else {
-      return super._parseOperator();
+      return _super.prototype._parseOperator.call(this);
     }
-  }
-  _parseGuardOperator() {
+  };
+  LESSParser2.prototype._parseGuardOperator = function() {
     if (this.peekDelim(">")) {
-      const node = this.createNode(NodeType.Operator);
+      var node = this.createNode(NodeType.Operator);
       this.consumeToken();
       this.acceptDelim("=");
       return node;
     } else if (this.peekDelim("=")) {
-      const node = this.createNode(NodeType.Operator);
+      var node = this.createNode(NodeType.Operator);
       this.consumeToken();
       this.acceptDelim("<");
       return node;
     } else if (this.peekDelim("<")) {
-      const node = this.createNode(NodeType.Operator);
+      var node = this.createNode(NodeType.Operator);
       this.consumeToken();
       this.acceptDelim("=");
       return node;
     }
     return null;
-  }
-  _parseRuleSetDeclaration() {
+  };
+  LESSParser2.prototype._parseRuleSetDeclaration = function() {
     if (this.peek(TokenType.AtKeyword)) {
-      return this._parseKeyframe() || this._parseMedia(true) || this._parseImport() || this._parseSupports(true) || this._parseLayer() || this._parsePropertyAtRule() || this._parseContainer(true) || this._parseDetachedRuleSetMixin() || this._parseVariableDeclaration() || this._parseRuleSetDeclarationAtStatement();
+      return this._parseKeyframe() || this._parseMedia(true) || this._parseImport() || this._parseSupports(true) || this._parseDetachedRuleSetMixin() || this._parseVariableDeclaration() || _super.prototype._parseRuleSetDeclarationAtStatement.call(this);
     }
-    return this._tryParseMixinDeclaration() || this._tryParseRuleset(true) || this._tryParseMixinReference() || this._parseFunction() || this._parseExtend() || this._parseDeclaration();
-  }
-  _parseKeyframeIdent() {
+    return this._tryParseMixinDeclaration() || this._tryParseRuleset(true) || this._tryParseMixinReference() || this._parseFunction() || this._parseExtend() || _super.prototype._parseRuleSetDeclaration.call(this);
+  };
+  LESSParser2.prototype._parseKeyframeIdent = function() {
     return this._parseIdent([ReferenceType.Keyframe]) || this._parseVariable();
-  }
-  _parseKeyframeSelector() {
-    return this._parseDetachedRuleSetMixin() || super._parseKeyframeSelector();
-  }
-  // public _parseSimpleSelectorBody(): nodes.Node | null {
-  // 	return this._parseNestingSelector() || super._parseSimpleSelectorBody();
-  // }
-  _parseSelector(isNested) {
-    const node = this.create(Selector);
-    let hasContent = false;
+  };
+  LESSParser2.prototype._parseKeyframeSelector = function() {
+    return this._parseDetachedRuleSetMixin() || _super.prototype._parseKeyframeSelector.call(this);
+  };
+  LESSParser2.prototype._parseSimpleSelectorBody = function() {
+    return this._parseSelectorCombinator() || _super.prototype._parseSimpleSelectorBody.call(this);
+  };
+  LESSParser2.prototype._parseSelector = function(isNested) {
+    var node = this.create(Selector);
+    var hasContent = false;
     if (isNested) {
       hasContent = node.addChild(this._parseCombinator());
     }
     while (node.addChild(this._parseSimpleSelector())) {
       hasContent = true;
-      const mark = this.mark();
+      var mark = this.mark();
       if (node.addChild(this._parseGuard()) && this.peek(TokenType.CurlyL)) {
         break;
       }
@@ -11318,34 +11995,37 @@ var LESSParser = class extends Parser {
       node.addChild(this._parseCombinator());
     }
     return hasContent ? this.finish(node) : null;
-  }
-  _parseNestingSelector() {
+  };
+  LESSParser2.prototype._parseSelectorCombinator = function() {
     if (this.peekDelim("&")) {
-      const node = this.createNode(NodeType.SelectorCombinator);
+      var node = this.createNode(NodeType.SelectorCombinator);
       this.consumeToken();
       while (!this.hasWhitespace() && (this.acceptDelim("-") || this.accept(TokenType.Num) || this.accept(TokenType.Dimension) || node.addChild(this._parseIdent()) || this.acceptDelim("&"))) {
       }
       return this.finish(node);
     }
     return null;
-  }
-  _parseSelectorIdent() {
+  };
+  LESSParser2.prototype._parseSelectorIdent = function() {
     if (!this.peekInterpolatedIdent()) {
       return null;
     }
-    const node = this.createNode(NodeType.SelectorInterpolation);
-    const hasContent = this._acceptInterpolatedIdent(node);
+    var node = this.createNode(NodeType.SelectorInterpolation);
+    var hasContent = this._acceptInterpolatedIdent(node);
     return hasContent ? this.finish(node) : null;
-  }
-  _parsePropertyIdentifier(inLookup = false) {
-    const propertyRegex = /^[\w-]+/;
+  };
+  LESSParser2.prototype._parsePropertyIdentifier = function(inLookup) {
+    if (inLookup === void 0) {
+      inLookup = false;
+    }
+    var propertyRegex = /^[\w-]+/;
     if (!this.peekInterpolatedIdent() && !this.peekRegExp(this.token.type, propertyRegex)) {
       return null;
     }
-    const mark = this.mark();
-    const node = this.create(Identifier);
+    var mark = this.mark();
+    var node = this.create(Identifier);
     node.isCustomProperty = this.acceptDelim("-") && this.acceptDelim("-");
-    let childAdded = false;
+    var childAdded = false;
     if (!inLookup) {
       if (node.isCustomProperty) {
         childAdded = this._acceptInterpolatedIdent(node);
@@ -11370,26 +12050,31 @@ var LESSParser = class extends Parser {
       }
     }
     return this.finish(node);
-  }
-  peekInterpolatedIdent() {
+  };
+  LESSParser2.prototype.peekInterpolatedIdent = function() {
     return this.peek(TokenType.Ident) || this.peekDelim("@") || this.peekDelim("$") || this.peekDelim("-");
-  }
-  _acceptInterpolatedIdent(node, identRegex) {
-    let hasContent = false;
-    const indentInterpolation = () => {
-      const pos = this.mark();
-      if (this.acceptDelim("-")) {
-        if (!this.hasWhitespace()) {
-          this.acceptDelim("-");
+  };
+  LESSParser2.prototype._acceptInterpolatedIdent = function(node, identRegex) {
+    var _this = this;
+    var hasContent = false;
+    var indentInterpolation = function() {
+      var pos = _this.mark();
+      if (_this.acceptDelim("-")) {
+        if (!_this.hasWhitespace()) {
+          _this.acceptDelim("-");
         }
-        if (this.hasWhitespace()) {
-          this.restoreAtMark(pos);
+        if (_this.hasWhitespace()) {
+          _this.restoreAtMark(pos);
           return null;
         }
       }
-      return this._parseInterpolation();
+      return _this._parseInterpolation();
     };
-    const accept = identRegex ? () => this.acceptRegexp(identRegex) : () => this.accept(TokenType.Ident);
+    var accept = identRegex ? function() {
+      return _this.acceptRegexp(identRegex);
+    } : function() {
+      return _this.accept(TokenType.Ident);
+    };
     while (accept() || node.addChild(this._parseInterpolation() || this.try(indentInterpolation))) {
       hasContent = true;
       if (this.hasWhitespace()) {
@@ -11397,11 +12082,11 @@ var LESSParser = class extends Parser {
       }
     }
     return hasContent;
-  }
-  _parseInterpolation() {
-    const mark = this.mark();
+  };
+  LESSParser2.prototype._parseInterpolation = function() {
+    var mark = this.mark();
     if (this.peekDelim("@") || this.peekDelim("$")) {
-      const node = this.createNode(NodeType.Interpolation);
+      var node = this.createNode(NodeType.Interpolation);
       this.consumeToken();
       if (this.hasWhitespace() || !this.accept(TokenType.CurlyL)) {
         this.restoreAtMark(mark);
@@ -11416,10 +12101,10 @@ var LESSParser = class extends Parser {
       return this.finish(node);
     }
     return null;
-  }
-  _tryParseMixinDeclaration() {
-    const mark = this.mark();
-    const node = this.create(MixinDeclaration);
+  };
+  LESSParser2.prototype._tryParseMixinDeclaration = function() {
+    var mark = this.mark();
+    var node = this.create(MixinDeclaration);
     if (!node.setIdentifier(this._parseMixinDeclarationIdentifier()) || !this.accept(TokenType.ParenthesisL)) {
       this.restoreAtMark(mark);
       return null;
@@ -11444,12 +12129,12 @@ var LESSParser = class extends Parser {
       return null;
     }
     return this._parseBody(node, this._parseMixInBodyDeclaration.bind(this));
-  }
-  _parseMixInBodyDeclaration() {
+  };
+  LESSParser2.prototype._parseMixInBodyDeclaration = function() {
     return this._parseFontFace() || this._parseRuleSetDeclaration();
-  }
-  _parseMixinDeclarationIdentifier() {
-    let identifier;
+  };
+  LESSParser2.prototype._parseMixinDeclarationIdentifier = function() {
+    var identifier;
     if (this.peekDelim("#") || this.peekDelim(".")) {
       identifier = this.create(Identifier);
       this.consumeToken();
@@ -11464,38 +12149,38 @@ var LESSParser = class extends Parser {
     }
     identifier.referenceTypes = [ReferenceType.Mixin];
     return this.finish(identifier);
-  }
-  _parsePseudo() {
+  };
+  LESSParser2.prototype._parsePseudo = function() {
     if (!this.peek(TokenType.Colon)) {
       return null;
     }
-    const mark = this.mark();
-    const node = this.create(ExtendsReference);
+    var mark = this.mark();
+    var node = this.create(ExtendsReference);
     this.consumeToken();
     if (this.acceptIdent("extend")) {
       return this._completeExtends(node);
     }
     this.restoreAtMark(mark);
-    return super._parsePseudo();
-  }
-  _parseExtend() {
+    return _super.prototype._parsePseudo.call(this);
+  };
+  LESSParser2.prototype._parseExtend = function() {
     if (!this.peekDelim("&")) {
       return null;
     }
-    const mark = this.mark();
-    const node = this.create(ExtendsReference);
+    var mark = this.mark();
+    var node = this.create(ExtendsReference);
     this.consumeToken();
     if (this.hasWhitespace() || !this.accept(TokenType.Colon) || !this.acceptIdent("extend")) {
       this.restoreAtMark(mark);
       return null;
     }
     return this._completeExtends(node);
-  }
-  _completeExtends(node) {
+  };
+  LESSParser2.prototype._completeExtends = function(node) {
     if (!this.accept(TokenType.ParenthesisL)) {
       return this.finish(node, ParseError.LeftParenthesisExpected);
     }
-    const selectors = node.getSelectors();
+    var selectors = node.getSelectors();
     if (!selectors.addChild(this._parseSelector(true))) {
       return this.finish(node, ParseError.SelectorExpected);
     }
@@ -11508,13 +12193,13 @@ var LESSParser = class extends Parser {
       return this.finish(node, ParseError.RightParenthesisExpected);
     }
     return this.finish(node);
-  }
-  _parseDetachedRuleSetMixin() {
+  };
+  LESSParser2.prototype._parseDetachedRuleSetMixin = function() {
     if (!this.peek(TokenType.AtKeyword)) {
       return null;
     }
-    const mark = this.mark();
-    const node = this.create(MixinReference);
+    var mark = this.mark();
+    var node = this.create(MixinReference);
     if (node.addChild(this._parseVariable(true)) && (this.hasWhitespace() || !this.accept(TokenType.ParenthesisL))) {
       this.restoreAtMark(mark);
       return null;
@@ -11523,14 +12208,17 @@ var LESSParser = class extends Parser {
       return this.finish(node, ParseError.RightParenthesisExpected);
     }
     return this.finish(node);
-  }
-  _tryParseMixinReference(atRoot = true) {
-    const mark = this.mark();
-    const node = this.create(MixinReference);
-    let identifier = this._parseMixinDeclarationIdentifier();
+  };
+  LESSParser2.prototype._tryParseMixinReference = function(atRoot) {
+    if (atRoot === void 0) {
+      atRoot = true;
+    }
+    var mark = this.mark();
+    var node = this.create(MixinReference);
+    var identifier = this._parseMixinDeclarationIdentifier();
     while (identifier) {
       this.acceptDelim(">");
-      const nextId = this._parseMixinDeclarationIdentifier();
+      var nextId = this._parseMixinDeclarationIdentifier();
       if (nextId) {
         node.getNamespaces().addChild(identifier);
         identifier = nextId;
@@ -11542,7 +12230,7 @@ var LESSParser = class extends Parser {
       this.restoreAtMark(mark);
       return null;
     }
-    let hasArguments = false;
+    var hasArguments = false;
     if (this.accept(TokenType.ParenthesisL)) {
       hasArguments = true;
       if (node.getArguments().addChild(this._parseMixinArgument())) {
@@ -11574,11 +12262,11 @@ var LESSParser = class extends Parser {
       return null;
     }
     return this.finish(node);
-  }
-  _parseMixinArgument() {
-    const node = this.create(FunctionArgument);
-    const pos = this.mark();
-    const argument = this._parseVariable();
+  };
+  LESSParser2.prototype._parseMixinArgument = function() {
+    var node = this.create(FunctionArgument);
+    var pos = this.mark();
+    var argument = this._parseVariable();
     if (argument) {
       if (!this.accept(TokenType.Colon)) {
         this.restoreAtMark(pos);
@@ -11591,11 +12279,11 @@ var LESSParser = class extends Parser {
     }
     this.restoreAtMark(pos);
     return null;
-  }
-  _parseMixinParameter() {
-    const node = this.create(FunctionParameter);
+  };
+  LESSParser2.prototype._parseMixinParameter = function() {
+    var node = this.create(FunctionParameter);
     if (this.peekKeyword("@rest")) {
-      const restNode = this.create(Node);
+      var restNode = this.create(Node);
       this.consumeToken();
       if (!this.accept(Ellipsis2)) {
         return this.finish(node, ParseError.DotExpected, [], [TokenType.Comma, TokenType.ParenthesisR]);
@@ -11604,12 +12292,12 @@ var LESSParser = class extends Parser {
       return this.finish(node);
     }
     if (this.peek(Ellipsis2)) {
-      const varargsNode = this.create(Node);
+      var varargsNode = this.create(Node);
       this.consumeToken();
       node.setIdentifier(this.finish(varargsNode));
       return this.finish(node);
     }
-    let hasContent = false;
+    var hasContent = false;
     if (node.setIdentifier(this._parseVariable())) {
       this.accept(TokenType.Colon);
       hasContent = true;
@@ -11618,13 +12306,14 @@ var LESSParser = class extends Parser {
       return null;
     }
     return this.finish(node);
-  }
-  _parseGuard() {
+  };
+  LESSParser2.prototype._parseGuard = function() {
     if (!this.peekIdent("when")) {
       return null;
     }
-    const node = this.create(LessGuard);
+    var node = this.create(LessGuard);
     this.consumeToken();
+    node.isNegated = this.acceptIdent("not");
     if (!node.getConditions().addChild(this._parseGuardCondition())) {
       return this.finish(node, ParseError.ConditionExpected);
     }
@@ -11634,26 +12323,23 @@ var LESSParser = class extends Parser {
       }
     }
     return this.finish(node);
-  }
-  _parseGuardCondition() {
-    const node = this.create(GuardCondition);
-    node.isNegated = this.acceptIdent("not");
-    if (!this.accept(TokenType.ParenthesisL)) {
-      if (node.isNegated) {
-        return this.finish(node, ParseError.LeftParenthesisExpected);
-      }
+  };
+  LESSParser2.prototype._parseGuardCondition = function() {
+    if (!this.peek(TokenType.ParenthesisL)) {
       return null;
     }
+    var node = this.create(GuardCondition);
+    this.consumeToken();
     if (!node.addChild(this._parseExpr())) {
     }
     if (!this.accept(TokenType.ParenthesisR)) {
       return this.finish(node, ParseError.RightParenthesisExpected);
     }
     return this.finish(node);
-  }
-  _parseFunction() {
-    const pos = this.mark();
-    const node = this.create(Function);
+  };
+  LESSParser2.prototype._parseFunction = function() {
+    var pos = this.mark();
+    var node = this.create(Function);
     if (!node.setIdentifier(this._parseFunctionIdentifier())) {
       return null;
     }
@@ -11675,37 +12361,62 @@ var LESSParser = class extends Parser {
       return this.finish(node, ParseError.RightParenthesisExpected);
     }
     return this.finish(node);
-  }
-  _parseFunctionIdentifier() {
+  };
+  LESSParser2.prototype._parseFunctionIdentifier = function() {
     if (this.peekDelim("%")) {
-      const node = this.create(Identifier);
+      var node = this.create(Identifier);
       node.referenceTypes = [ReferenceType.Function];
       this.consumeToken();
       return this.finish(node);
     }
-    return super._parseFunctionIdentifier();
-  }
-  _parseURLArgument() {
-    const pos = this.mark();
-    const node = super._parseURLArgument();
+    return _super.prototype._parseFunctionIdentifier.call(this);
+  };
+  LESSParser2.prototype._parseURLArgument = function() {
+    var pos = this.mark();
+    var node = _super.prototype._parseURLArgument.call(this);
     if (!node || !this.peek(TokenType.ParenthesisR)) {
       this.restoreAtMark(pos);
-      const node2 = this.create(Node);
-      node2.addChild(this._parseBinaryExpr());
-      return this.finish(node2);
+      var node_2 = this.create(Node);
+      node_2.addChild(this._parseBinaryExpr());
+      return this.finish(node_2);
     }
     return node;
-  }
-};
+  };
+  return LESSParser2;
+}(Parser);
 
 // node_modules/vscode-css-languageservice/lib/esm/services/lessCompletion.js
-var LESSCompletion = class _LESSCompletion extends CSSCompletion {
-  constructor(lsOptions, cssDataManager) {
-    super("@", lsOptions, cssDataManager);
+var __extends9 = function() {
+  var extendStatics = function(d, b) {
+    extendStatics = Object.setPrototypeOf || { __proto__: [] } instanceof Array && function(d2, b2) {
+      d2.__proto__ = b2;
+    } || function(d2, b2) {
+      for (var p in b2)
+        if (Object.prototype.hasOwnProperty.call(b2, p))
+          d2[p] = b2[p];
+    };
+    return extendStatics(d, b);
+  };
+  return function(d, b) {
+    if (typeof b !== "function" && b !== null)
+      throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
+    extendStatics(d, b);
+    function __() {
+      this.constructor = d;
+    }
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+  };
+}();
+var localize12 = loadMessageBundle();
+var LESSCompletion = function(_super) {
+  __extends9(LESSCompletion2, _super);
+  function LESSCompletion2(lsOptions, cssDataManager) {
+    return _super.call(this, "@", lsOptions, cssDataManager) || this;
   }
-  createFunctionProposals(proposals, existingNode, sortToEnd, result) {
-    for (const p of proposals) {
-      const item = {
+  LESSCompletion2.prototype.createFunctionProposals = function(proposals, existingNode, sortToEnd, result) {
+    for (var _i = 0, proposals_1 = proposals; _i < proposals_1.length; _i++) {
+      var p = proposals_1[_i];
+      var item = {
         label: p.name,
         detail: p.example,
         documentation: p.description,
@@ -11719,367 +12430,367 @@ var LESSCompletion = class _LESSCompletion extends CSSCompletion {
       result.items.push(item);
     }
     return result;
-  }
-  getTermProposals(entry, existingNode, result) {
-    let functions = _LESSCompletion.builtInProposals;
+  };
+  LESSCompletion2.prototype.getTermProposals = function(entry, existingNode, result) {
+    var functions = LESSCompletion2.builtInProposals;
     if (entry) {
-      functions = functions.filter((f2) => !f2.type || !entry.restrictions || entry.restrictions.indexOf(f2.type) !== -1);
+      functions = functions.filter(function(f2) {
+        return !f2.type || !entry.restrictions || entry.restrictions.indexOf(f2.type) !== -1;
+      });
     }
     this.createFunctionProposals(functions, existingNode, true, result);
-    return super.getTermProposals(entry, existingNode, result);
-  }
-  getColorProposals(entry, existingNode, result) {
-    this.createFunctionProposals(_LESSCompletion.colorProposals, existingNode, false, result);
-    return super.getColorProposals(entry, existingNode, result);
-  }
-  getCompletionsForDeclarationProperty(declaration, result) {
+    return _super.prototype.getTermProposals.call(this, entry, existingNode, result);
+  };
+  LESSCompletion2.prototype.getColorProposals = function(entry, existingNode, result) {
+    this.createFunctionProposals(LESSCompletion2.colorProposals, existingNode, false, result);
+    return _super.prototype.getColorProposals.call(this, entry, existingNode, result);
+  };
+  LESSCompletion2.prototype.getCompletionsForDeclarationProperty = function(declaration, result) {
     this.getCompletionsForSelector(null, true, result);
-    return super.getCompletionsForDeclarationProperty(declaration, result);
-  }
-};
-LESSCompletion.builtInProposals = [
-  // Boolean functions
-  {
-    "name": "if",
-    "example": "if(condition, trueValue [, falseValue]);",
-    "description": t("returns one of two values depending on a condition.")
-  },
-  {
-    "name": "boolean",
-    "example": "boolean(condition);",
-    "description": t('"store" a boolean test for later evaluation in a guard or if().')
-  },
-  // List functions
-  {
-    "name": "length",
-    "example": "length(@list);",
-    "description": t("returns the number of elements in a value list")
-  },
-  {
-    "name": "extract",
-    "example": "extract(@list, index);",
-    "description": t("returns a value at the specified position in the list")
-  },
-  {
-    "name": "range",
-    "example": "range([start, ] end [, step]);",
-    "description": t("generate a list spanning a range of values")
-  },
-  {
-    "name": "each",
-    "example": "each(@list, ruleset);",
-    "description": t("bind the evaluation of a ruleset to each member of a list.")
-  },
-  // Other built-ins
-  {
-    "name": "escape",
-    "example": "escape(@string);",
-    "description": t("URL encodes a string")
-  },
-  {
-    "name": "e",
-    "example": "e(@string);",
-    "description": t("escape string content")
-  },
-  {
-    "name": "replace",
-    "example": "replace(@string, @pattern, @replacement[, @flags]);",
-    "description": t("string replace")
-  },
-  {
-    "name": "unit",
-    "example": "unit(@dimension, [@unit: '']);",
-    "description": t("remove or change the unit of a dimension")
-  },
-  {
-    "name": "color",
-    "example": "color(@string);",
-    "description": t("parses a string to a color"),
-    "type": "color"
-  },
-  {
-    "name": "convert",
-    "example": "convert(@value, unit);",
-    "description": t("converts numbers from one type into another")
-  },
-  {
-    "name": "data-uri",
-    "example": "data-uri([mimetype,] url);",
-    "description": t("inlines a resource and falls back to `url()`"),
-    "type": "url"
-  },
-  {
-    "name": "abs",
-    "description": t("absolute value of a number"),
-    "example": "abs(number);"
-  },
-  {
-    "name": "acos",
-    "description": t("arccosine - inverse of cosine function"),
-    "example": "acos(number);"
-  },
-  {
-    "name": "asin",
-    "description": t("arcsine - inverse of sine function"),
-    "example": "asin(number);"
-  },
-  {
-    "name": "ceil",
-    "example": "ceil(@number);",
-    "description": t("rounds up to an integer")
-  },
-  {
-    "name": "cos",
-    "description": t("cosine function"),
-    "example": "cos(number);"
-  },
-  {
-    "name": "floor",
-    "description": t("rounds down to an integer"),
-    "example": "floor(@number);"
-  },
-  {
-    "name": "percentage",
-    "description": t("converts to a %, e.g. 0.5 > 50%"),
-    "example": "percentage(@number);",
-    "type": "percentage"
-  },
-  {
-    "name": "round",
-    "description": t("rounds a number to a number of places"),
-    "example": "round(number, [places: 0]);"
-  },
-  {
-    "name": "sqrt",
-    "description": t("calculates square root of a number"),
-    "example": "sqrt(number);"
-  },
-  {
-    "name": "sin",
-    "description": t("sine function"),
-    "example": "sin(number);"
-  },
-  {
-    "name": "tan",
-    "description": t("tangent function"),
-    "example": "tan(number);"
-  },
-  {
-    "name": "atan",
-    "description": t("arctangent - inverse of tangent function"),
-    "example": "atan(number);"
-  },
-  {
-    "name": "pi",
-    "description": t("returns pi"),
-    "example": "pi();"
-  },
-  {
-    "name": "pow",
-    "description": t("first argument raised to the power of the second argument"),
-    "example": "pow(@base, @exponent);"
-  },
-  {
-    "name": "mod",
-    "description": t("first argument modulus second argument"),
-    "example": "mod(number, number);"
-  },
-  {
-    "name": "min",
-    "description": t("returns the lowest of one or more values"),
-    "example": "min(@x, @y);"
-  },
-  {
-    "name": "max",
-    "description": t("returns the lowest of one or more values"),
-    "example": "max(@x, @y);"
-  }
-];
-LESSCompletion.colorProposals = [
-  {
-    "name": "argb",
-    "example": "argb(@color);",
-    "description": t("creates a #AARRGGBB")
-  },
-  {
-    "name": "hsl",
-    "example": "hsl(@hue, @saturation, @lightness);",
-    "description": t("creates a color")
-  },
-  {
-    "name": "hsla",
-    "example": "hsla(@hue, @saturation, @lightness, @alpha);",
-    "description": t("creates a color")
-  },
-  {
-    "name": "hsv",
-    "example": "hsv(@hue, @saturation, @value);",
-    "description": t("creates a color")
-  },
-  {
-    "name": "hsva",
-    "example": "hsva(@hue, @saturation, @value, @alpha);",
-    "description": t("creates a color")
-  },
-  {
-    "name": "hue",
-    "example": "hue(@color);",
-    "description": t("returns the `hue` channel of `@color` in the HSL space")
-  },
-  {
-    "name": "saturation",
-    "example": "saturation(@color);",
-    "description": t("returns the `saturation` channel of `@color` in the HSL space")
-  },
-  {
-    "name": "lightness",
-    "example": "lightness(@color);",
-    "description": t("returns the `lightness` channel of `@color` in the HSL space")
-  },
-  {
-    "name": "hsvhue",
-    "example": "hsvhue(@color);",
-    "description": t("returns the `hue` channel of `@color` in the HSV space")
-  },
-  {
-    "name": "hsvsaturation",
-    "example": "hsvsaturation(@color);",
-    "description": t("returns the `saturation` channel of `@color` in the HSV space")
-  },
-  {
-    "name": "hsvvalue",
-    "example": "hsvvalue(@color);",
-    "description": t("returns the `value` channel of `@color` in the HSV space")
-  },
-  {
-    "name": "red",
-    "example": "red(@color);",
-    "description": t("returns the `red` channel of `@color`")
-  },
-  {
-    "name": "green",
-    "example": "green(@color);",
-    "description": t("returns the `green` channel of `@color`")
-  },
-  {
-    "name": "blue",
-    "example": "blue(@color);",
-    "description": t("returns the `blue` channel of `@color`")
-  },
-  {
-    "name": "alpha",
-    "example": "alpha(@color);",
-    "description": t("returns the `alpha` channel of `@color`")
-  },
-  {
-    "name": "luma",
-    "example": "luma(@color);",
-    "description": t("returns the `luma` value (perceptual brightness) of `@color`")
-  },
-  {
-    "name": "saturate",
-    "example": "saturate(@color, 10%);",
-    "description": t("return `@color` 10% points more saturated")
-  },
-  {
-    "name": "desaturate",
-    "example": "desaturate(@color, 10%);",
-    "description": t("return `@color` 10% points less saturated")
-  },
-  {
-    "name": "lighten",
-    "example": "lighten(@color, 10%);",
-    "description": t("return `@color` 10% points lighter")
-  },
-  {
-    "name": "darken",
-    "example": "darken(@color, 10%);",
-    "description": t("return `@color` 10% points darker")
-  },
-  {
-    "name": "fadein",
-    "example": "fadein(@color, 10%);",
-    "description": t("return `@color` 10% points less transparent")
-  },
-  {
-    "name": "fadeout",
-    "example": "fadeout(@color, 10%);",
-    "description": t("return `@color` 10% points more transparent")
-  },
-  {
-    "name": "fade",
-    "example": "fade(@color, 50%);",
-    "description": t("return `@color` with 50% transparency")
-  },
-  {
-    "name": "spin",
-    "example": "spin(@color, 10);",
-    "description": t("return `@color` with a 10 degree larger in hue")
-  },
-  {
-    "name": "mix",
-    "example": "mix(@color1, @color2, [@weight: 50%]);",
-    "description": t("return a mix of `@color1` and `@color2`")
-  },
-  {
-    "name": "greyscale",
-    "example": "greyscale(@color);",
-    "description": t("returns a grey, 100% desaturated color")
-  },
-  {
-    "name": "contrast",
-    "example": "contrast(@color1, [@darkcolor: black], [@lightcolor: white], [@threshold: 43%]);",
-    "description": t("return `@darkcolor` if `@color1 is> 43% luma` otherwise return `@lightcolor`, see notes")
-  },
-  {
-    "name": "multiply",
-    "example": "multiply(@color1, @color2);"
-  },
-  {
-    "name": "screen",
-    "example": "screen(@color1, @color2);"
-  },
-  {
-    "name": "overlay",
-    "example": "overlay(@color1, @color2);"
-  },
-  {
-    "name": "softlight",
-    "example": "softlight(@color1, @color2);"
-  },
-  {
-    "name": "hardlight",
-    "example": "hardlight(@color1, @color2);"
-  },
-  {
-    "name": "difference",
-    "example": "difference(@color1, @color2);"
-  },
-  {
-    "name": "exclusion",
-    "example": "exclusion(@color1, @color2);"
-  },
-  {
-    "name": "average",
-    "example": "average(@color1, @color2);"
-  },
-  {
-    "name": "negation",
-    "example": "negation(@color1, @color2);"
-  }
-];
+    return _super.prototype.getCompletionsForDeclarationProperty.call(this, declaration, result);
+  };
+  LESSCompletion2.builtInProposals = [
+    {
+      "name": "if",
+      "example": "if(condition, trueValue [, falseValue]);",
+      "description": localize12("less.builtin.if", "returns one of two values depending on a condition.")
+    },
+    {
+      "name": "boolean",
+      "example": "boolean(condition);",
+      "description": localize12("less.builtin.boolean", '"store" a boolean test for later evaluation in a guard or if().')
+    },
+    {
+      "name": "length",
+      "example": "length(@list);",
+      "description": localize12("less.builtin.length", "returns the number of elements in a value list")
+    },
+    {
+      "name": "extract",
+      "example": "extract(@list, index);",
+      "description": localize12("less.builtin.extract", "returns a value at the specified position in the list")
+    },
+    {
+      "name": "range",
+      "example": "range([start, ] end [, step]);",
+      "description": localize12("less.builtin.range", "generate a list spanning a range of values")
+    },
+    {
+      "name": "each",
+      "example": "each(@list, ruleset);",
+      "description": localize12("less.builtin.each", "bind the evaluation of a ruleset to each member of a list.")
+    },
+    {
+      "name": "escape",
+      "example": "escape(@string);",
+      "description": localize12("less.builtin.escape", "URL encodes a string")
+    },
+    {
+      "name": "e",
+      "example": "e(@string);",
+      "description": localize12("less.builtin.e", "escape string content")
+    },
+    {
+      "name": "replace",
+      "example": "replace(@string, @pattern, @replacement[, @flags]);",
+      "description": localize12("less.builtin.replace", "string replace")
+    },
+    {
+      "name": "unit",
+      "example": "unit(@dimension, [@unit: '']);",
+      "description": localize12("less.builtin.unit", "remove or change the unit of a dimension")
+    },
+    {
+      "name": "color",
+      "example": "color(@string);",
+      "description": localize12("less.builtin.color", "parses a string to a color"),
+      "type": "color"
+    },
+    {
+      "name": "convert",
+      "example": "convert(@value, unit);",
+      "description": localize12("less.builtin.convert", "converts numbers from one type into another")
+    },
+    {
+      "name": "data-uri",
+      "example": "data-uri([mimetype,] url);",
+      "description": localize12("less.builtin.data-uri", "inlines a resource and falls back to `url()`"),
+      "type": "url"
+    },
+    {
+      "name": "abs",
+      "description": localize12("less.builtin.abs", "absolute value of a number"),
+      "example": "abs(number);"
+    },
+    {
+      "name": "acos",
+      "description": localize12("less.builtin.acos", "arccosine - inverse of cosine function"),
+      "example": "acos(number);"
+    },
+    {
+      "name": "asin",
+      "description": localize12("less.builtin.asin", "arcsine - inverse of sine function"),
+      "example": "asin(number);"
+    },
+    {
+      "name": "ceil",
+      "example": "ceil(@number);",
+      "description": localize12("less.builtin.ceil", "rounds up to an integer")
+    },
+    {
+      "name": "cos",
+      "description": localize12("less.builtin.cos", "cosine function"),
+      "example": "cos(number);"
+    },
+    {
+      "name": "floor",
+      "description": localize12("less.builtin.floor", "rounds down to an integer"),
+      "example": "floor(@number);"
+    },
+    {
+      "name": "percentage",
+      "description": localize12("less.builtin.percentage", "converts to a %, e.g. 0.5 > 50%"),
+      "example": "percentage(@number);",
+      "type": "percentage"
+    },
+    {
+      "name": "round",
+      "description": localize12("less.builtin.round", "rounds a number to a number of places"),
+      "example": "round(number, [places: 0]);"
+    },
+    {
+      "name": "sqrt",
+      "description": localize12("less.builtin.sqrt", "calculates square root of a number"),
+      "example": "sqrt(number);"
+    },
+    {
+      "name": "sin",
+      "description": localize12("less.builtin.sin", "sine function"),
+      "example": "sin(number);"
+    },
+    {
+      "name": "tan",
+      "description": localize12("less.builtin.tan", "tangent function"),
+      "example": "tan(number);"
+    },
+    {
+      "name": "atan",
+      "description": localize12("less.builtin.atan", "arctangent - inverse of tangent function"),
+      "example": "atan(number);"
+    },
+    {
+      "name": "pi",
+      "description": localize12("less.builtin.pi", "returns pi"),
+      "example": "pi();"
+    },
+    {
+      "name": "pow",
+      "description": localize12("less.builtin.pow", "first argument raised to the power of the second argument"),
+      "example": "pow(@base, @exponent);"
+    },
+    {
+      "name": "mod",
+      "description": localize12("less.builtin.mod", "first argument modulus second argument"),
+      "example": "mod(number, number);"
+    },
+    {
+      "name": "min",
+      "description": localize12("less.builtin.min", "returns the lowest of one or more values"),
+      "example": "min(@x, @y);"
+    },
+    {
+      "name": "max",
+      "description": localize12("less.builtin.max", "returns the lowest of one or more values"),
+      "example": "max(@x, @y);"
+    }
+  ];
+  LESSCompletion2.colorProposals = [
+    {
+      "name": "argb",
+      "example": "argb(@color);",
+      "description": localize12("less.builtin.argb", "creates a #AARRGGBB")
+    },
+    {
+      "name": "hsl",
+      "example": "hsl(@hue, @saturation, @lightness);",
+      "description": localize12("less.builtin.hsl", "creates a color")
+    },
+    {
+      "name": "hsla",
+      "example": "hsla(@hue, @saturation, @lightness, @alpha);",
+      "description": localize12("less.builtin.hsla", "creates a color")
+    },
+    {
+      "name": "hsv",
+      "example": "hsv(@hue, @saturation, @value);",
+      "description": localize12("less.builtin.hsv", "creates a color")
+    },
+    {
+      "name": "hsva",
+      "example": "hsva(@hue, @saturation, @value, @alpha);",
+      "description": localize12("less.builtin.hsva", "creates a color")
+    },
+    {
+      "name": "hue",
+      "example": "hue(@color);",
+      "description": localize12("less.builtin.hue", "returns the `hue` channel of `@color` in the HSL space")
+    },
+    {
+      "name": "saturation",
+      "example": "saturation(@color);",
+      "description": localize12("less.builtin.saturation", "returns the `saturation` channel of `@color` in the HSL space")
+    },
+    {
+      "name": "lightness",
+      "example": "lightness(@color);",
+      "description": localize12("less.builtin.lightness", "returns the `lightness` channel of `@color` in the HSL space")
+    },
+    {
+      "name": "hsvhue",
+      "example": "hsvhue(@color);",
+      "description": localize12("less.builtin.hsvhue", "returns the `hue` channel of `@color` in the HSV space")
+    },
+    {
+      "name": "hsvsaturation",
+      "example": "hsvsaturation(@color);",
+      "description": localize12("less.builtin.hsvsaturation", "returns the `saturation` channel of `@color` in the HSV space")
+    },
+    {
+      "name": "hsvvalue",
+      "example": "hsvvalue(@color);",
+      "description": localize12("less.builtin.hsvvalue", "returns the `value` channel of `@color` in the HSV space")
+    },
+    {
+      "name": "red",
+      "example": "red(@color);",
+      "description": localize12("less.builtin.red", "returns the `red` channel of `@color`")
+    },
+    {
+      "name": "green",
+      "example": "green(@color);",
+      "description": localize12("less.builtin.green", "returns the `green` channel of `@color`")
+    },
+    {
+      "name": "blue",
+      "example": "blue(@color);",
+      "description": localize12("less.builtin.blue", "returns the `blue` channel of `@color`")
+    },
+    {
+      "name": "alpha",
+      "example": "alpha(@color);",
+      "description": localize12("less.builtin.alpha", "returns the `alpha` channel of `@color`")
+    },
+    {
+      "name": "luma",
+      "example": "luma(@color);",
+      "description": localize12("less.builtin.luma", "returns the `luma` value (perceptual brightness) of `@color`")
+    },
+    {
+      "name": "saturate",
+      "example": "saturate(@color, 10%);",
+      "description": localize12("less.builtin.saturate", "return `@color` 10% points more saturated")
+    },
+    {
+      "name": "desaturate",
+      "example": "desaturate(@color, 10%);",
+      "description": localize12("less.builtin.desaturate", "return `@color` 10% points less saturated")
+    },
+    {
+      "name": "lighten",
+      "example": "lighten(@color, 10%);",
+      "description": localize12("less.builtin.lighten", "return `@color` 10% points lighter")
+    },
+    {
+      "name": "darken",
+      "example": "darken(@color, 10%);",
+      "description": localize12("less.builtin.darken", "return `@color` 10% points darker")
+    },
+    {
+      "name": "fadein",
+      "example": "fadein(@color, 10%);",
+      "description": localize12("less.builtin.fadein", "return `@color` 10% points less transparent")
+    },
+    {
+      "name": "fadeout",
+      "example": "fadeout(@color, 10%);",
+      "description": localize12("less.builtin.fadeout", "return `@color` 10% points more transparent")
+    },
+    {
+      "name": "fade",
+      "example": "fade(@color, 50%);",
+      "description": localize12("less.builtin.fade", "return `@color` with 50% transparency")
+    },
+    {
+      "name": "spin",
+      "example": "spin(@color, 10);",
+      "description": localize12("less.builtin.spin", "return `@color` with a 10 degree larger in hue")
+    },
+    {
+      "name": "mix",
+      "example": "mix(@color1, @color2, [@weight: 50%]);",
+      "description": localize12("less.builtin.mix", "return a mix of `@color1` and `@color2`")
+    },
+    {
+      "name": "greyscale",
+      "example": "greyscale(@color);",
+      "description": localize12("less.builtin.greyscale", "returns a grey, 100% desaturated color")
+    },
+    {
+      "name": "contrast",
+      "example": "contrast(@color1, [@darkcolor: black], [@lightcolor: white], [@threshold: 43%]);",
+      "description": localize12("less.builtin.contrast", "return `@darkcolor` if `@color1 is> 43% luma` otherwise return `@lightcolor`, see notes")
+    },
+    {
+      "name": "multiply",
+      "example": "multiply(@color1, @color2);"
+    },
+    {
+      "name": "screen",
+      "example": "screen(@color1, @color2);"
+    },
+    {
+      "name": "overlay",
+      "example": "overlay(@color1, @color2);"
+    },
+    {
+      "name": "softlight",
+      "example": "softlight(@color1, @color2);"
+    },
+    {
+      "name": "hardlight",
+      "example": "hardlight(@color1, @color2);"
+    },
+    {
+      "name": "difference",
+      "example": "difference(@color1, @color2);"
+    },
+    {
+      "name": "exclusion",
+      "example": "exclusion(@color1, @color2);"
+    },
+    {
+      "name": "average",
+      "example": "average(@color1, @color2);"
+    },
+    {
+      "name": "negation",
+      "example": "negation(@color1, @color2);"
+    }
+  ];
+  return LESSCompletion2;
+}(CSSCompletion);
 
 // node_modules/vscode-css-languageservice/lib/esm/services/cssFolding.js
 function getFoldingRanges(document, context) {
-  const ranges = computeFoldingRanges(document);
+  var ranges = computeFoldingRanges(document);
   return limitFoldingRanges(ranges, context);
 }
 function computeFoldingRanges(document) {
-  function getStartLine(t2) {
-    return document.positionAt(t2.offset).line;
+  function getStartLine(t) {
+    return document.positionAt(t.offset).line;
   }
-  function getEndLine(t2) {
-    return document.positionAt(t2.offset + t2.len).line;
+  function getEndLine(t) {
+    return document.positionAt(t.offset + t.len).line;
   }
   function getScanner() {
     switch (document.languageId) {
@@ -12091,9 +12802,9 @@ function computeFoldingRanges(document) {
         return new Scanner();
     }
   }
-  function tokenToRange(t2, kind) {
-    const startLine = getStartLine(t2);
-    const endLine = getEndLine(t2);
+  function tokenToRange(t, kind) {
+    var startLine = getStartLine(t);
+    var endLine = getEndLine(t);
     if (startLine !== endLine) {
       return {
         startLine,
@@ -12104,14 +12815,14 @@ function computeFoldingRanges(document) {
       return null;
     }
   }
-  const ranges = [];
-  const delimiterStack = [];
-  const scanner = getScanner();
+  var ranges = [];
+  var delimiterStack = [];
+  var scanner = getScanner();
   scanner.ignoreComment = false;
   scanner.setSource(document.getText());
-  let token = scanner.scan();
-  let prevToken = null;
-  while (token.type !== TokenType.EOF) {
+  var token = scanner.scan();
+  var prevToken = null;
+  var _loop_1 = function() {
     switch (token.type) {
       case TokenType.CurlyL:
       case InterpolationFunction: {
@@ -12120,11 +12831,11 @@ function computeFoldingRanges(document) {
       }
       case TokenType.CurlyR: {
         if (delimiterStack.length !== 0) {
-          const prevDelimiter = popPrevStartDelimiterOfType(delimiterStack, "brace");
+          var prevDelimiter = popPrevStartDelimiterOfType(delimiterStack, "brace");
           if (!prevDelimiter) {
             break;
           }
-          let endLine = getEndLine(token);
+          var endLine = getEndLine(token);
           if (prevDelimiter.type === "brace") {
             if (prevToken && getEndLine(prevToken) !== endLine) {
               endLine--;
@@ -12140,36 +12851,32 @@ function computeFoldingRanges(document) {
         }
         break;
       }
-      /**
-       * In CSS, there is no single line comment prefixed with //
-       * All comments are marked as `Comment`
-       */
       case TokenType.Comment: {
-        const commentRegionMarkerToDelimiter = (marker) => {
+        var commentRegionMarkerToDelimiter_1 = function(marker) {
           if (marker === "#region") {
             return { line: getStartLine(token), type: "comment", isStart: true };
           } else {
             return { line: getEndLine(token), type: "comment", isStart: false };
           }
         };
-        const getCurrDelimiter = (token2) => {
-          const matches2 = token2.text.match(/^\s*\/\*\s*(#region|#endregion)\b\s*(.*?)\s*\*\//);
+        var getCurrDelimiter = function(token2) {
+          var matches2 = token2.text.match(/^\s*\/\*\s*(#region|#endregion)\b\s*(.*?)\s*\*\//);
           if (matches2) {
-            return commentRegionMarkerToDelimiter(matches2[1]);
+            return commentRegionMarkerToDelimiter_1(matches2[1]);
           } else if (document.languageId === "scss" || document.languageId === "less") {
-            const matches3 = token2.text.match(/^\s*\/\/\s*(#region|#endregion)\b\s*(.*?)\s*/);
-            if (matches3) {
-              return commentRegionMarkerToDelimiter(matches3[1]);
+            var matches_1 = token2.text.match(/^\s*\/\/\s*(#region|#endregion)\b\s*(.*?)\s*/);
+            if (matches_1) {
+              return commentRegionMarkerToDelimiter_1(matches_1[1]);
             }
           }
           return null;
         };
-        const currDelimiter = getCurrDelimiter(token);
+        var currDelimiter = getCurrDelimiter(token);
         if (currDelimiter) {
           if (currDelimiter.isStart) {
             delimiterStack.push(currDelimiter);
           } else {
-            const prevDelimiter = popPrevStartDelimiterOfType(delimiterStack, "comment");
+            var prevDelimiter = popPrevStartDelimiterOfType(delimiterStack, "comment");
             if (!prevDelimiter) {
               break;
             }
@@ -12184,7 +12891,7 @@ function computeFoldingRanges(document) {
             }
           }
         } else {
-          const range = tokenToRange(token, "comment");
+          var range = tokenToRange(token, "comment");
           if (range) {
             ranges.push(range);
           }
@@ -12194,6 +12901,9 @@ function computeFoldingRanges(document) {
     }
     prevToken = token;
     token = scanner.scan();
+  };
+  while (token.type !== TokenType.EOF) {
+    _loop_1();
   }
   return ranges;
 }
@@ -12201,7 +12911,7 @@ function popPrevStartDelimiterOfType(stack, type) {
   if (stack.length === 0) {
     return null;
   }
-  for (let i = stack.length - 1; i >= 0; i--) {
+  for (var i = stack.length - 1; i >= 0; i--) {
     if (stack[i].type === type && stack[i].isStart) {
       return stack.splice(i, 1)[0];
     }
@@ -12209,17 +12919,17 @@ function popPrevStartDelimiterOfType(stack, type) {
   return null;
 }
 function limitFoldingRanges(ranges, context) {
-  const maxRanges = context && context.rangeLimit || Number.MAX_VALUE;
-  const sortedRanges = ranges.sort((r1, r2) => {
-    let diff = r1.startLine - r2.startLine;
+  var maxRanges = context && context.rangeLimit || Number.MAX_VALUE;
+  var sortedRanges = ranges.sort(function(r1, r2) {
+    var diff = r1.startLine - r2.startLine;
     if (diff === 0) {
       diff = r1.endLine - r2.endLine;
     }
     return diff;
   });
-  const validRanges = [];
-  let prevEndLine = -1;
-  sortedRanges.forEach((r) => {
+  var validRanges = [];
+  var prevEndLine = -1;
+  sortedRanges.forEach(function(r) {
     if (!(r.startLine < prevEndLine && prevEndLine < r.endLine)) {
       validRanges.push(r);
       prevEndLine = r.endLine;
@@ -12232,1213 +12942,6 @@ function limitFoldingRanges(ranges, context) {
   }
 }
 
-// node_modules/vscode-css-languageservice/lib/esm/beautify/beautify-css.js
-var legacy_beautify_css;
-(function() {
-  "use strict";
-  var __webpack_modules__ = [
-    ,
-    ,
-    /* 2 */
-    /***/
-    (function(module) {
-      function OutputLine(parent) {
-        this.__parent = parent;
-        this.__character_count = 0;
-        this.__indent_count = -1;
-        this.__alignment_count = 0;
-        this.__wrap_point_index = 0;
-        this.__wrap_point_character_count = 0;
-        this.__wrap_point_indent_count = -1;
-        this.__wrap_point_alignment_count = 0;
-        this.__items = [];
-      }
-      OutputLine.prototype.clone_empty = function() {
-        var line = new OutputLine(this.__parent);
-        line.set_indent(this.__indent_count, this.__alignment_count);
-        return line;
-      };
-      OutputLine.prototype.item = function(index) {
-        if (index < 0) {
-          return this.__items[this.__items.length + index];
-        } else {
-          return this.__items[index];
-        }
-      };
-      OutputLine.prototype.has_match = function(pattern) {
-        for (var lastCheckedOutput = this.__items.length - 1; lastCheckedOutput >= 0; lastCheckedOutput--) {
-          if (this.__items[lastCheckedOutput].match(pattern)) {
-            return true;
-          }
-        }
-        return false;
-      };
-      OutputLine.prototype.set_indent = function(indent, alignment) {
-        if (this.is_empty()) {
-          this.__indent_count = indent || 0;
-          this.__alignment_count = alignment || 0;
-          this.__character_count = this.__parent.get_indent_size(this.__indent_count, this.__alignment_count);
-        }
-      };
-      OutputLine.prototype._set_wrap_point = function() {
-        if (this.__parent.wrap_line_length) {
-          this.__wrap_point_index = this.__items.length;
-          this.__wrap_point_character_count = this.__character_count;
-          this.__wrap_point_indent_count = this.__parent.next_line.__indent_count;
-          this.__wrap_point_alignment_count = this.__parent.next_line.__alignment_count;
-        }
-      };
-      OutputLine.prototype._should_wrap = function() {
-        return this.__wrap_point_index && this.__character_count > this.__parent.wrap_line_length && this.__wrap_point_character_count > this.__parent.next_line.__character_count;
-      };
-      OutputLine.prototype._allow_wrap = function() {
-        if (this._should_wrap()) {
-          this.__parent.add_new_line();
-          var next = this.__parent.current_line;
-          next.set_indent(this.__wrap_point_indent_count, this.__wrap_point_alignment_count);
-          next.__items = this.__items.slice(this.__wrap_point_index);
-          this.__items = this.__items.slice(0, this.__wrap_point_index);
-          next.__character_count += this.__character_count - this.__wrap_point_character_count;
-          this.__character_count = this.__wrap_point_character_count;
-          if (next.__items[0] === " ") {
-            next.__items.splice(0, 1);
-            next.__character_count -= 1;
-          }
-          return true;
-        }
-        return false;
-      };
-      OutputLine.prototype.is_empty = function() {
-        return this.__items.length === 0;
-      };
-      OutputLine.prototype.last = function() {
-        if (!this.is_empty()) {
-          return this.__items[this.__items.length - 1];
-        } else {
-          return null;
-        }
-      };
-      OutputLine.prototype.push = function(item) {
-        this.__items.push(item);
-        var last_newline_index = item.lastIndexOf("\n");
-        if (last_newline_index !== -1) {
-          this.__character_count = item.length - last_newline_index;
-        } else {
-          this.__character_count += item.length;
-        }
-      };
-      OutputLine.prototype.pop = function() {
-        var item = null;
-        if (!this.is_empty()) {
-          item = this.__items.pop();
-          this.__character_count -= item.length;
-        }
-        return item;
-      };
-      OutputLine.prototype._remove_indent = function() {
-        if (this.__indent_count > 0) {
-          this.__indent_count -= 1;
-          this.__character_count -= this.__parent.indent_size;
-        }
-      };
-      OutputLine.prototype._remove_wrap_indent = function() {
-        if (this.__wrap_point_indent_count > 0) {
-          this.__wrap_point_indent_count -= 1;
-        }
-      };
-      OutputLine.prototype.trim = function() {
-        while (this.last() === " ") {
-          this.__items.pop();
-          this.__character_count -= 1;
-        }
-      };
-      OutputLine.prototype.toString = function() {
-        var result = "";
-        if (this.is_empty()) {
-          if (this.__parent.indent_empty_lines) {
-            result = this.__parent.get_indent_string(this.__indent_count);
-          }
-        } else {
-          result = this.__parent.get_indent_string(this.__indent_count, this.__alignment_count);
-          result += this.__items.join("");
-        }
-        return result;
-      };
-      function IndentStringCache(options, baseIndentString) {
-        this.__cache = [""];
-        this.__indent_size = options.indent_size;
-        this.__indent_string = options.indent_char;
-        if (!options.indent_with_tabs) {
-          this.__indent_string = new Array(options.indent_size + 1).join(options.indent_char);
-        }
-        baseIndentString = baseIndentString || "";
-        if (options.indent_level > 0) {
-          baseIndentString = new Array(options.indent_level + 1).join(this.__indent_string);
-        }
-        this.__base_string = baseIndentString;
-        this.__base_string_length = baseIndentString.length;
-      }
-      IndentStringCache.prototype.get_indent_size = function(indent, column) {
-        var result = this.__base_string_length;
-        column = column || 0;
-        if (indent < 0) {
-          result = 0;
-        }
-        result += indent * this.__indent_size;
-        result += column;
-        return result;
-      };
-      IndentStringCache.prototype.get_indent_string = function(indent_level, column) {
-        var result = this.__base_string;
-        column = column || 0;
-        if (indent_level < 0) {
-          indent_level = 0;
-          result = "";
-        }
-        column += indent_level * this.__indent_size;
-        this.__ensure_cache(column);
-        result += this.__cache[column];
-        return result;
-      };
-      IndentStringCache.prototype.__ensure_cache = function(column) {
-        while (column >= this.__cache.length) {
-          this.__add_column();
-        }
-      };
-      IndentStringCache.prototype.__add_column = function() {
-        var column = this.__cache.length;
-        var indent = 0;
-        var result = "";
-        if (this.__indent_size && column >= this.__indent_size) {
-          indent = Math.floor(column / this.__indent_size);
-          column -= indent * this.__indent_size;
-          result = new Array(indent + 1).join(this.__indent_string);
-        }
-        if (column) {
-          result += new Array(column + 1).join(" ");
-        }
-        this.__cache.push(result);
-      };
-      function Output(options, baseIndentString) {
-        this.__indent_cache = new IndentStringCache(options, baseIndentString);
-        this.raw = false;
-        this._end_with_newline = options.end_with_newline;
-        this.indent_size = options.indent_size;
-        this.wrap_line_length = options.wrap_line_length;
-        this.indent_empty_lines = options.indent_empty_lines;
-        this.__lines = [];
-        this.previous_line = null;
-        this.current_line = null;
-        this.next_line = new OutputLine(this);
-        this.space_before_token = false;
-        this.non_breaking_space = false;
-        this.previous_token_wrapped = false;
-        this.__add_outputline();
-      }
-      Output.prototype.__add_outputline = function() {
-        this.previous_line = this.current_line;
-        this.current_line = this.next_line.clone_empty();
-        this.__lines.push(this.current_line);
-      };
-      Output.prototype.get_line_number = function() {
-        return this.__lines.length;
-      };
-      Output.prototype.get_indent_string = function(indent, column) {
-        return this.__indent_cache.get_indent_string(indent, column);
-      };
-      Output.prototype.get_indent_size = function(indent, column) {
-        return this.__indent_cache.get_indent_size(indent, column);
-      };
-      Output.prototype.is_empty = function() {
-        return !this.previous_line && this.current_line.is_empty();
-      };
-      Output.prototype.add_new_line = function(force_newline) {
-        if (this.is_empty() || !force_newline && this.just_added_newline()) {
-          return false;
-        }
-        if (!this.raw) {
-          this.__add_outputline();
-        }
-        return true;
-      };
-      Output.prototype.get_code = function(eol) {
-        this.trim(true);
-        var last_item = this.current_line.pop();
-        if (last_item) {
-          if (last_item[last_item.length - 1] === "\n") {
-            last_item = last_item.replace(/\n+$/g, "");
-          }
-          this.current_line.push(last_item);
-        }
-        if (this._end_with_newline) {
-          this.__add_outputline();
-        }
-        var sweet_code = this.__lines.join("\n");
-        if (eol !== "\n") {
-          sweet_code = sweet_code.replace(/[\n]/g, eol);
-        }
-        return sweet_code;
-      };
-      Output.prototype.set_wrap_point = function() {
-        this.current_line._set_wrap_point();
-      };
-      Output.prototype.set_indent = function(indent, alignment) {
-        indent = indent || 0;
-        alignment = alignment || 0;
-        this.next_line.set_indent(indent, alignment);
-        if (this.__lines.length > 1) {
-          this.current_line.set_indent(indent, alignment);
-          return true;
-        }
-        this.current_line.set_indent();
-        return false;
-      };
-      Output.prototype.add_raw_token = function(token) {
-        for (var x = 0; x < token.newlines; x++) {
-          this.__add_outputline();
-        }
-        this.current_line.set_indent(-1);
-        this.current_line.push(token.whitespace_before);
-        this.current_line.push(token.text);
-        this.space_before_token = false;
-        this.non_breaking_space = false;
-        this.previous_token_wrapped = false;
-      };
-      Output.prototype.add_token = function(printable_token) {
-        this.__add_space_before_token();
-        this.current_line.push(printable_token);
-        this.space_before_token = false;
-        this.non_breaking_space = false;
-        this.previous_token_wrapped = this.current_line._allow_wrap();
-      };
-      Output.prototype.__add_space_before_token = function() {
-        if (this.space_before_token && !this.just_added_newline()) {
-          if (!this.non_breaking_space) {
-            this.set_wrap_point();
-          }
-          this.current_line.push(" ");
-        }
-      };
-      Output.prototype.remove_indent = function(index) {
-        var output_length = this.__lines.length;
-        while (index < output_length) {
-          this.__lines[index]._remove_indent();
-          index++;
-        }
-        this.current_line._remove_wrap_indent();
-      };
-      Output.prototype.trim = function(eat_newlines) {
-        eat_newlines = eat_newlines === void 0 ? false : eat_newlines;
-        this.current_line.trim();
-        while (eat_newlines && this.__lines.length > 1 && this.current_line.is_empty()) {
-          this.__lines.pop();
-          this.current_line = this.__lines[this.__lines.length - 1];
-          this.current_line.trim();
-        }
-        this.previous_line = this.__lines.length > 1 ? this.__lines[this.__lines.length - 2] : null;
-      };
-      Output.prototype.just_added_newline = function() {
-        return this.current_line.is_empty();
-      };
-      Output.prototype.just_added_blankline = function() {
-        return this.is_empty() || this.current_line.is_empty() && this.previous_line.is_empty();
-      };
-      Output.prototype.ensure_empty_line_above = function(starts_with, ends_with) {
-        var index = this.__lines.length - 2;
-        while (index >= 0) {
-          var potentialEmptyLine = this.__lines[index];
-          if (potentialEmptyLine.is_empty()) {
-            break;
-          } else if (potentialEmptyLine.item(0).indexOf(starts_with) !== 0 && potentialEmptyLine.item(-1) !== ends_with) {
-            this.__lines.splice(index + 1, 0, new OutputLine(this));
-            this.previous_line = this.__lines[this.__lines.length - 2];
-            break;
-          }
-          index--;
-        }
-      };
-      module.exports.Output = Output;
-    }),
-    ,
-    ,
-    ,
-    /* 6 */
-    /***/
-    (function(module) {
-      function Options(options, merge_child_field) {
-        this.raw_options = _mergeOpts(options, merge_child_field);
-        this.disabled = this._get_boolean("disabled");
-        this.eol = this._get_characters("eol", "auto");
-        this.end_with_newline = this._get_boolean("end_with_newline");
-        this.indent_size = this._get_number("indent_size", 4);
-        this.indent_char = this._get_characters("indent_char", " ");
-        this.indent_level = this._get_number("indent_level");
-        this.preserve_newlines = this._get_boolean("preserve_newlines", true);
-        this.max_preserve_newlines = this._get_number("max_preserve_newlines", 32786);
-        if (!this.preserve_newlines) {
-          this.max_preserve_newlines = 0;
-        }
-        this.indent_with_tabs = this._get_boolean("indent_with_tabs", this.indent_char === "	");
-        if (this.indent_with_tabs) {
-          this.indent_char = "	";
-          if (this.indent_size === 1) {
-            this.indent_size = 4;
-          }
-        }
-        this.wrap_line_length = this._get_number("wrap_line_length", this._get_number("max_char"));
-        this.indent_empty_lines = this._get_boolean("indent_empty_lines");
-        this.templating = this._get_selection_list("templating", ["auto", "none", "angular", "django", "erb", "handlebars", "php", "smarty"], ["auto"]);
-      }
-      Options.prototype._get_array = function(name, default_value) {
-        var option_value = this.raw_options[name];
-        var result = default_value || [];
-        if (typeof option_value === "object") {
-          if (option_value !== null && typeof option_value.concat === "function") {
-            result = option_value.concat();
-          }
-        } else if (typeof option_value === "string") {
-          result = option_value.split(/[^a-zA-Z0-9_\/\-]+/);
-        }
-        return result;
-      };
-      Options.prototype._get_boolean = function(name, default_value) {
-        var option_value = this.raw_options[name];
-        var result = option_value === void 0 ? !!default_value : !!option_value;
-        return result;
-      };
-      Options.prototype._get_characters = function(name, default_value) {
-        var option_value = this.raw_options[name];
-        var result = default_value || "";
-        if (typeof option_value === "string") {
-          result = option_value.replace(/\\r/, "\r").replace(/\\n/, "\n").replace(/\\t/, "	");
-        }
-        return result;
-      };
-      Options.prototype._get_number = function(name, default_value) {
-        var option_value = this.raw_options[name];
-        default_value = parseInt(default_value, 10);
-        if (isNaN(default_value)) {
-          default_value = 0;
-        }
-        var result = parseInt(option_value, 10);
-        if (isNaN(result)) {
-          result = default_value;
-        }
-        return result;
-      };
-      Options.prototype._get_selection = function(name, selection_list, default_value) {
-        var result = this._get_selection_list(name, selection_list, default_value);
-        if (result.length !== 1) {
-          throw new Error(
-            "Invalid Option Value: The option '" + name + "' can only be one of the following values:\n" + selection_list + "\nYou passed in: '" + this.raw_options[name] + "'"
-          );
-        }
-        return result[0];
-      };
-      Options.prototype._get_selection_list = function(name, selection_list, default_value) {
-        if (!selection_list || selection_list.length === 0) {
-          throw new Error("Selection list cannot be empty.");
-        }
-        default_value = default_value || [selection_list[0]];
-        if (!this._is_valid_selection(default_value, selection_list)) {
-          throw new Error("Invalid Default Value!");
-        }
-        var result = this._get_array(name, default_value);
-        if (!this._is_valid_selection(result, selection_list)) {
-          throw new Error(
-            "Invalid Option Value: The option '" + name + "' can contain only the following values:\n" + selection_list + "\nYou passed in: '" + this.raw_options[name] + "'"
-          );
-        }
-        return result;
-      };
-      Options.prototype._is_valid_selection = function(result, selection_list) {
-        return result.length && selection_list.length && !result.some(function(item) {
-          return selection_list.indexOf(item) === -1;
-        });
-      };
-      function _mergeOpts(allOptions, childFieldName) {
-        var finalOpts = {};
-        allOptions = _normalizeOpts(allOptions);
-        var name;
-        for (name in allOptions) {
-          if (name !== childFieldName) {
-            finalOpts[name] = allOptions[name];
-          }
-        }
-        if (childFieldName && allOptions[childFieldName]) {
-          for (name in allOptions[childFieldName]) {
-            finalOpts[name] = allOptions[childFieldName][name];
-          }
-        }
-        return finalOpts;
-      }
-      function _normalizeOpts(options) {
-        var convertedOpts = {};
-        var key;
-        for (key in options) {
-          var newKey = key.replace(/-/g, "_");
-          convertedOpts[newKey] = options[key];
-        }
-        return convertedOpts;
-      }
-      module.exports.Options = Options;
-      module.exports.normalizeOpts = _normalizeOpts;
-      module.exports.mergeOpts = _mergeOpts;
-    }),
-    ,
-    /* 8 */
-    /***/
-    (function(module) {
-      var regexp_has_sticky = RegExp.prototype.hasOwnProperty("sticky");
-      function InputScanner(input_string) {
-        this.__input = input_string || "";
-        this.__input_length = this.__input.length;
-        this.__position = 0;
-      }
-      InputScanner.prototype.restart = function() {
-        this.__position = 0;
-      };
-      InputScanner.prototype.back = function() {
-        if (this.__position > 0) {
-          this.__position -= 1;
-        }
-      };
-      InputScanner.prototype.hasNext = function() {
-        return this.__position < this.__input_length;
-      };
-      InputScanner.prototype.next = function() {
-        var val = null;
-        if (this.hasNext()) {
-          val = this.__input.charAt(this.__position);
-          this.__position += 1;
-        }
-        return val;
-      };
-      InputScanner.prototype.peek = function(index) {
-        var val = null;
-        index = index || 0;
-        index += this.__position;
-        if (index >= 0 && index < this.__input_length) {
-          val = this.__input.charAt(index);
-        }
-        return val;
-      };
-      InputScanner.prototype.__match = function(pattern, index) {
-        pattern.lastIndex = index;
-        var pattern_match = pattern.exec(this.__input);
-        if (pattern_match && !(regexp_has_sticky && pattern.sticky)) {
-          if (pattern_match.index !== index) {
-            pattern_match = null;
-          }
-        }
-        return pattern_match;
-      };
-      InputScanner.prototype.test = function(pattern, index) {
-        index = index || 0;
-        index += this.__position;
-        if (index >= 0 && index < this.__input_length) {
-          return !!this.__match(pattern, index);
-        } else {
-          return false;
-        }
-      };
-      InputScanner.prototype.testChar = function(pattern, index) {
-        var val = this.peek(index);
-        pattern.lastIndex = 0;
-        return val !== null && pattern.test(val);
-      };
-      InputScanner.prototype.match = function(pattern) {
-        var pattern_match = this.__match(pattern, this.__position);
-        if (pattern_match) {
-          this.__position += pattern_match[0].length;
-        } else {
-          pattern_match = null;
-        }
-        return pattern_match;
-      };
-      InputScanner.prototype.read = function(starting_pattern, until_pattern, until_after) {
-        var val = "";
-        var match;
-        if (starting_pattern) {
-          match = this.match(starting_pattern);
-          if (match) {
-            val += match[0];
-          }
-        }
-        if (until_pattern && (match || !starting_pattern)) {
-          val += this.readUntil(until_pattern, until_after);
-        }
-        return val;
-      };
-      InputScanner.prototype.readUntil = function(pattern, until_after) {
-        var val = "";
-        var match_index = this.__position;
-        pattern.lastIndex = this.__position;
-        var pattern_match = pattern.exec(this.__input);
-        if (pattern_match) {
-          match_index = pattern_match.index;
-          if (until_after) {
-            match_index += pattern_match[0].length;
-          }
-        } else {
-          match_index = this.__input_length;
-        }
-        val = this.__input.substring(this.__position, match_index);
-        this.__position = match_index;
-        return val;
-      };
-      InputScanner.prototype.readUntilAfter = function(pattern) {
-        return this.readUntil(pattern, true);
-      };
-      InputScanner.prototype.get_regexp = function(pattern, match_from) {
-        var result = null;
-        var flags = "g";
-        if (match_from && regexp_has_sticky) {
-          flags = "y";
-        }
-        if (typeof pattern === "string" && pattern !== "") {
-          result = new RegExp(pattern, flags);
-        } else if (pattern) {
-          result = new RegExp(pattern.source, flags);
-        }
-        return result;
-      };
-      InputScanner.prototype.get_literal_regexp = function(literal_string) {
-        return RegExp(literal_string.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&"));
-      };
-      InputScanner.prototype.peekUntilAfter = function(pattern) {
-        var start2 = this.__position;
-        var val = this.readUntilAfter(pattern);
-        this.__position = start2;
-        return val;
-      };
-      InputScanner.prototype.lookBack = function(testVal) {
-        var start2 = this.__position - 1;
-        return start2 >= testVal.length && this.__input.substring(start2 - testVal.length, start2).toLowerCase() === testVal;
-      };
-      module.exports.InputScanner = InputScanner;
-    }),
-    ,
-    ,
-    ,
-    ,
-    /* 13 */
-    /***/
-    (function(module) {
-      function Directives(start_block_pattern, end_block_pattern) {
-        start_block_pattern = typeof start_block_pattern === "string" ? start_block_pattern : start_block_pattern.source;
-        end_block_pattern = typeof end_block_pattern === "string" ? end_block_pattern : end_block_pattern.source;
-        this.__directives_block_pattern = new RegExp(start_block_pattern + / beautify( \w+[:]\w+)+ /.source + end_block_pattern, "g");
-        this.__directive_pattern = / (\w+)[:](\w+)/g;
-        this.__directives_end_ignore_pattern = new RegExp(start_block_pattern + /\sbeautify\signore:end\s/.source + end_block_pattern, "g");
-      }
-      Directives.prototype.get_directives = function(text) {
-        if (!text.match(this.__directives_block_pattern)) {
-          return null;
-        }
-        var directives = {};
-        this.__directive_pattern.lastIndex = 0;
-        var directive_match = this.__directive_pattern.exec(text);
-        while (directive_match) {
-          directives[directive_match[1]] = directive_match[2];
-          directive_match = this.__directive_pattern.exec(text);
-        }
-        return directives;
-      };
-      Directives.prototype.readIgnored = function(input) {
-        return input.readUntilAfter(this.__directives_end_ignore_pattern);
-      };
-      module.exports.Directives = Directives;
-    }),
-    ,
-    /* 15 */
-    /***/
-    (function(module, __unused_webpack_exports, __webpack_require__2) {
-      var Beautifier = __webpack_require__2(16).Beautifier, Options = __webpack_require__2(17).Options;
-      function css_beautify2(source_text, options) {
-        var beautifier = new Beautifier(source_text, options);
-        return beautifier.beautify();
-      }
-      module.exports = css_beautify2;
-      module.exports.defaultOptions = function() {
-        return new Options();
-      };
-    }),
-    /* 16 */
-    /***/
-    (function(module, __unused_webpack_exports, __webpack_require__2) {
-      var Options = __webpack_require__2(17).Options;
-      var Output = __webpack_require__2(2).Output;
-      var InputScanner = __webpack_require__2(8).InputScanner;
-      var Directives = __webpack_require__2(13).Directives;
-      var directives_core = new Directives(/\/\*/, /\*\//);
-      var lineBreak = /\r\n|[\r\n]/;
-      var allLineBreaks = /\r\n|[\r\n]/g;
-      var whitespaceChar = /\s/;
-      var whitespacePattern = /(?:\s|\n)+/g;
-      var block_comment_pattern = /\/\*(?:[\s\S]*?)((?:\*\/)|$)/g;
-      var comment_pattern = /\/\/(?:[^\n\r\u2028\u2029]*)/g;
-      function Beautifier(source_text, options) {
-        this._source_text = source_text || "";
-        this._options = new Options(options);
-        this._ch = null;
-        this._input = null;
-        this.NESTED_AT_RULE = {
-          "page": true,
-          "font-face": true,
-          "keyframes": true,
-          // also in CONDITIONAL_GROUP_RULE below
-          "media": true,
-          "supports": true,
-          "document": true
-        };
-        this.CONDITIONAL_GROUP_RULE = {
-          "media": true,
-          "supports": true,
-          "document": true
-        };
-        this.NON_SEMICOLON_NEWLINE_PROPERTY = [
-          "grid-template-areas",
-          "grid-template"
-        ];
-      }
-      Beautifier.prototype.eatString = function(endChars) {
-        var result = "";
-        this._ch = this._input.next();
-        while (this._ch) {
-          result += this._ch;
-          if (this._ch === "\\") {
-            result += this._input.next();
-          } else if (endChars.indexOf(this._ch) !== -1 || this._ch === "\n") {
-            break;
-          }
-          this._ch = this._input.next();
-        }
-        return result;
-      };
-      Beautifier.prototype.eatWhitespace = function(allowAtLeastOneNewLine) {
-        var result = whitespaceChar.test(this._input.peek());
-        var newline_count = 0;
-        while (whitespaceChar.test(this._input.peek())) {
-          this._ch = this._input.next();
-          if (allowAtLeastOneNewLine && this._ch === "\n") {
-            if (newline_count === 0 || newline_count < this._options.max_preserve_newlines) {
-              newline_count++;
-              this._output.add_new_line(true);
-            }
-          }
-        }
-        return result;
-      };
-      Beautifier.prototype.foundNestedPseudoClass = function() {
-        var openParen = 0;
-        var i = 1;
-        var ch = this._input.peek(i);
-        while (ch) {
-          if (ch === "{") {
-            return true;
-          } else if (ch === "(") {
-            openParen += 1;
-          } else if (ch === ")") {
-            if (openParen === 0) {
-              return false;
-            }
-            openParen -= 1;
-          } else if (ch === ";" || ch === "}") {
-            return false;
-          }
-          i++;
-          ch = this._input.peek(i);
-        }
-        return false;
-      };
-      Beautifier.prototype.print_string = function(output_string) {
-        this._output.set_indent(this._indentLevel);
-        this._output.non_breaking_space = true;
-        this._output.add_token(output_string);
-      };
-      Beautifier.prototype.preserveSingleSpace = function(isAfterSpace) {
-        if (isAfterSpace) {
-          this._output.space_before_token = true;
-        }
-      };
-      Beautifier.prototype.indent = function() {
-        this._indentLevel++;
-      };
-      Beautifier.prototype.outdent = function() {
-        if (this._indentLevel > 0) {
-          this._indentLevel--;
-        }
-      };
-      Beautifier.prototype.beautify = function() {
-        if (this._options.disabled) {
-          return this._source_text;
-        }
-        var source_text = this._source_text;
-        var eol = this._options.eol;
-        if (eol === "auto") {
-          eol = "\n";
-          if (source_text && lineBreak.test(source_text || "")) {
-            eol = source_text.match(lineBreak)[0];
-          }
-        }
-        source_text = source_text.replace(allLineBreaks, "\n");
-        var baseIndentString = source_text.match(/^[\t ]*/)[0];
-        this._output = new Output(this._options, baseIndentString);
-        this._input = new InputScanner(source_text);
-        this._indentLevel = 0;
-        this._nestedLevel = 0;
-        this._ch = null;
-        var parenLevel = 0;
-        var insideRule = false;
-        var insidePropertyValue = false;
-        var enteringConditionalGroup = false;
-        var insideNonNestedAtRule = false;
-        var insideScssMap = false;
-        var topCharacter = this._ch;
-        var insideNonSemiColonValues = false;
-        var whitespace;
-        var isAfterSpace;
-        var previous_ch;
-        while (true) {
-          whitespace = this._input.read(whitespacePattern);
-          isAfterSpace = whitespace !== "";
-          previous_ch = topCharacter;
-          this._ch = this._input.next();
-          if (this._ch === "\\" && this._input.hasNext()) {
-            this._ch += this._input.next();
-          }
-          topCharacter = this._ch;
-          if (!this._ch) {
-            break;
-          } else if (this._ch === "/" && this._input.peek() === "*") {
-            this._output.add_new_line();
-            this._input.back();
-            var comment = this._input.read(block_comment_pattern);
-            var directives = directives_core.get_directives(comment);
-            if (directives && directives.ignore === "start") {
-              comment += directives_core.readIgnored(this._input);
-            }
-            this.print_string(comment);
-            this.eatWhitespace(true);
-            this._output.add_new_line();
-          } else if (this._ch === "/" && this._input.peek() === "/") {
-            this._output.space_before_token = true;
-            this._input.back();
-            this.print_string(this._input.read(comment_pattern));
-            this.eatWhitespace(true);
-          } else if (this._ch === "$") {
-            this.preserveSingleSpace(isAfterSpace);
-            this.print_string(this._ch);
-            var variable = this._input.peekUntilAfter(/[: ,;{}()[\]\/='"]/g);
-            if (variable.match(/[ :]$/)) {
-              variable = this.eatString(": ").replace(/\s+$/, "");
-              this.print_string(variable);
-              this._output.space_before_token = true;
-            }
-            if (parenLevel === 0 && variable.indexOf(":") !== -1) {
-              insidePropertyValue = true;
-              this.indent();
-            }
-          } else if (this._ch === "@") {
-            this.preserveSingleSpace(isAfterSpace);
-            if (this._input.peek() === "{") {
-              this.print_string(this._ch + this.eatString("}"));
-            } else {
-              this.print_string(this._ch);
-              var variableOrRule = this._input.peekUntilAfter(/[: ,;{}()[\]\/='"]/g);
-              if (variableOrRule.match(/[ :]$/)) {
-                variableOrRule = this.eatString(": ").replace(/\s+$/, "");
-                this.print_string(variableOrRule);
-                this._output.space_before_token = true;
-              }
-              if (parenLevel === 0 && variableOrRule.indexOf(":") !== -1) {
-                insidePropertyValue = true;
-                this.indent();
-              } else if (variableOrRule in this.NESTED_AT_RULE) {
-                this._nestedLevel += 1;
-                if (variableOrRule in this.CONDITIONAL_GROUP_RULE) {
-                  enteringConditionalGroup = true;
-                }
-              } else if (parenLevel === 0 && !insidePropertyValue) {
-                insideNonNestedAtRule = true;
-              }
-            }
-          } else if (this._ch === "#" && this._input.peek() === "{") {
-            this.preserveSingleSpace(isAfterSpace);
-            this.print_string(this._ch + this.eatString("}"));
-          } else if (this._ch === "{") {
-            if (insidePropertyValue) {
-              insidePropertyValue = false;
-              this.outdent();
-            }
-            insideNonNestedAtRule = false;
-            if (enteringConditionalGroup) {
-              enteringConditionalGroup = false;
-              insideRule = this._indentLevel >= this._nestedLevel;
-            } else {
-              insideRule = this._indentLevel >= this._nestedLevel - 1;
-            }
-            if (this._options.newline_between_rules && insideRule) {
-              if (this._output.previous_line && this._output.previous_line.item(-1) !== "{") {
-                this._output.ensure_empty_line_above("/", ",");
-              }
-            }
-            this._output.space_before_token = true;
-            if (this._options.brace_style === "expand") {
-              this._output.add_new_line();
-              this.print_string(this._ch);
-              this.indent();
-              this._output.set_indent(this._indentLevel);
-            } else {
-              if (previous_ch === "(") {
-                this._output.space_before_token = false;
-              } else if (previous_ch !== ",") {
-                this.indent();
-              }
-              this.print_string(this._ch);
-            }
-            this.eatWhitespace(true);
-            this._output.add_new_line();
-          } else if (this._ch === "}") {
-            this.outdent();
-            this._output.add_new_line();
-            if (previous_ch === "{") {
-              this._output.trim(true);
-            }
-            if (insidePropertyValue) {
-              this.outdent();
-              insidePropertyValue = false;
-            }
-            this.print_string(this._ch);
-            insideRule = false;
-            if (this._nestedLevel) {
-              this._nestedLevel--;
-            }
-            this.eatWhitespace(true);
-            this._output.add_new_line();
-            if (this._options.newline_between_rules && !this._output.just_added_blankline()) {
-              if (this._input.peek() !== "}") {
-                this._output.add_new_line(true);
-              }
-            }
-            if (this._input.peek() === ")") {
-              this._output.trim(true);
-              if (this._options.brace_style === "expand") {
-                this._output.add_new_line(true);
-              }
-            }
-          } else if (this._ch === ":") {
-            for (var i = 0; i < this.NON_SEMICOLON_NEWLINE_PROPERTY.length; i++) {
-              if (this._input.lookBack(this.NON_SEMICOLON_NEWLINE_PROPERTY[i])) {
-                insideNonSemiColonValues = true;
-                break;
-              }
-            }
-            if ((insideRule || enteringConditionalGroup) && !(this._input.lookBack("&") || this.foundNestedPseudoClass()) && !this._input.lookBack("(") && !insideNonNestedAtRule && parenLevel === 0) {
-              this.print_string(":");
-              if (!insidePropertyValue) {
-                insidePropertyValue = true;
-                this._output.space_before_token = true;
-                this.eatWhitespace(true);
-                this.indent();
-              }
-            } else {
-              if (this._input.lookBack(" ")) {
-                this._output.space_before_token = true;
-              }
-              if (this._input.peek() === ":") {
-                this._ch = this._input.next();
-                this.print_string("::");
-              } else {
-                this.print_string(":");
-              }
-            }
-          } else if (this._ch === '"' || this._ch === "'") {
-            var preserveQuoteSpace = previous_ch === '"' || previous_ch === "'";
-            this.preserveSingleSpace(preserveQuoteSpace || isAfterSpace);
-            this.print_string(this._ch + this.eatString(this._ch));
-            this.eatWhitespace(true);
-          } else if (this._ch === ";") {
-            insideNonSemiColonValues = false;
-            if (parenLevel === 0) {
-              if (insidePropertyValue) {
-                this.outdent();
-                insidePropertyValue = false;
-              }
-              insideNonNestedAtRule = false;
-              this.print_string(this._ch);
-              this.eatWhitespace(true);
-              if (this._input.peek() !== "/") {
-                this._output.add_new_line();
-              }
-            } else {
-              this.print_string(this._ch);
-              this.eatWhitespace(true);
-              this._output.space_before_token = true;
-            }
-          } else if (this._ch === "(") {
-            if (this._input.lookBack("url")) {
-              this.print_string(this._ch);
-              this.eatWhitespace();
-              parenLevel++;
-              this.indent();
-              this._ch = this._input.next();
-              if (this._ch === ")" || this._ch === '"' || this._ch === "'") {
-                this._input.back();
-              } else if (this._ch) {
-                this.print_string(this._ch + this.eatString(")"));
-                if (parenLevel) {
-                  parenLevel--;
-                  this.outdent();
-                }
-              }
-            } else {
-              var space_needed = false;
-              if (this._input.lookBack("with")) {
-                space_needed = true;
-              }
-              this.preserveSingleSpace(isAfterSpace || space_needed);
-              this.print_string(this._ch);
-              if (insidePropertyValue && previous_ch === "$" && this._options.selector_separator_newline) {
-                this._output.add_new_line();
-                insideScssMap = true;
-              } else {
-                this.eatWhitespace();
-                parenLevel++;
-                this.indent();
-              }
-            }
-          } else if (this._ch === ")") {
-            if (parenLevel) {
-              parenLevel--;
-              this.outdent();
-            }
-            if (insideScssMap && this._input.peek() === ";" && this._options.selector_separator_newline) {
-              insideScssMap = false;
-              this.outdent();
-              this._output.add_new_line();
-            }
-            this.print_string(this._ch);
-          } else if (this._ch === ",") {
-            this.print_string(this._ch);
-            this.eatWhitespace(true);
-            if (this._options.selector_separator_newline && (!insidePropertyValue || insideScssMap) && parenLevel === 0 && !insideNonNestedAtRule) {
-              this._output.add_new_line();
-            } else {
-              this._output.space_before_token = true;
-            }
-          } else if ((this._ch === ">" || this._ch === "+" || this._ch === "~") && !insidePropertyValue && parenLevel === 0) {
-            if (this._options.space_around_combinator) {
-              this._output.space_before_token = true;
-              this.print_string(this._ch);
-              this._output.space_before_token = true;
-            } else {
-              this.print_string(this._ch);
-              this.eatWhitespace();
-              if (this._ch && whitespaceChar.test(this._ch)) {
-                this._ch = "";
-              }
-            }
-          } else if (this._ch === "]") {
-            this.print_string(this._ch);
-          } else if (this._ch === "[") {
-            this.preserveSingleSpace(isAfterSpace);
-            this.print_string(this._ch);
-          } else if (this._ch === "=") {
-            this.eatWhitespace();
-            this.print_string("=");
-            if (whitespaceChar.test(this._ch)) {
-              this._ch = "";
-            }
-          } else if (this._ch === "!" && !this._input.lookBack("\\")) {
-            this._output.space_before_token = true;
-            this.print_string(this._ch);
-          } else {
-            var preserveAfterSpace = previous_ch === '"' || previous_ch === "'";
-            this.preserveSingleSpace(preserveAfterSpace || isAfterSpace);
-            this.print_string(this._ch);
-            if (!this._output.just_added_newline() && this._input.peek() === "\n" && insideNonSemiColonValues) {
-              this._output.add_new_line();
-            }
-          }
-        }
-        var sweetCode = this._output.get_code(eol);
-        return sweetCode;
-      };
-      module.exports.Beautifier = Beautifier;
-    }),
-    /* 17 */
-    /***/
-    (function(module, __unused_webpack_exports, __webpack_require__2) {
-      var BaseOptions = __webpack_require__2(6).Options;
-      function Options(options) {
-        BaseOptions.call(this, options, "css");
-        this.selector_separator_newline = this._get_boolean("selector_separator_newline", true);
-        this.newline_between_rules = this._get_boolean("newline_between_rules", true);
-        var space_around_selector_separator = this._get_boolean("space_around_selector_separator");
-        this.space_around_combinator = this._get_boolean("space_around_combinator") || space_around_selector_separator;
-        var brace_style_split = this._get_selection_list("brace_style", ["collapse", "expand", "end-expand", "none", "preserve-inline"]);
-        this.brace_style = "collapse";
-        for (var bs = 0; bs < brace_style_split.length; bs++) {
-          if (brace_style_split[bs] !== "expand") {
-            this.brace_style = "collapse";
-          } else {
-            this.brace_style = brace_style_split[bs];
-          }
-        }
-      }
-      Options.prototype = new BaseOptions();
-      module.exports.Options = Options;
-    })
-    /******/
-  ];
-  var __webpack_module_cache__ = {};
-  function __webpack_require__(moduleId) {
-    var cachedModule = __webpack_module_cache__[moduleId];
-    if (cachedModule !== void 0) {
-      return cachedModule.exports;
-    }
-    var module = __webpack_module_cache__[moduleId] = {
-      /******/
-      // no module.id needed
-      /******/
-      // no module.loaded needed
-      /******/
-      exports: {}
-      /******/
-    };
-    __webpack_modules__[moduleId](module, module.exports, __webpack_require__);
-    return module.exports;
-  }
-  var __webpack_exports__ = __webpack_require__(15);
-  legacy_beautify_css = __webpack_exports__;
-})();
-var css_beautify = legacy_beautify_css;
-
-// node_modules/vscode-css-languageservice/lib/esm/services/cssFormatter.js
-function format2(document, range, options) {
-  let value = document.getText();
-  let includesEnd = true;
-  let initialIndentLevel = 0;
-  let inRule = false;
-  const tabSize = options.tabSize || 4;
-  if (range) {
-    let startOffset = document.offsetAt(range.start);
-    let extendedStart = startOffset;
-    while (extendedStart > 0 && isWhitespace(value, extendedStart - 1)) {
-      extendedStart--;
-    }
-    if (extendedStart === 0 || isEOL(value, extendedStart - 1)) {
-      startOffset = extendedStart;
-    } else {
-      if (extendedStart < startOffset) {
-        startOffset = extendedStart + 1;
-      }
-    }
-    let endOffset = document.offsetAt(range.end);
-    let extendedEnd = endOffset;
-    while (extendedEnd < value.length && isWhitespace(value, extendedEnd)) {
-      extendedEnd++;
-    }
-    if (extendedEnd === value.length || isEOL(value, extendedEnd)) {
-      endOffset = extendedEnd;
-    }
-    range = Range.create(document.positionAt(startOffset), document.positionAt(endOffset));
-    inRule = isInRule(value, startOffset);
-    includesEnd = endOffset === value.length;
-    value = value.substring(startOffset, endOffset);
-    if (startOffset !== 0) {
-      const startOfLineOffset = document.offsetAt(Position.create(range.start.line, 0));
-      initialIndentLevel = computeIndentLevel(document.getText(), startOfLineOffset, options);
-    }
-    if (inRule) {
-      value = `{
-${trimLeft(value)}`;
-    }
-  } else {
-    range = Range.create(Position.create(0, 0), document.positionAt(value.length));
-  }
-  const cssOptions = {
-    indent_size: tabSize,
-    indent_char: options.insertSpaces ? " " : "	",
-    end_with_newline: includesEnd && getFormatOption(options, "insertFinalNewline", false),
-    selector_separator_newline: getFormatOption(options, "newlineBetweenSelectors", true),
-    newline_between_rules: getFormatOption(options, "newlineBetweenRules", true),
-    space_around_selector_separator: getFormatOption(options, "spaceAroundSelectorSeparator", false),
-    brace_style: getFormatOption(options, "braceStyle", "collapse"),
-    indent_empty_lines: getFormatOption(options, "indentEmptyLines", false),
-    max_preserve_newlines: getFormatOption(options, "maxPreserveNewLines", void 0),
-    preserve_newlines: getFormatOption(options, "preserveNewLines", true),
-    wrap_line_length: getFormatOption(options, "wrapLineLength", void 0),
-    eol: "\n"
-  };
-  let result = css_beautify(value, cssOptions);
-  if (inRule) {
-    result = trimLeft(result.substring(2));
-  }
-  if (initialIndentLevel > 0) {
-    const indent = options.insertSpaces ? repeat(" ", tabSize * initialIndentLevel) : repeat("	", initialIndentLevel);
-    result = result.split("\n").join("\n" + indent);
-    if (range.start.character === 0) {
-      result = indent + result;
-    }
-  }
-  return [{
-    range,
-    newText: result
-  }];
-}
-function trimLeft(str) {
-  return str.replace(/^\s+/, "");
-}
-var _CUL3 = "{".charCodeAt(0);
-var _CUR2 = "}".charCodeAt(0);
-function isInRule(str, offset) {
-  while (offset >= 0) {
-    const ch = str.charCodeAt(offset);
-    if (ch === _CUL3) {
-      return true;
-    } else if (ch === _CUR2) {
-      return false;
-    }
-    offset--;
-  }
-  return false;
-}
-function getFormatOption(options, key, dflt) {
-  if (options && options.hasOwnProperty(key)) {
-    const value = options[key];
-    if (value !== null) {
-      return value;
-    }
-  }
-  return dflt;
-}
-function computeIndentLevel(content, offset, options) {
-  let i = offset;
-  let nChars = 0;
-  const tabSize = options.tabSize || 4;
-  while (i < content.length) {
-    const ch = content.charAt(i);
-    if (ch === " ") {
-      nChars++;
-    } else if (ch === "	") {
-      nChars += tabSize;
-    } else {
-      break;
-    }
-    i++;
-  }
-  return Math.floor(nChars / tabSize);
-}
-function isEOL(text, offset) {
-  return "\r\n".indexOf(text.charAt(offset)) !== -1;
-}
-function isWhitespace(text, offset) {
-  return " 	".indexOf(text.charAt(offset)) !== -1;
-}
-
 // node_modules/vscode-css-languageservice/lib/esm/data/webCustomData.js
 var cssData = {
   "version": 1.1,
@@ -13448,7 +12951,6 @@ var cssData = {
       "browsers": [
         "FF33"
       ],
-      "atRule": "@counter-style",
       "syntax": "[ <integer> && <symbol> ]#",
       "relevance": 50,
       "description": "@counter-style descriptor. Specifies the symbols used by the marker-construction algorithm specified by the system descriptor. Needs to be specified if the counter system is 'additive'.",
@@ -13461,14 +12963,6 @@ var cssData = {
     },
     {
       "name": "align-content",
-      "browsers": [
-        "E12",
-        "FF28",
-        "S9",
-        "C29",
-        "IE11",
-        "O16"
-      ],
       "values": [
         {
           "name": "center",
@@ -13493,75 +12987,25 @@ var cssData = {
         {
           "name": "stretch",
           "description": "Lines stretch to take up the remaining space."
-        },
-        {
-          "name": "start"
-        },
-        {
-          "name": "end"
-        },
-        {
-          "name": "normal"
-        },
-        {
-          "name": "baseline"
-        },
-        {
-          "name": "first baseline"
-        },
-        {
-          "name": "last baseline"
-        },
-        {
-          "name": "space-around"
-        },
-        {
-          "name": "space-between"
-        },
-        {
-          "name": "space-evenly"
-        },
-        {
-          "name": "stretch"
-        },
-        {
-          "name": "safe"
-        },
-        {
-          "name": "unsafe"
         }
       ],
       "syntax": "normal | <baseline-position> | <content-distribution> | <overflow-position>? <content-position>",
-      "relevance": 66,
-      "references": [
-        {
-          "name": "MDN Reference",
-          "url": "https://developer.mozilla.org/docs/Web/CSS/align-content"
-        }
-      ],
-      "description": "Aligns a flex container's lines within the flex container when there is extra space in the cross-axis, similar to how 'justify-content' aligns individual items within the main-axis.",
+      "relevance": 62,
+      "description": "Aligns a flex container\u2019s lines within the flex container when there is extra space in the cross-axis, similar to how 'justify-content' aligns individual items within the main-axis.",
       "restrictions": [
         "enum"
       ]
     },
     {
       "name": "align-items",
-      "browsers": [
-        "E12",
-        "FF20",
-        "S9",
-        "C29",
-        "IE11",
-        "O16"
-      ],
       "values": [
         {
           "name": "baseline",
-          "description": "If the flex item's inline axis is the same as the cross axis, this value is identical to 'flex-start'. Otherwise, it participates in baseline alignment."
+          "description": "If the flex item\u2019s inline axis is the same as the cross axis, this value is identical to 'flex-start'. Otherwise, it participates in baseline alignment."
         },
         {
           "name": "center",
-          "description": "The flex item's margin box is centered in the cross axis within the line."
+          "description": "The flex item\u2019s margin box is centered in the cross axis within the line."
         },
         {
           "name": "flex-end",
@@ -13574,46 +13018,10 @@ var cssData = {
         {
           "name": "stretch",
           "description": "If the cross size property of the flex item computes to auto, and neither of the cross-axis margins are auto, the flex item is stretched."
-        },
-        {
-          "name": "normal"
-        },
-        {
-          "name": "start"
-        },
-        {
-          "name": "end"
-        },
-        {
-          "name": "self-start"
-        },
-        {
-          "name": "self-end"
-        },
-        {
-          "name": "first baseline"
-        },
-        {
-          "name": "last baseline"
-        },
-        {
-          "name": "stretch"
-        },
-        {
-          "name": "safe"
-        },
-        {
-          "name": "unsafe"
         }
       ],
       "syntax": "normal | stretch | <baseline-position> | [ <overflow-position>? <self-position> ]",
-      "relevance": 87,
-      "references": [
-        {
-          "name": "MDN Reference",
-          "url": "https://developer.mozilla.org/docs/Web/CSS/align-items"
-        }
-      ],
+      "relevance": 86,
       "description": "Aligns flex items along the cross axis of the current line of the flex container.",
       "restrictions": [
         "enum"
@@ -13621,14 +13029,6 @@ var cssData = {
     },
     {
       "name": "justify-items",
-      "browsers": [
-        "E12",
-        "FF20",
-        "S9",
-        "C52",
-        "IE11",
-        "O12.1"
-      ],
       "values": [
         {
           "name": "auto"
@@ -13682,10 +13082,10 @@ var cssData = {
           "description": "If the cross size property of the flex item computes to auto, and neither of the cross-axis margins are auto, the flex item is stretched."
         },
         {
-          "name": "safe"
+          "name": "save"
         },
         {
-          "name": "unsafe"
+          "name": "unsave"
         },
         {
           "name": "legacy"
@@ -13693,12 +13093,6 @@ var cssData = {
       ],
       "syntax": "normal | stretch | <baseline-position> | <overflow-position>? [ <self-position> | left | right ] | legacy | legacy && [ left | right | center ]",
       "relevance": 53,
-      "references": [
-        {
-          "name": "MDN Reference",
-          "url": "https://developer.mozilla.org/docs/Web/CSS/justify-items"
-        }
-      ],
       "description": "Defines the default justify-self for all items of the box, giving them the default way of justifying each box along the appropriate axis",
       "restrictions": [
         "enum"
@@ -13706,14 +13100,6 @@ var cssData = {
     },
     {
       "name": "justify-self",
-      "browsers": [
-        "E16",
-        "FF45",
-        "S10.1",
-        "C57",
-        "IE10",
-        "O44"
-      ],
       "values": [
         {
           "name": "auto"
@@ -13774,13 +13160,7 @@ var cssData = {
         }
       ],
       "syntax": "auto | normal | stretch | <baseline-position> | <overflow-position>? [ <self-position> | left | right ]",
-      "relevance": 55,
-      "references": [
-        {
-          "name": "MDN Reference",
-          "url": "https://developer.mozilla.org/docs/Web/CSS/justify-self"
-        }
-      ],
+      "relevance": 53,
       "description": "Defines the way of justifying a box inside its container along the appropriate axis.",
       "restrictions": [
         "enum"
@@ -13788,35 +13168,18 @@ var cssData = {
     },
     {
       "name": "align-self",
-      "browsers": [
-        "E12",
-        "FF20",
-        "S9",
-        "C29",
-        "IE10",
-        "O12.1"
-      ],
       "values": [
         {
           "name": "auto",
-          "description": "Computes to the value of 'align-items' on the element's parent, or 'stretch' if the element has no parent. On absolutely positioned elements, it computes to itself."
-        },
-        {
-          "name": "normal"
-        },
-        {
-          "name": "self-end"
-        },
-        {
-          "name": "self-start"
+          "description": "Computes to the value of 'align-items' on the element\u2019s parent, or 'stretch' if the element has no parent. On absolutely positioned elements, it computes to itself."
         },
         {
           "name": "baseline",
-          "description": "If the flex item's inline axis is the same as the cross axis, this value is identical to 'flex-start'. Otherwise, it participates in baseline alignment."
+          "description": "If the flex item\u2019s inline axis is the same as the cross axis, this value is identical to 'flex-start'. Otherwise, it participates in baseline alignment."
         },
         {
           "name": "center",
-          "description": "The flex item's margin box is centered in the cross axis within the line."
+          "description": "The flex item\u2019s margin box is centered in the cross axis within the line."
         },
         {
           "name": "flex-end",
@@ -13829,31 +13192,10 @@ var cssData = {
         {
           "name": "stretch",
           "description": "If the cross size property of the flex item computes to auto, and neither of the cross-axis margins are auto, the flex item is stretched."
-        },
-        {
-          "name": "baseline"
-        },
-        {
-          "name": "first baseline"
-        },
-        {
-          "name": "last baseline"
-        },
-        {
-          "name": "safe"
-        },
-        {
-          "name": "unsafe"
         }
       ],
       "syntax": "auto | normal | stretch | <baseline-position> | <overflow-position>? <self-position>",
-      "relevance": 73,
-      "references": [
-        {
-          "name": "MDN Reference",
-          "url": "https://developer.mozilla.org/docs/Web/CSS/align-self"
-        }
-      ],
+      "relevance": 72,
       "description": "Allows the default alignment along the cross axis to be overridden for individual flex items.",
       "restrictions": [
         "enum"
@@ -13869,8 +13211,8 @@ var cssData = {
         "O24"
       ],
       "values": [],
-      "syntax": "initial | inherit | unset | revert | revert-layer",
-      "relevance": 53,
+      "syntax": "initial | inherit | unset | revert",
+      "relevance": 52,
       "references": [
         {
           "name": "MDN Reference",
@@ -13903,14 +13245,6 @@ var cssData = {
     },
     {
       "name": "animation",
-      "browsers": [
-        "E12",
-        "FF16",
-        "S9",
-        "C43",
-        "IE10",
-        "O30"
-      ],
       "values": [
         {
           "name": "alternate",
@@ -13968,16 +13302,8 @@ var cssData = {
     },
     {
       "name": "animation-delay",
-      "browsers": [
-        "E12",
-        "FF16",
-        "S9",
-        "C43",
-        "IE10",
-        "O30"
-      ],
       "syntax": "<time>#",
-      "relevance": 66,
+      "relevance": 63,
       "references": [
         {
           "name": "MDN Reference",
@@ -13991,14 +13317,6 @@ var cssData = {
     },
     {
       "name": "animation-direction",
-      "browsers": [
-        "E12",
-        "FF16",
-        "S9",
-        "C43",
-        "IE10",
-        "O30"
-      ],
       "values": [
         {
           "name": "alternate",
@@ -14018,7 +13336,7 @@ var cssData = {
         }
       ],
       "syntax": "<single-animation-direction>#",
-      "relevance": 58,
+      "relevance": 56,
       "references": [
         {
           "name": "MDN Reference",
@@ -14032,16 +13350,8 @@ var cssData = {
     },
     {
       "name": "animation-duration",
-      "browsers": [
-        "E12",
-        "FF16",
-        "S9",
-        "C43",
-        "IE10",
-        "O30"
-      ],
       "syntax": "<time>#",
-      "relevance": 72,
+      "relevance": 70,
       "references": [
         {
           "name": "MDN Reference",
@@ -14055,14 +13365,6 @@ var cssData = {
     },
     {
       "name": "animation-fill-mode",
-      "browsers": [
-        "E12",
-        "FF16",
-        "S9",
-        "C43",
-        "IE10",
-        "O30"
-      ],
       "values": [
         {
           "name": "backwards",
@@ -14082,7 +13384,7 @@ var cssData = {
         }
       ],
       "syntax": "<single-animation-fill-mode>#",
-      "relevance": 65,
+      "relevance": 63,
       "references": [
         {
           "name": "MDN Reference",
@@ -14096,14 +13398,6 @@ var cssData = {
     },
     {
       "name": "animation-iteration-count",
-      "browsers": [
-        "E12",
-        "FF16",
-        "S9",
-        "C43",
-        "IE10",
-        "O30"
-      ],
       "values": [
         {
           "name": "infinite",
@@ -14111,7 +13405,7 @@ var cssData = {
         }
       ],
       "syntax": "<single-animation-iteration-count>#",
-      "relevance": 64,
+      "relevance": 60,
       "references": [
         {
           "name": "MDN Reference",
@@ -14126,14 +13420,6 @@ var cssData = {
     },
     {
       "name": "animation-name",
-      "browsers": [
-        "E12",
-        "FF16",
-        "S9",
-        "C43",
-        "IE10",
-        "O30"
-      ],
       "values": [
         {
           "name": "none",
@@ -14141,7 +13427,7 @@ var cssData = {
         }
       ],
       "syntax": "[ none | <keyframes-name> ]#",
-      "relevance": 72,
+      "relevance": 70,
       "references": [
         {
           "name": "MDN Reference",
@@ -14156,14 +13442,6 @@ var cssData = {
     },
     {
       "name": "animation-play-state",
-      "browsers": [
-        "E12",
-        "FF16",
-        "S9",
-        "C43",
-        "IE10",
-        "O30"
-      ],
       "values": [
         {
           "name": "paused",
@@ -14175,7 +13453,7 @@ var cssData = {
         }
       ],
       "syntax": "<single-animation-play-state>#",
-      "relevance": 55,
+      "relevance": 54,
       "references": [
         {
           "name": "MDN Reference",
@@ -14189,16 +13467,8 @@ var cssData = {
     },
     {
       "name": "animation-timing-function",
-      "browsers": [
-        "E12",
-        "FF16",
-        "S9",
-        "C43",
-        "IE10",
-        "O30"
-      ],
       "syntax": "<easing-function>#",
-      "relevance": 71,
+      "relevance": 70,
       "references": [
         {
           "name": "MDN Reference",
@@ -14212,14 +13482,6 @@ var cssData = {
     },
     {
       "name": "backface-visibility",
-      "browsers": [
-        "E12",
-        "FF16",
-        "S15.4",
-        "C36",
-        "IE10",
-        "O23"
-      ],
       "values": [
         {
           "name": "hidden",
@@ -14231,7 +13493,7 @@ var cssData = {
         }
       ],
       "syntax": "visible | hidden",
-      "relevance": 60,
+      "relevance": 59,
       "references": [
         {
           "name": "MDN Reference",
@@ -14245,14 +13507,6 @@ var cssData = {
     },
     {
       "name": "background",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE4",
-        "O3.5"
-      ],
       "values": [
         {
           "name": "fixed",
@@ -14293,14 +13547,6 @@ var cssData = {
     },
     {
       "name": "background-attachment",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE4",
-        "O3.5"
-      ],
       "values": [
         {
           "name": "fixed",
@@ -14308,19 +13554,11 @@ var cssData = {
         },
         {
           "name": "local",
-          "browsers": [
-            "E12",
-            "FF1",
-            "S1",
-            "C1",
-            "IE4",
-            "O3.5"
-          ],
-          "description": "The background is fixed with regard to the element's contents: if the element has a scrolling mechanism, the background scrolls with the element's contents."
+          "description": "The background is fixed with regard to the element\u2019s contents: if the element has a scrolling mechanism, the background scrolls with the element\u2019s contents."
         },
         {
           "name": "scroll",
-          "description": "The background is fixed with regard to the element itself and does not scroll with its contents. (It is effectively attached to the element's border.)"
+          "description": "The background is fixed with regard to the element itself and does not scroll with its contents. (It is effectively attached to the element\u2019s border.)"
         }
       ],
       "syntax": "<attachment>#",
@@ -14440,7 +13678,7 @@ var cssData = {
         }
       ],
       "syntax": "<blend-mode>#",
-      "relevance": 52,
+      "relevance": 50,
       "references": [
         {
           "name": "MDN Reference",
@@ -14454,16 +13692,8 @@ var cssData = {
     },
     {
       "name": "background-clip",
-      "browsers": [
-        "E12",
-        "FF4",
-        "S5",
-        "C1",
-        "IE9",
-        "O10.5"
-      ],
       "syntax": "<box>#",
-      "relevance": 69,
+      "relevance": 68,
       "references": [
         {
           "name": "MDN Reference",
@@ -14477,14 +13707,6 @@ var cssData = {
     },
     {
       "name": "background-color",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE4",
-        "O3.5"
-      ],
       "syntax": "<color>",
       "relevance": 94,
       "references": [
@@ -14500,14 +13722,6 @@ var cssData = {
     },
     {
       "name": "background-image",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE4",
-        "O3.5"
-      ],
       "values": [
         {
           "name": "none",
@@ -14515,7 +13729,7 @@ var cssData = {
         }
       ],
       "syntax": "<bg-image>#",
-      "relevance": 88,
+      "relevance": 89,
       "references": [
         {
           "name": "MDN Reference",
@@ -14530,16 +13744,8 @@ var cssData = {
     },
     {
       "name": "background-origin",
-      "browsers": [
-        "E12",
-        "FF4",
-        "S3",
-        "C1",
-        "IE9",
-        "O10.5"
-      ],
       "syntax": "<box>#",
-      "relevance": 53,
+      "relevance": 54,
       "references": [
         {
           "name": "MDN Reference",
@@ -14553,16 +13759,8 @@ var cssData = {
     },
     {
       "name": "background-position",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE4",
-        "O3.5"
-      ],
       "syntax": "<bg-position>#",
-      "relevance": 87,
+      "relevance": 88,
       "references": [
         {
           "name": "MDN Reference",
@@ -14578,14 +13776,6 @@ var cssData = {
     },
     {
       "name": "background-position-x",
-      "browsers": [
-        "E12",
-        "FF49",
-        "S1",
-        "C1",
-        "IE6",
-        "O15"
-      ],
       "values": [
         {
           "name": "center",
@@ -14600,8 +13790,9 @@ var cssData = {
           "description": "Equivalent to '100%' for the horizontal position if one or two values are given, otherwise specifies the right edge as the origin for the next offset."
         }
       ],
+      "status": "experimental",
       "syntax": "[ center | [ [ left | right | x-start | x-end ]? <length-percentage>? ]! ]#",
-      "relevance": 55,
+      "relevance": 54,
       "references": [
         {
           "name": "MDN Reference",
@@ -14616,14 +13807,6 @@ var cssData = {
     },
     {
       "name": "background-position-y",
-      "browsers": [
-        "E12",
-        "FF49",
-        "S1",
-        "C1",
-        "IE6",
-        "O15"
-      ],
       "values": [
         {
           "name": "bottom",
@@ -14638,6 +13821,7 @@ var cssData = {
           "description": "Equivalent to '0%' for the vertical position if one or two values are given, otherwise specifies the top edge as the origin for the next offset."
         }
       ],
+      "status": "experimental",
       "syntax": "[ center | [ [ top | bottom | y-start | y-end ]? <length-percentage>? ]! ]#",
       "relevance": 53,
       "references": [
@@ -14654,17 +13838,9 @@ var cssData = {
     },
     {
       "name": "background-repeat",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE4",
-        "O3.5"
-      ],
       "values": [],
       "syntax": "<repeat-style>#",
-      "relevance": 85,
+      "relevance": 86,
       "references": [
         {
           "name": "MDN Reference",
@@ -14678,18 +13854,10 @@ var cssData = {
     },
     {
       "name": "background-size",
-      "browsers": [
-        "E12",
-        "FF4",
-        "S5",
-        "C3",
-        "IE9",
-        "O10"
-      ],
       "values": [
         {
           "name": "auto",
-          "description": "Resolved by using the image's intrinsic ratio and the size of the other dimension, or failing that, using the image's intrinsic size, or failing that, treating it as 100%."
+          "description": "Resolved by using the image\u2019s intrinsic ratio and the size of the other dimension, or failing that, using the image\u2019s intrinsic size, or failing that, treating it as 100%."
         },
         {
           "name": "contain",
@@ -14701,7 +13869,7 @@ var cssData = {
         }
       ],
       "syntax": "<bg-size>#",
-      "relevance": 85,
+      "relevance": 86,
       "references": [
         {
           "name": "MDN Reference",
@@ -14741,7 +13909,7 @@ var cssData = {
         }
       ],
       "syntax": "<'width'>",
-      "relevance": 53,
+      "relevance": 50,
       "references": [
         {
           "name": "MDN Reference",
@@ -14756,16 +13924,8 @@ var cssData = {
     },
     {
       "name": "border",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE4",
-        "O3.5"
-      ],
       "syntax": "<line-width> || <line-style> || <color>",
-      "relevance": 95,
+      "relevance": 96,
       "references": [
         {
           "name": "MDN Reference",
@@ -14797,7 +13957,7 @@ var cssData = {
           "url": "https://developer.mozilla.org/docs/Web/CSS/border-block-end"
         }
       ],
-      "description": "Logical 'border-bottom'. Mapping depends on the parent element's 'writing-mode', 'direction', and 'text-orientation'.",
+      "description": "Logical 'border-bottom'. Mapping depends on the parent element\u2019s 'writing-mode', 'direction', and 'text-orientation'.",
       "restrictions": [
         "length",
         "line-width",
@@ -14822,7 +13982,7 @@ var cssData = {
           "url": "https://developer.mozilla.org/docs/Web/CSS/border-block-start"
         }
       ],
-      "description": "Logical 'border-top'. Mapping depends on the parent element's 'writing-mode', 'direction', and 'text-orientation'.",
+      "description": "Logical 'border-top'. Mapping depends on the parent element\u2019s 'writing-mode', 'direction', and 'text-orientation'.",
       "restrictions": [
         "length",
         "line-width",
@@ -14847,7 +14007,7 @@ var cssData = {
           "url": "https://developer.mozilla.org/docs/Web/CSS/border-block-end-color"
         }
       ],
-      "description": "Logical 'border-bottom-color'. Mapping depends on the parent element's 'writing-mode', 'direction', and 'text-orientation'.",
+      "description": "Logical 'border-bottom-color'. Mapping depends on the parent element\u2019s 'writing-mode', 'direction', and 'text-orientation'.",
       "restrictions": [
         "color"
       ]
@@ -14869,7 +14029,7 @@ var cssData = {
           "url": "https://developer.mozilla.org/docs/Web/CSS/border-block-start-color"
         }
       ],
-      "description": "Logical 'border-top-color'. Mapping depends on the parent element's 'writing-mode', 'direction', and 'text-orientation'.",
+      "description": "Logical 'border-top-color'. Mapping depends on the parent element\u2019s 'writing-mode', 'direction', and 'text-orientation'.",
       "restrictions": [
         "color"
       ]
@@ -14891,7 +14051,7 @@ var cssData = {
           "url": "https://developer.mozilla.org/docs/Web/CSS/border-block-end-style"
         }
       ],
-      "description": "Logical 'border-bottom-style'. Mapping depends on the parent element's 'writing-mode', 'direction', and 'text-orientation'.",
+      "description": "Logical 'border-bottom-style'. Mapping depends on the parent element\u2019s 'writing-mode', 'direction', and 'text-orientation'.",
       "restrictions": [
         "line-style"
       ]
@@ -14913,7 +14073,7 @@ var cssData = {
           "url": "https://developer.mozilla.org/docs/Web/CSS/border-block-start-style"
         }
       ],
-      "description": "Logical 'border-top-style'. Mapping depends on the parent element's 'writing-mode', 'direction', and 'text-orientation'.",
+      "description": "Logical 'border-top-style'. Mapping depends on the parent element\u2019s 'writing-mode', 'direction', and 'text-orientation'.",
       "restrictions": [
         "line-style"
       ]
@@ -14935,7 +14095,7 @@ var cssData = {
           "url": "https://developer.mozilla.org/docs/Web/CSS/border-block-end-width"
         }
       ],
-      "description": "Logical 'border-bottom-width'. Mapping depends on the parent element's 'writing-mode', 'direction', and 'text-orientation'.",
+      "description": "Logical 'border-bottom-width'. Mapping depends on the parent element\u2019s 'writing-mode', 'direction', and 'text-orientation'.",
       "restrictions": [
         "length",
         "line-width"
@@ -14958,7 +14118,7 @@ var cssData = {
           "url": "https://developer.mozilla.org/docs/Web/CSS/border-block-start-width"
         }
       ],
-      "description": "Logical 'border-top-width'. Mapping depends on the parent element's 'writing-mode', 'direction', and 'text-orientation'.",
+      "description": "Logical 'border-top-width'. Mapping depends on the parent element\u2019s 'writing-mode', 'direction', and 'text-orientation'.",
       "restrictions": [
         "length",
         "line-width"
@@ -14966,16 +14126,8 @@ var cssData = {
     },
     {
       "name": "border-bottom",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE4",
-        "O3.5"
-      ],
       "syntax": "<line-width> || <line-style> || <color>",
-      "relevance": 87,
+      "relevance": 89,
       "references": [
         {
           "name": "MDN Reference",
@@ -14992,16 +14144,8 @@ var cssData = {
     },
     {
       "name": "border-bottom-color",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE4",
-        "O3.5"
-      ],
       "syntax": "<'border-top-color'>",
-      "relevance": 70,
+      "relevance": 71,
       "references": [
         {
           "name": "MDN Reference",
@@ -15015,16 +14159,8 @@ var cssData = {
     },
     {
       "name": "border-bottom-left-radius",
-      "browsers": [
-        "E12",
-        "FF4",
-        "S5",
-        "C4",
-        "IE9",
-        "O10.5"
-      ],
       "syntax": "<length-percentage>{1,2}",
-      "relevance": 74,
+      "relevance": 75,
       "references": [
         {
           "name": "MDN Reference",
@@ -15039,14 +14175,6 @@ var cssData = {
     },
     {
       "name": "border-bottom-right-radius",
-      "browsers": [
-        "E12",
-        "FF4",
-        "S5",
-        "C4",
-        "IE9",
-        "O10.5"
-      ],
       "syntax": "<length-percentage>{1,2}",
       "relevance": 74,
       "references": [
@@ -15063,16 +14191,8 @@ var cssData = {
     },
     {
       "name": "border-bottom-style",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE5.5",
-        "O9.2"
-      ],
       "syntax": "<line-style>",
-      "relevance": 60,
+      "relevance": 58,
       "references": [
         {
           "name": "MDN Reference",
@@ -15086,16 +14206,8 @@ var cssData = {
     },
     {
       "name": "border-bottom-width",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE4",
-        "O3.5"
-      ],
       "syntax": "<line-width>",
-      "relevance": 65,
+      "relevance": 62,
       "references": [
         {
           "name": "MDN Reference",
@@ -15110,14 +14222,6 @@ var cssData = {
     },
     {
       "name": "border-collapse",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1.2",
-        "C1",
-        "IE5",
-        "O4"
-      ],
       "values": [
         {
           "name": "collapse",
@@ -15129,7 +14233,7 @@ var cssData = {
         }
       ],
       "syntax": "collapse | separate",
-      "relevance": 71,
+      "relevance": 74,
       "references": [
         {
           "name": "MDN Reference",
@@ -15143,17 +14247,9 @@ var cssData = {
     },
     {
       "name": "border-color",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE4",
-        "O3.5"
-      ],
       "values": [],
       "syntax": "<color>{1,4}",
-      "relevance": 86,
+      "relevance": 87,
       "references": [
         {
           "name": "MDN Reference",
@@ -15167,14 +14263,6 @@ var cssData = {
     },
     {
       "name": "border-image",
-      "browsers": [
-        "E12",
-        "FF15",
-        "S6",
-        "C16",
-        "IE11",
-        "O11"
-      ],
       "values": [
         {
           "name": "auto",
@@ -15209,7 +14297,7 @@ var cssData = {
         }
       ],
       "syntax": "<'border-image-source'> || <'border-image-slice'> [ / <'border-image-width'> | / <'border-image-width'>? / <'border-image-outset'> ]? || <'border-image-repeat'>",
-      "relevance": 52,
+      "relevance": 53,
       "references": [
         {
           "name": "MDN Reference",
@@ -15227,14 +14315,6 @@ var cssData = {
     },
     {
       "name": "border-image-outset",
-      "browsers": [
-        "E12",
-        "FF15",
-        "S6",
-        "C15",
-        "IE11",
-        "O15"
-      ],
       "syntax": "[ <length> | <number> ]{1,4}",
       "relevance": 50,
       "references": [
@@ -15251,14 +14331,6 @@ var cssData = {
     },
     {
       "name": "border-image-repeat",
-      "browsers": [
-        "E12",
-        "FF15",
-        "S6",
-        "C15",
-        "IE11",
-        "O15"
-      ],
       "values": [
         {
           "name": "repeat",
@@ -15292,14 +14364,6 @@ var cssData = {
     },
     {
       "name": "border-image-slice",
-      "browsers": [
-        "E12",
-        "FF15",
-        "S6",
-        "C15",
-        "IE11",
-        "O15"
-      ],
       "values": [
         {
           "name": "fill",
@@ -15322,14 +14386,6 @@ var cssData = {
     },
     {
       "name": "border-image-source",
-      "browsers": [
-        "E12",
-        "FF15",
-        "S6",
-        "C15",
-        "IE11",
-        "O15"
-      ],
       "values": [
         {
           "name": "none",
@@ -15351,14 +14407,6 @@ var cssData = {
     },
     {
       "name": "border-image-width",
-      "browsers": [
-        "E12",
-        "FF13",
-        "S6",
-        "C15",
-        "IE11",
-        "O15"
-      ],
       "values": [
         {
           "name": "auto",
@@ -15397,7 +14445,7 @@ var cssData = {
           "url": "https://developer.mozilla.org/docs/Web/CSS/border-inline-end"
         }
       ],
-      "description": "Logical 'border-right'. Mapping depends on the parent element's 'writing-mode', 'direction', and 'text-orientation'.",
+      "description": "Logical 'border-right'. Mapping depends on the parent element\u2019s 'writing-mode', 'direction', and 'text-orientation'.",
       "restrictions": [
         "length",
         "line-width",
@@ -15422,7 +14470,7 @@ var cssData = {
           "url": "https://developer.mozilla.org/docs/Web/CSS/border-inline-start"
         }
       ],
-      "description": "Logical 'border-left'. Mapping depends on the parent element's 'writing-mode', 'direction', and 'text-orientation'.",
+      "description": "Logical 'border-left'. Mapping depends on the parent element\u2019s 'writing-mode', 'direction', and 'text-orientation'.",
       "restrictions": [
         "length",
         "line-width",
@@ -15447,7 +14495,7 @@ var cssData = {
           "url": "https://developer.mozilla.org/docs/Web/CSS/border-inline-end-color"
         }
       ],
-      "description": "Logical 'border-right-color'. Mapping depends on the parent element's 'writing-mode', 'direction', and 'text-orientation'.",
+      "description": "Logical 'border-right-color'. Mapping depends on the parent element\u2019s 'writing-mode', 'direction', and 'text-orientation'.",
       "restrictions": [
         "color"
       ]
@@ -15469,7 +14517,7 @@ var cssData = {
           "url": "https://developer.mozilla.org/docs/Web/CSS/border-inline-start-color"
         }
       ],
-      "description": "Logical 'border-left-color'. Mapping depends on the parent element's 'writing-mode', 'direction', and 'text-orientation'.",
+      "description": "Logical 'border-left-color'. Mapping depends on the parent element\u2019s 'writing-mode', 'direction', and 'text-orientation'.",
       "restrictions": [
         "color"
       ]
@@ -15491,7 +14539,7 @@ var cssData = {
           "url": "https://developer.mozilla.org/docs/Web/CSS/border-inline-end-style"
         }
       ],
-      "description": "Logical 'border-right-style'. Mapping depends on the parent element's 'writing-mode', 'direction', and 'text-orientation'.",
+      "description": "Logical 'border-right-style'. Mapping depends on the parent element\u2019s 'writing-mode', 'direction', and 'text-orientation'.",
       "restrictions": [
         "line-style"
       ]
@@ -15513,7 +14561,7 @@ var cssData = {
           "url": "https://developer.mozilla.org/docs/Web/CSS/border-inline-start-style"
         }
       ],
-      "description": "Logical 'border-left-style'. Mapping depends on the parent element's 'writing-mode', 'direction', and 'text-orientation'.",
+      "description": "Logical 'border-left-style'. Mapping depends on the parent element\u2019s 'writing-mode', 'direction', and 'text-orientation'.",
       "restrictions": [
         "line-style"
       ]
@@ -15535,7 +14583,7 @@ var cssData = {
           "url": "https://developer.mozilla.org/docs/Web/CSS/border-inline-end-width"
         }
       ],
-      "description": "Logical 'border-right-width'. Mapping depends on the parent element's 'writing-mode', 'direction', and 'text-orientation'.",
+      "description": "Logical 'border-right-width'. Mapping depends on the parent element\u2019s 'writing-mode', 'direction', and 'text-orientation'.",
       "restrictions": [
         "length",
         "line-width"
@@ -15558,7 +14606,7 @@ var cssData = {
           "url": "https://developer.mozilla.org/docs/Web/CSS/border-inline-start-width"
         }
       ],
-      "description": "Logical 'border-left-width'. Mapping depends on the parent element's 'writing-mode', 'direction', and 'text-orientation'.",
+      "description": "Logical 'border-left-width'. Mapping depends on the parent element\u2019s 'writing-mode', 'direction', and 'text-orientation'.",
       "restrictions": [
         "length",
         "line-width"
@@ -15566,16 +14614,8 @@ var cssData = {
     },
     {
       "name": "border-left",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE4",
-        "O3.5"
-      ],
       "syntax": "<line-width> || <line-style> || <color>",
-      "relevance": 81,
+      "relevance": 83,
       "references": [
         {
           "name": "MDN Reference",
@@ -15592,16 +14632,8 @@ var cssData = {
     },
     {
       "name": "border-left-color",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE4",
-        "O3.5"
-      ],
       "syntax": "<color>",
-      "relevance": 67,
+      "relevance": 65,
       "references": [
         {
           "name": "MDN Reference",
@@ -15615,16 +14647,8 @@ var cssData = {
     },
     {
       "name": "border-left-style",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE5.5",
-        "O9.2"
-      ],
       "syntax": "<line-style>",
-      "relevance": 54,
+      "relevance": 53,
       "references": [
         {
           "name": "MDN Reference",
@@ -15638,16 +14662,8 @@ var cssData = {
     },
     {
       "name": "border-left-width",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE4",
-        "O3.5"
-      ],
       "syntax": "<line-width>",
-      "relevance": 63,
+      "relevance": 58,
       "references": [
         {
           "name": "MDN Reference",
@@ -15662,14 +14678,6 @@ var cssData = {
     },
     {
       "name": "border-radius",
-      "browsers": [
-        "E12",
-        "FF4",
-        "S5",
-        "C4",
-        "IE9",
-        "O10.5"
-      ],
       "syntax": "<length-percentage>{1,4} [ / <length-percentage>{1,4} ]?",
       "relevance": 92,
       "references": [
@@ -15686,16 +14694,8 @@ var cssData = {
     },
     {
       "name": "border-right",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE5.5",
-        "O9.2"
-      ],
       "syntax": "<line-width> || <line-style> || <color>",
-      "relevance": 80,
+      "relevance": 81,
       "references": [
         {
           "name": "MDN Reference",
@@ -15712,16 +14712,8 @@ var cssData = {
     },
     {
       "name": "border-right-color",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE4",
-        "O3.5"
-      ],
       "syntax": "<color>",
-      "relevance": 66,
+      "relevance": 64,
       "references": [
         {
           "name": "MDN Reference",
@@ -15735,14 +14727,6 @@ var cssData = {
     },
     {
       "name": "border-right-style",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE5.5",
-        "O9.2"
-      ],
       "syntax": "<line-style>",
       "relevance": 53,
       "references": [
@@ -15758,16 +14742,8 @@ var cssData = {
     },
     {
       "name": "border-right-width",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE4",
-        "O3.5"
-      ],
       "syntax": "<line-width>",
-      "relevance": 63,
+      "relevance": 59,
       "references": [
         {
           "name": "MDN Reference",
@@ -15782,16 +14758,8 @@ var cssData = {
     },
     {
       "name": "border-spacing",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE8",
-        "O4"
-      ],
       "syntax": "<length> <length>?",
-      "relevance": 67,
+      "relevance": 68,
       "references": [
         {
           "name": "MDN Reference",
@@ -15805,17 +14773,9 @@ var cssData = {
     },
     {
       "name": "border-style",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE4",
-        "O3.5"
-      ],
       "values": [],
       "syntax": "<line-style>{1,4}",
-      "relevance": 79,
+      "relevance": 81,
       "references": [
         {
           "name": "MDN Reference",
@@ -15829,16 +14789,8 @@ var cssData = {
     },
     {
       "name": "border-top",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE4",
-        "O3.5"
-      ],
       "syntax": "<line-width> || <line-style> || <color>",
-      "relevance": 86,
+      "relevance": 88,
       "references": [
         {
           "name": "MDN Reference",
@@ -15855,16 +14807,8 @@ var cssData = {
     },
     {
       "name": "border-top-color",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE4",
-        "O3.5"
-      ],
       "syntax": "<color>",
-      "relevance": 71,
+      "relevance": 72,
       "references": [
         {
           "name": "MDN Reference",
@@ -15878,14 +14822,6 @@ var cssData = {
     },
     {
       "name": "border-top-left-radius",
-      "browsers": [
-        "E12",
-        "FF4",
-        "S5",
-        "C4",
-        "IE9",
-        "O10.5"
-      ],
       "syntax": "<length-percentage>{1,2}",
       "relevance": 75,
       "references": [
@@ -15902,14 +14838,6 @@ var cssData = {
     },
     {
       "name": "border-top-right-radius",
-      "browsers": [
-        "E12",
-        "FF4",
-        "S5",
-        "C4",
-        "IE9",
-        "O10.5"
-      ],
       "syntax": "<length-percentage>{1,2}",
       "relevance": 75,
       "references": [
@@ -15926,14 +14854,6 @@ var cssData = {
     },
     {
       "name": "border-top-style",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE5.5",
-        "O9.2"
-      ],
       "syntax": "<line-style>",
       "relevance": 58,
       "references": [
@@ -15949,14 +14869,6 @@ var cssData = {
     },
     {
       "name": "border-top-width",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE4",
-        "O3.5"
-      ],
       "syntax": "<line-width>",
       "relevance": 61,
       "references": [
@@ -15973,14 +14885,6 @@ var cssData = {
     },
     {
       "name": "border-width",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE4",
-        "O3.5"
-      ],
       "values": [],
       "syntax": "<line-width>{1,4}",
       "relevance": 82,
@@ -15998,14 +14902,6 @@ var cssData = {
     },
     {
       "name": "bottom",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE5",
-        "O6"
-      ],
       "values": [
         {
           "name": "auto",
@@ -16013,7 +14909,7 @@ var cssData = {
         }
       ],
       "syntax": "<length> | <percentage> | auto",
-      "relevance": 90,
+      "relevance": 91,
       "references": [
         {
           "name": "MDN Reference",
@@ -16060,14 +14956,6 @@ var cssData = {
     },
     {
       "name": "box-shadow",
-      "browsers": [
-        "E12",
-        "FF4",
-        "S5.1",
-        "C10",
-        "IE9",
-        "O10.5"
-      ],
       "values": [
         {
           "name": "inset",
@@ -16095,14 +14983,6 @@ var cssData = {
     },
     {
       "name": "box-sizing",
-      "browsers": [
-        "E12",
-        "FF29",
-        "S5.1",
-        "C10",
-        "IE8",
-        "O7"
-      ],
       "values": [
         {
           "name": "border-box",
@@ -16114,7 +14994,7 @@ var cssData = {
         }
       ],
       "syntax": "content-box | border-box",
-      "relevance": 92,
+      "relevance": 93,
       "references": [
         {
           "name": "MDN Reference",
@@ -16128,14 +15008,6 @@ var cssData = {
     },
     {
       "name": "break-after",
-      "browsers": [
-        "E12",
-        "FF65",
-        "S10",
-        "C50",
-        "IE10",
-        "O37"
-      ],
       "values": [
         {
           "name": "always",
@@ -16176,12 +15048,6 @@ var cssData = {
       ],
       "syntax": "auto | avoid | always | all | avoid-page | page | left | right | recto | verso | avoid-column | column | avoid-region | region",
       "relevance": 50,
-      "references": [
-        {
-          "name": "MDN Reference",
-          "url": "https://developer.mozilla.org/docs/Web/CSS/break-after"
-        }
-      ],
       "description": "Describes the page/column/region break behavior after the generated box.",
       "restrictions": [
         "enum"
@@ -16189,14 +15055,6 @@ var cssData = {
     },
     {
       "name": "break-before",
-      "browsers": [
-        "E12",
-        "FF65",
-        "S10",
-        "C50",
-        "IE10",
-        "O37"
-      ],
       "values": [
         {
           "name": "always",
@@ -16237,12 +15095,6 @@ var cssData = {
       ],
       "syntax": "auto | avoid | always | all | avoid-page | page | left | right | recto | verso | avoid-column | column | avoid-region | region",
       "relevance": 50,
-      "references": [
-        {
-          "name": "MDN Reference",
-          "url": "https://developer.mozilla.org/docs/Web/CSS/break-before"
-        }
-      ],
       "description": "Describes the page/column/region break behavior before the generated box.",
       "restrictions": [
         "enum"
@@ -16250,14 +15102,6 @@ var cssData = {
     },
     {
       "name": "break-inside",
-      "browsers": [
-        "E12",
-        "FF65",
-        "S10",
-        "C50",
-        "IE10",
-        "O37"
-      ],
       "values": [
         {
           "name": "auto",
@@ -16278,12 +15122,6 @@ var cssData = {
       ],
       "syntax": "auto | avoid | avoid-page | avoid-column | avoid-region",
       "relevance": 51,
-      "references": [
-        {
-          "name": "MDN Reference",
-          "url": "https://developer.mozilla.org/docs/Web/CSS/break-inside"
-        }
-      ],
       "description": "Describes the page/column/region break behavior inside the principal box.",
       "restrictions": [
         "enum"
@@ -16291,14 +15129,6 @@ var cssData = {
     },
     {
       "name": "caption-side",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE8",
-        "O4"
-      ],
       "values": [
         {
           "name": "bottom",
@@ -16338,7 +15168,7 @@ var cssData = {
         }
       ],
       "syntax": "auto | <color>",
-      "relevance": 53,
+      "relevance": 52,
       "references": [
         {
           "name": "MDN Reference",
@@ -16353,14 +15183,6 @@ var cssData = {
     },
     {
       "name": "clear",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE4",
-        "O3.5"
-      ],
       "values": [
         {
           "name": "both",
@@ -16380,7 +15202,7 @@ var cssData = {
         }
       ],
       "syntax": "none | left | right | both | inline-start | inline-end",
-      "relevance": 83,
+      "relevance": 85,
       "references": [
         {
           "name": "MDN Reference",
@@ -16394,14 +15216,6 @@ var cssData = {
     },
     {
       "name": "clip",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE4",
-        "O7"
-      ],
       "values": [
         {
           "name": "auto",
@@ -16420,21 +15234,13 @@ var cssData = {
           "url": "https://developer.mozilla.org/docs/Web/CSS/clip"
         }
       ],
-      "description": "Deprecated. Use the 'clip-path' property when support allows. Defines the visible portion of an element's box.",
+      "description": "Deprecated. Use the 'clip-path' property when support allows. Defines the visible portion of an element\u2019s box.",
       "restrictions": [
         "enum"
       ]
     },
     {
       "name": "clip-path",
-      "browsers": [
-        "E79",
-        "FF3.5",
-        "S9.1",
-        "C55",
-        "IE10",
-        "O42"
-      ],
       "values": [
         {
           "name": "none",
@@ -16446,7 +15252,7 @@ var cssData = {
         }
       ],
       "syntax": "<clip-source> | [ <basic-shape> || <geometry-box> ] | none",
-      "relevance": 64,
+      "relevance": 57,
       "references": [
         {
           "name": "MDN Reference",
@@ -16464,20 +15270,21 @@ var cssData = {
     {
       "name": "clip-rule",
       "browsers": [
-        "E80",
-        "FF72",
-        "S13.1",
-        "C80",
-        "O67"
+        "E",
+        "C5",
+        "FF3",
+        "IE10",
+        "O9",
+        "S6"
       ],
       "values": [
         {
           "name": "evenodd",
-          "description": "Determines the 'insideness' of a point on the canvas by drawing a ray from that point to infinity in any direction and counting the number of path segments from the given shape that the ray crosses."
+          "description": "Determines the \u2018insideness\u2019 of a point on the canvas by drawing a ray from that point to infinity in any direction and counting the number of path segments from the given shape that the ray crosses."
         },
         {
           "name": "nonzero",
-          "description": "Determines the 'insideness' of a point on the canvas by drawing a ray from that point to infinity in any direction and then examining the places where a segment of the shape crosses the ray."
+          "description": "Determines the \u2018insideness\u2019 of a point on the canvas by drawing a ray from that point to infinity in any direction and then examining the places where a segment of the shape crosses the ray."
         }
       ],
       "relevance": 50,
@@ -16488,16 +15295,8 @@ var cssData = {
     },
     {
       "name": "color",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE3",
-        "O3.5"
-      ],
       "syntax": "<color>",
-      "relevance": 94,
+      "relevance": 95,
       "references": [
         {
           "name": "MDN Reference",
@@ -16512,11 +15311,12 @@ var cssData = {
     {
       "name": "color-interpolation-filters",
       "browsers": [
-        "E80",
-        "FF72",
-        "S13.1",
-        "C80",
-        "O67"
+        "E",
+        "C5",
+        "FF3",
+        "IE10",
+        "O9",
+        "S6"
       ],
       "values": [
         {
@@ -16540,14 +15340,6 @@ var cssData = {
     },
     {
       "name": "column-count",
-      "browsers": [
-        "E12",
-        "FF52",
-        "S9",
-        "C50",
-        "IE10",
-        "O11.1"
-      ],
       "values": [
         {
           "name": "auto",
@@ -16570,14 +15362,6 @@ var cssData = {
     },
     {
       "name": "column-fill",
-      "browsers": [
-        "E12",
-        "FF52",
-        "S9",
-        "C50",
-        "IE10",
-        "O37"
-      ],
       "values": [
         {
           "name": "auto",
@@ -16603,14 +15387,6 @@ var cssData = {
     },
     {
       "name": "column-gap",
-      "browsers": [
-        "E12",
-        "FF1.5",
-        "S3",
-        "C1",
-        "IE10",
-        "O11.1"
-      ],
       "values": [
         {
           "name": "normal",
@@ -16618,13 +15394,7 @@ var cssData = {
         }
       ],
       "syntax": "normal | <length-percentage>",
-      "relevance": 60,
-      "references": [
-        {
-          "name": "MDN Reference",
-          "url": "https://developer.mozilla.org/docs/Web/CSS/column-gap"
-        }
-      ],
+      "relevance": 55,
       "description": "Sets the gap between columns. If there is a column rule between columns, it will appear in the middle of the gap.",
       "restrictions": [
         "length",
@@ -16633,14 +15403,6 @@ var cssData = {
     },
     {
       "name": "column-rule",
-      "browsers": [
-        "E12",
-        "FF52",
-        "S9",
-        "C50",
-        "IE10",
-        "O11.1"
-      ],
       "syntax": "<'column-rule-width'> || <'column-rule-style'> || <'column-rule-color'>",
       "relevance": 51,
       "references": [
@@ -16659,14 +15421,6 @@ var cssData = {
     },
     {
       "name": "column-rule-color",
-      "browsers": [
-        "E12",
-        "FF52",
-        "S9",
-        "C50",
-        "IE10",
-        "O11.1"
-      ],
       "syntax": "<color>",
       "relevance": 50,
       "references": [
@@ -16682,14 +15436,6 @@ var cssData = {
     },
     {
       "name": "column-rule-style",
-      "browsers": [
-        "E12",
-        "FF52",
-        "S9",
-        "C50",
-        "IE10",
-        "O11.1"
-      ],
       "syntax": "<'border-style'>",
       "relevance": 50,
       "references": [
@@ -16705,14 +15451,6 @@ var cssData = {
     },
     {
       "name": "column-rule-width",
-      "browsers": [
-        "E12",
-        "FF52",
-        "S9",
-        "C50",
-        "IE10",
-        "O11.1"
-      ],
       "syntax": "<'border-width'>",
       "relevance": 50,
       "references": [
@@ -16729,14 +15467,6 @@ var cssData = {
     },
     {
       "name": "columns",
-      "browsers": [
-        "E12",
-        "FF52",
-        "S9",
-        "C50",
-        "IE10",
-        "O11.1"
-      ],
       "values": [
         {
           "name": "auto",
@@ -16760,14 +15490,6 @@ var cssData = {
     },
     {
       "name": "column-span",
-      "browsers": [
-        "E12",
-        "FF71",
-        "S9",
-        "C50",
-        "IE10",
-        "O11.1"
-      ],
       "values": [
         {
           "name": "all",
@@ -16793,14 +15515,6 @@ var cssData = {
     },
     {
       "name": "column-width",
-      "browsers": [
-        "E12",
-        "FF50",
-        "S9",
-        "C50",
-        "IE10",
-        "O11.1"
-      ],
       "values": [
         {
           "name": "auto",
@@ -16826,9 +15540,8 @@ var cssData = {
       "browsers": [
         "E79",
         "FF69",
-        "S15.4",
         "C52",
-        "O39"
+        "O40"
       ],
       "values": [
         {
@@ -16860,7 +15573,7 @@ var cssData = {
           "description": "Turns on paint containment for the element."
         }
       ],
-      "syntax": "none | strict | content | [ [ size || inline-size ] || layout || style || paint ]",
+      "syntax": "none | strict | content | [ size || layout || style || paint ]",
       "relevance": 58,
       "references": [
         {
@@ -16875,14 +15588,6 @@ var cssData = {
     },
     {
       "name": "content",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE8",
-        "O4"
-      ],
       "values": [
         {
           "name": "attr()",
@@ -16909,7 +15614,7 @@ var cssData = {
         }
       ],
       "syntax": "normal | none | [ <content-replacement> | <content-list> ] [/ [ <string> | <counter> ]+ ]?",
-      "relevance": 89,
+      "relevance": 90,
       "references": [
         {
           "name": "MDN Reference",
@@ -16924,14 +15629,6 @@ var cssData = {
     },
     {
       "name": "counter-increment",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S3",
-        "C2",
-        "IE8",
-        "O9.2"
-      ],
       "values": [
         {
           "name": "none",
@@ -16939,7 +15636,7 @@ var cssData = {
         }
       ],
       "syntax": "[ <counter-name> <integer>? ]+ | none",
-      "relevance": 54,
+      "relevance": 53,
       "references": [
         {
           "name": "MDN Reference",
@@ -16954,14 +15651,6 @@ var cssData = {
     },
     {
       "name": "counter-reset",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S3",
-        "C2",
-        "IE8",
-        "O9.2"
-      ],
       "values": [
         {
           "name": "none",
@@ -16969,7 +15658,7 @@ var cssData = {
         }
       ],
       "syntax": "[ <counter-name> <integer>? | <reversed-counter-name> <integer>? ]+ | none",
-      "relevance": 54,
+      "relevance": 53,
       "references": [
         {
           "name": "MDN Reference",
@@ -16984,14 +15673,6 @@ var cssData = {
     },
     {
       "name": "cursor",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1.2",
-        "C1",
-        "IE4",
-        "O7"
-      ],
       "values": [
         {
           "name": "alias",
@@ -17039,26 +15720,10 @@ var cssData = {
         },
         {
           "name": "grab",
-          "browsers": [
-            "E12",
-            "FF1",
-            "S1.2",
-            "C1",
-            "IE4",
-            "O7"
-          ],
           "description": "Indicates that something can be grabbed."
         },
         {
           "name": "grabbing",
-          "browsers": [
-            "E12",
-            "FF1",
-            "S1.2",
-            "C1",
-            "IE4",
-            "O7"
-          ],
           "description": "Indicates that something is being grabbed."
         },
         {
@@ -17071,50 +15736,18 @@ var cssData = {
         },
         {
           "name": "-moz-grab",
-          "browsers": [
-            "E12",
-            "FF1",
-            "S1.2",
-            "C1",
-            "IE4",
-            "O7"
-          ],
           "description": "Indicates that something can be grabbed."
         },
         {
           "name": "-moz-grabbing",
-          "browsers": [
-            "E12",
-            "FF1",
-            "S1.2",
-            "C1",
-            "IE4",
-            "O7"
-          ],
           "description": "Indicates that something is being grabbed."
         },
         {
           "name": "-moz-zoom-in",
-          "browsers": [
-            "E12",
-            "FF1",
-            "S1.2",
-            "C1",
-            "IE4",
-            "O7"
-          ],
           "description": "Indicates that something can be zoomed (magnified) in."
         },
         {
           "name": "-moz-zoom-out",
-          "browsers": [
-            "E12",
-            "FF1",
-            "S1.2",
-            "C1",
-            "IE4",
-            "O7"
-          ],
           "description": "Indicates that something can be zoomed (magnified) out."
         },
         {
@@ -17191,50 +15824,18 @@ var cssData = {
         },
         {
           "name": "-webkit-grab",
-          "browsers": [
-            "E12",
-            "FF1",
-            "S1.2",
-            "C1",
-            "IE4",
-            "O7"
-          ],
           "description": "Indicates that something can be grabbed."
         },
         {
           "name": "-webkit-grabbing",
-          "browsers": [
-            "E12",
-            "FF1",
-            "S1.2",
-            "C1",
-            "IE4",
-            "O7"
-          ],
           "description": "Indicates that something is being grabbed."
         },
         {
           "name": "-webkit-zoom-in",
-          "browsers": [
-            "E12",
-            "FF1",
-            "S1.2",
-            "C1",
-            "IE4",
-            "O7"
-          ],
           "description": "Indicates that something can be zoomed (magnified) in."
         },
         {
           "name": "-webkit-zoom-out",
-          "browsers": [
-            "E12",
-            "FF1",
-            "S1.2",
-            "C1",
-            "IE4",
-            "O7"
-          ],
           "description": "Indicates that something can be zoomed (magnified) out."
         },
         {
@@ -17243,31 +15844,15 @@ var cssData = {
         },
         {
           "name": "zoom-in",
-          "browsers": [
-            "E12",
-            "FF1",
-            "S1.2",
-            "C1",
-            "IE4",
-            "O7"
-          ],
           "description": "Indicates that something can be zoomed (magnified) in."
         },
         {
           "name": "zoom-out",
-          "browsers": [
-            "E12",
-            "FF1",
-            "S1.2",
-            "C1",
-            "IE4",
-            "O7"
-          ],
           "description": "Indicates that something can be zoomed (magnified) out."
         }
       ],
       "syntax": "[ [ <url> [ <x> <y> ]? , ]* [ auto | default | none | context-menu | help | pointer | progress | wait | cell | crosshair | text | vertical-text | alias | copy | move | no-drop | not-allowed | e-resize | n-resize | ne-resize | nw-resize | s-resize | se-resize | sw-resize | w-resize | ew-resize | ns-resize | nesw-resize | nwse-resize | col-resize | row-resize | all-scroll | zoom-in | zoom-out | grab | grabbing ] ]",
-      "relevance": 91,
+      "relevance": 92,
       "references": [
         {
           "name": "MDN Reference",
@@ -17283,14 +15868,6 @@ var cssData = {
     },
     {
       "name": "direction",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C2",
-        "IE5.5",
-        "O9.2"
-      ],
       "values": [
         {
           "name": "ltr",
@@ -17302,7 +15879,7 @@ var cssData = {
         }
       ],
       "syntax": "ltr | rtl",
-      "relevance": 71,
+      "relevance": 70,
       "references": [
         {
           "name": "MDN Reference",
@@ -17316,14 +15893,6 @@ var cssData = {
     },
     {
       "name": "display",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE4",
-        "O7"
-      ],
       "values": [
         {
           "name": "block",
@@ -17331,62 +15900,22 @@ var cssData = {
         },
         {
           "name": "contents",
-          "browsers": [
-            "E12",
-            "FF1",
-            "S1",
-            "C1",
-            "IE4",
-            "O7"
-          ],
           "description": "The element itself does not generate any boxes, but its children and pseudo-elements still generate boxes as normal."
         },
         {
           "name": "flex",
-          "browsers": [
-            "E12",
-            "FF1",
-            "S1",
-            "C1",
-            "IE4",
-            "O7"
-          ],
           "description": "The element generates a principal flex container box and establishes a flex formatting context."
         },
         {
           "name": "flexbox",
-          "browsers": [
-            "E12",
-            "FF1",
-            "S1",
-            "C1",
-            "IE4",
-            "O7"
-          ],
           "description": "The element lays out its contents using flow layout (block-and-inline layout). Standardized as 'flex'."
         },
         {
           "name": "flow-root",
-          "browsers": [
-            "E12",
-            "FF1",
-            "S1",
-            "C1",
-            "IE4",
-            "O7"
-          ],
           "description": "The element generates a block container box, and lays out its contents using flow layout."
         },
         {
           "name": "grid",
-          "browsers": [
-            "E12",
-            "FF1",
-            "S1",
-            "C1",
-            "IE4",
-            "O7"
-          ],
           "description": "The element generates a principal grid container box, and establishes a grid formatting context."
         },
         {
@@ -17399,26 +15928,10 @@ var cssData = {
         },
         {
           "name": "inline-flex",
-          "browsers": [
-            "E12",
-            "FF1",
-            "S1",
-            "C1",
-            "IE4",
-            "O7"
-          ],
           "description": "Inline-level flex container."
         },
         {
           "name": "inline-flexbox",
-          "browsers": [
-            "E12",
-            "FF1",
-            "S1",
-            "C1",
-            "IE4",
-            "O7"
-          ],
           "description": "Inline-level flex container. Standardized as 'inline-flex'"
         },
         {
@@ -17431,184 +15944,56 @@ var cssData = {
         },
         {
           "name": "-moz-box",
-          "browsers": [
-            "E12",
-            "FF1",
-            "S1",
-            "C1",
-            "IE4",
-            "O7"
-          ],
           "description": "The element lays out its contents using flow layout (block-and-inline layout). Standardized as 'flex'."
         },
         {
-          "name": "-moz-deck",
-          "browsers": [
-            "E12",
-            "FF1",
-            "S1",
-            "C1",
-            "IE4",
-            "O7"
-          ]
+          "name": "-moz-deck"
         },
         {
-          "name": "-moz-grid",
-          "browsers": [
-            "E12",
-            "FF1",
-            "S1",
-            "C1",
-            "IE4",
-            "O7"
-          ]
+          "name": "-moz-grid"
         },
         {
-          "name": "-moz-grid-group",
-          "browsers": [
-            "E12",
-            "FF1",
-            "S1",
-            "C1",
-            "IE4",
-            "O7"
-          ]
+          "name": "-moz-grid-group"
         },
         {
-          "name": "-moz-grid-line",
-          "browsers": [
-            "E12",
-            "FF1",
-            "S1",
-            "C1",
-            "IE4",
-            "O7"
-          ]
+          "name": "-moz-grid-line"
         },
         {
-          "name": "-moz-groupbox",
-          "browsers": [
-            "E12",
-            "FF1",
-            "S1",
-            "C1",
-            "IE4",
-            "O7"
-          ]
+          "name": "-moz-groupbox"
         },
         {
           "name": "-moz-inline-box",
-          "browsers": [
-            "E12",
-            "FF1",
-            "S1",
-            "C1",
-            "IE4",
-            "O7"
-          ],
           "description": "Inline-level flex container. Standardized as 'inline-flex'"
         },
         {
-          "name": "-moz-inline-grid",
-          "browsers": [
-            "E12",
-            "FF1",
-            "S1",
-            "C1",
-            "IE4",
-            "O7"
-          ]
+          "name": "-moz-inline-grid"
         },
         {
-          "name": "-moz-inline-stack",
-          "browsers": [
-            "E12",
-            "FF1",
-            "S1",
-            "C1",
-            "IE4",
-            "O7"
-          ]
+          "name": "-moz-inline-stack"
         },
         {
-          "name": "-moz-marker",
-          "browsers": [
-            "E12",
-            "FF1",
-            "S1",
-            "C1",
-            "IE4",
-            "O7"
-          ]
+          "name": "-moz-marker"
         },
         {
-          "name": "-moz-popup",
-          "browsers": [
-            "E12",
-            "FF1",
-            "S1",
-            "C1",
-            "IE4",
-            "O7"
-          ]
+          "name": "-moz-popup"
         },
         {
-          "name": "-moz-stack",
-          "browsers": [
-            "E12",
-            "FF1",
-            "S1",
-            "C1",
-            "IE4",
-            "O7"
-          ]
+          "name": "-moz-stack"
         },
         {
           "name": "-ms-flexbox",
-          "browsers": [
-            "E12",
-            "FF1",
-            "S1",
-            "C1",
-            "IE4",
-            "O7"
-          ],
           "description": "The element lays out its contents using flow layout (block-and-inline layout). Standardized as 'flex'."
         },
         {
           "name": "-ms-grid",
-          "browsers": [
-            "E12",
-            "FF1",
-            "S1",
-            "C1",
-            "IE4",
-            "O7"
-          ],
           "description": "The element generates a principal grid container box, and establishes a grid formatting context."
         },
         {
           "name": "-ms-inline-flexbox",
-          "browsers": [
-            "E12",
-            "FF1",
-            "S1",
-            "C1",
-            "IE4",
-            "O7"
-          ],
           "description": "Inline-level flex container. Standardized as 'inline-flex'"
         },
         {
           "name": "-ms-inline-grid",
-          "browsers": [
-            "E12",
-            "FF1",
-            "S1",
-            "C1",
-            "IE4",
-            "O7"
-          ],
           "description": "Inline-level grid container."
         },
         {
@@ -17633,14 +16018,6 @@ var cssData = {
         },
         {
           "name": "run-in",
-          "browsers": [
-            "E12",
-            "FF1",
-            "S1",
-            "C1",
-            "IE4",
-            "O7"
-          ],
           "description": "The element generates a run-in box. Run-in elements act like inlines or blocks, depending on the surrounding elements."
         },
         {
@@ -17673,50 +16050,18 @@ var cssData = {
         },
         {
           "name": "-webkit-box",
-          "browsers": [
-            "E12",
-            "FF1",
-            "S1",
-            "C1",
-            "IE4",
-            "O7"
-          ],
           "description": "The element lays out its contents using flow layout (block-and-inline layout). Standardized as 'flex'."
         },
         {
           "name": "-webkit-flex",
-          "browsers": [
-            "E12",
-            "FF1",
-            "S1",
-            "C1",
-            "IE4",
-            "O7"
-          ],
           "description": "The element lays out its contents using flow layout (block-and-inline layout)."
         },
         {
           "name": "-webkit-inline-box",
-          "browsers": [
-            "E12",
-            "FF1",
-            "S1",
-            "C1",
-            "IE4",
-            "O7"
-          ],
           "description": "Inline-level flex container. Standardized as 'inline-flex'"
         },
         {
           "name": "-webkit-inline-flex",
-          "browsers": [
-            "E12",
-            "FF1",
-            "S1",
-            "C1",
-            "IE4",
-            "O7"
-          ],
           "description": "Inline-level flex container."
         }
       ],
@@ -17735,29 +16080,13 @@ var cssData = {
     },
     {
       "name": "empty-cells",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1.2",
-        "C1",
-        "IE8",
-        "O4"
-      ],
       "values": [
         {
           "name": "hide",
           "description": "No borders or backgrounds are drawn around/behind empty cells."
         },
         {
-          "name": "-moz-show-background",
-          "browsers": [
-            "E12",
-            "FF1",
-            "S1.2",
-            "C1",
-            "IE8",
-            "O4"
-          ]
+          "name": "-moz-show-background"
         },
         {
           "name": "show",
@@ -17803,27 +16132,19 @@ var cssData = {
       "browsers": [
         "FF33"
       ],
-      "atRule": "@counter-style",
       "syntax": "<counter-style-name>",
       "relevance": 50,
-      "description": "@counter-style descriptor. Specifies a fallback counter style to be used when the current counter style can't create a representation for a given counter value.",
+      "description": "@counter-style descriptor. Specifies a fallback counter style to be used when the current counter style can\u2019t create a representation for a given counter value.",
       "restrictions": [
         "identifier"
       ]
     },
     {
       "name": "fill",
-      "browsers": [
-        "E80",
-        "FF72",
-        "S13.1",
-        "C80",
-        "O67"
-      ],
       "values": [
         {
           "name": "url()",
-          "description": "A URL reference to a paint server element, which is an element that defines a paint server: 'hatch', 'linearGradient', 'mesh', 'pattern', 'radialGradient' and 'solidcolor'."
+          "description": "A URL reference to a paint server element, which is an element that defines a paint server: \u2018hatch\u2019, \u2018linearGradient\u2019, \u2018mesh\u2019, \u2018pattern\u2019, \u2018radialGradient\u2019 and \u2018solidcolor\u2019."
         },
         {
           "name": "none",
@@ -17840,13 +16161,6 @@ var cssData = {
     },
     {
       "name": "fill-opacity",
-      "browsers": [
-        "E80",
-        "FF72",
-        "S13.1",
-        "C80",
-        "O67"
-      ],
       "relevance": 52,
       "description": "Specifies the opacity of the painting operation used to paint the interior the current object.",
       "restrictions": [
@@ -17855,24 +16169,17 @@ var cssData = {
     },
     {
       "name": "fill-rule",
-      "browsers": [
-        "E80",
-        "FF72",
-        "S13.1",
-        "C80",
-        "O67"
-      ],
       "values": [
         {
           "name": "evenodd",
-          "description": "Determines the 'insideness' of a point on the canvas by drawing a ray from that point to infinity in any direction and counting the number of path segments from the given shape that the ray crosses."
+          "description": "Determines the \u2018insideness\u2019 of a point on the canvas by drawing a ray from that point to infinity in any direction and counting the number of path segments from the given shape that the ray crosses."
         },
         {
           "name": "nonzero",
-          "description": "Determines the 'insideness' of a point on the canvas by drawing a ray from that point to infinity in any direction and then examining the places where a segment of the shape crosses the ray."
+          "description": "Determines the \u2018insideness\u2019 of a point on the canvas by drawing a ray from that point to infinity in any direction and then examining the places where a segment of the shape crosses the ray."
         }
       ],
-      "relevance": 51,
+      "relevance": 50,
       "description": "Indicates the algorithm (or winding rule) which is to be used to determine what parts of the canvas are included inside the shape.",
       "restrictions": [
         "enum"
@@ -17945,14 +16252,14 @@ var cssData = {
         }
       ],
       "syntax": "none | <filter-function-list>",
-      "relevance": 70,
+      "relevance": 66,
       "references": [
         {
           "name": "MDN Reference",
           "url": "https://developer.mozilla.org/docs/Web/CSS/filter"
         }
       ],
-      "description": "Processes an element's rendering before it is displayed in the document, by applying one or more filter effects.",
+      "description": "Processes an element\u2019s rendering before it is displayed in the document, by applying one or more filter effects.",
       "restrictions": [
         "enum",
         "url"
@@ -17960,14 +16267,6 @@ var cssData = {
     },
     {
       "name": "flex",
-      "browsers": [
-        "E12",
-        "FF20",
-        "S9",
-        "C29",
-        "IE11",
-        "O12.1"
-      ],
       "values": [
         {
           "name": "auto",
@@ -17975,15 +16274,7 @@ var cssData = {
         },
         {
           "name": "content",
-          "browsers": [
-            "E12",
-            "FF20",
-            "S9",
-            "C29",
-            "IE11",
-            "O12.1"
-          ],
-          "description": "Indicates automatic sizing, based on the flex item's content."
+          "description": "Indicates automatic sizing, based on the flex item\u2019s content."
         },
         {
           "name": "none",
@@ -17991,7 +16282,7 @@ var cssData = {
         }
       ],
       "syntax": "none | [ <'flex-grow'> <'flex-shrink'>? || <'flex-basis'> ]",
-      "relevance": 81,
+      "relevance": 80,
       "references": [
         {
           "name": "MDN Reference",
@@ -18007,14 +16298,6 @@ var cssData = {
     },
     {
       "name": "flex-basis",
-      "browsers": [
-        "E12",
-        "FF22",
-        "S9",
-        "C29",
-        "IE11",
-        "O12.1"
-      ],
       "values": [
         {
           "name": "auto",
@@ -18022,19 +16305,11 @@ var cssData = {
         },
         {
           "name": "content",
-          "browsers": [
-            "E12",
-            "FF22",
-            "S9",
-            "C29",
-            "IE11",
-            "O12.1"
-          ],
-          "description": "Indicates automatic sizing, based on the flex item's content."
+          "description": "Indicates automatic sizing, based on the flex item\u2019s content."
         }
       ],
       "syntax": "content | <'width'>",
-      "relevance": 70,
+      "relevance": 65,
       "references": [
         {
           "name": "MDN Reference",
@@ -18050,18 +16325,10 @@ var cssData = {
     },
     {
       "name": "flex-direction",
-      "browsers": [
-        "E12",
-        "FF81",
-        "S9",
-        "C29",
-        "IE11",
-        "O12.1"
-      ],
       "values": [
         {
           "name": "column",
-          "description": "The flex container's main axis has the same orientation as the block axis of the current writing mode."
+          "description": "The flex container\u2019s main axis has the same orientation as the block axis of the current writing mode."
         },
         {
           "name": "column-reverse",
@@ -18069,7 +16336,7 @@ var cssData = {
         },
         {
           "name": "row",
-          "description": "The flex container's main axis has the same orientation as the inline axis of the current writing mode."
+          "description": "The flex container\u2019s main axis has the same orientation as the inline axis of the current writing mode."
         },
         {
           "name": "row-reverse",
@@ -18077,32 +16344,24 @@ var cssData = {
         }
       ],
       "syntax": "row | row-reverse | column | column-reverse",
-      "relevance": 84,
+      "relevance": 83,
       "references": [
         {
           "name": "MDN Reference",
           "url": "https://developer.mozilla.org/docs/Web/CSS/flex-direction"
         }
       ],
-      "description": "Specifies how flex items are placed in the flex container, by setting the direction of the flex container's main axis.",
+      "description": "Specifies how flex items are placed in the flex container, by setting the direction of the flex container\u2019s main axis.",
       "restrictions": [
         "enum"
       ]
     },
     {
       "name": "flex-flow",
-      "browsers": [
-        "E12",
-        "FF28",
-        "S9",
-        "C29",
-        "IE11",
-        "O12.1"
-      ],
       "values": [
         {
           "name": "column",
-          "description": "The flex container's main axis has the same orientation as the block axis of the current writing mode."
+          "description": "The flex container\u2019s main axis has the same orientation as the block axis of the current writing mode."
         },
         {
           "name": "column-reverse",
@@ -18114,7 +16373,7 @@ var cssData = {
         },
         {
           "name": "row",
-          "description": "The flex container's main axis has the same orientation as the inline axis of the current writing mode."
+          "description": "The flex container\u2019s main axis has the same orientation as the inline axis of the current writing mode."
         },
         {
           "name": "row-reverse",
@@ -18130,7 +16389,7 @@ var cssData = {
         }
       ],
       "syntax": "<'flex-direction'> || <'flex-wrap'>",
-      "relevance": 64,
+      "relevance": 61,
       "references": [
         {
           "name": "MDN Reference",
@@ -18144,16 +16403,8 @@ var cssData = {
     },
     {
       "name": "flex-grow",
-      "browsers": [
-        "E12",
-        "FF20",
-        "S9",
-        "C29",
-        "IE11",
-        "O12.1"
-      ],
       "syntax": "<number>",
-      "relevance": 77,
+      "relevance": 75,
       "references": [
         {
           "name": "MDN Reference",
@@ -18167,16 +16418,8 @@ var cssData = {
     },
     {
       "name": "flex-shrink",
-      "browsers": [
-        "E12",
-        "FF20",
-        "S9",
-        "C29",
-        "IE10",
-        "O12.1"
-      ],
       "syntax": "<number>",
-      "relevance": 76,
+      "relevance": 74,
       "references": [
         {
           "name": "MDN Reference",
@@ -18190,14 +16433,6 @@ var cssData = {
     },
     {
       "name": "flex-wrap",
-      "browsers": [
-        "E12",
-        "FF28",
-        "S9",
-        "C29",
-        "IE11",
-        "O17"
-      ],
       "values": [
         {
           "name": "nowrap",
@@ -18213,7 +16448,7 @@ var cssData = {
         }
       ],
       "syntax": "nowrap | wrap | wrap-reverse",
-      "relevance": 82,
+      "relevance": 79,
       "references": [
         {
           "name": "MDN Reference",
@@ -18227,37 +16462,13 @@ var cssData = {
     },
     {
       "name": "float",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE4",
-        "O7"
-      ],
       "values": [
         {
           "name": "inline-end",
-          "browsers": [
-            "E12",
-            "FF1",
-            "S1",
-            "C1",
-            "IE4",
-            "O7"
-          ],
           "description": "A keyword indicating that the element must float on the end side of its containing block. That is the right side with ltr scripts, and the left side with rtl scripts."
         },
         {
           "name": "inline-start",
-          "browsers": [
-            "E12",
-            "FF1",
-            "S1",
-            "C1",
-            "IE4",
-            "O7"
-          ],
           "description": "A keyword indicating that the element must float on the start side of its containing block. That is the left side with ltr scripts, and the right side with rtl scripts."
         },
         {
@@ -18274,7 +16485,7 @@ var cssData = {
         }
       ],
       "syntax": "left | right | none | inline-start | inline-end",
-      "relevance": 89,
+      "relevance": 91,
       "references": [
         {
           "name": "MDN Reference",
@@ -18289,12 +16500,12 @@ var cssData = {
     {
       "name": "flood-color",
       "browsers": [
-        "E12",
-        "FF3",
-        "S6",
+        "E",
         "C5",
-        "IE",
-        "O15"
+        "FF3",
+        "IE10",
+        "O9",
+        "S6"
       ],
       "relevance": 50,
       "description": "Indicates what color to use to flood the current filter primitive subregion.",
@@ -18305,12 +16516,12 @@ var cssData = {
     {
       "name": "flood-opacity",
       "browsers": [
-        "E12",
-        "FF3",
-        "S6",
+        "E",
         "C5",
-        "IE",
-        "O15"
+        "FF3",
+        "IE10",
+        "O9",
+        "S6"
       ],
       "relevance": 50,
       "description": "Indicates what opacity to use to flood the current filter primitive subregion.",
@@ -18321,14 +16532,6 @@ var cssData = {
     },
     {
       "name": "font",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE3",
-        "O3.5"
-      ],
       "values": [
         {
           "name": "100",
@@ -18447,7 +16650,7 @@ var cssData = {
         }
       ],
       "syntax": "[ [ <'font-style'> || <font-variant-css21> || <'font-weight'> || <'font-stretch'> ]? <'font-size'> [ / <'line-height'> ]? <'font-family'> ] | caption | icon | menu | message-box | small-caption | status-bar",
-      "relevance": 83,
+      "relevance": 84,
       "references": [
         {
           "name": "MDN Reference",
@@ -18461,17 +16664,9 @@ var cssData = {
     },
     {
       "name": "font-family",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE3",
-        "O3.5"
-      ],
       "values": [
         {
-          "name": "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif"
+          "name": "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif"
         },
         {
           "name": "Arial, Helvetica, sans-serif"
@@ -18525,9 +16720,8 @@ var cssData = {
           "name": "Verdana, Geneva, Tahoma, sans-serif"
         }
       ],
-      "atRule": "@font-face",
       "syntax": "<family-name>",
-      "relevance": 93,
+      "relevance": 94,
       "references": [
         {
           "name": "MDN Reference",
@@ -18541,14 +16735,6 @@ var cssData = {
     },
     {
       "name": "font-feature-settings",
-      "browsers": [
-        "E15",
-        "FF34",
-        "S9.1",
-        "C48",
-        "IE10",
-        "O35"
-      ],
       "values": [
         {
           "name": '"aalt"',
@@ -19031,9 +17217,8 @@ var cssData = {
           "description": "Enable feature."
         }
       ],
-      "atRule": "@font-face",
       "syntax": "normal | <feature-tag-value>#",
-      "relevance": 57,
+      "relevance": 56,
       "references": [
         {
           "name": "MDN Reference",
@@ -19108,14 +17293,6 @@ var cssData = {
     },
     {
       "name": "font-size",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE5.5",
-        "O7"
-      ],
       "values": [
         {
           "name": "large"
@@ -19146,7 +17323,7 @@ var cssData = {
         }
       ],
       "syntax": "<absolute-size> | <relative-size> | <length-percentage>",
-      "relevance": 94,
+      "relevance": 95,
       "references": [
         {
           "name": "MDN Reference",
@@ -19162,13 +17339,15 @@ var cssData = {
     {
       "name": "font-size-adjust",
       "browsers": [
-        "FF3",
-        "S16.4"
+        "E79",
+        "FF40",
+        "C43",
+        "O30"
       ],
       "values": [
         {
           "name": "none",
-          "description": "Do not preserve the font's x-height."
+          "description": "Do not preserve the font\u2019s x-height."
         }
       ],
       "syntax": "none | [ ex-height | cap-height | ch-width | ic-width | ic-height ]? [ from-font | <number> ]",
@@ -19186,14 +17365,6 @@ var cssData = {
     },
     {
       "name": "font-stretch",
-      "browsers": [
-        "E12",
-        "FF9",
-        "S11",
-        "C60",
-        "IE9",
-        "O47"
-      ],
       "values": [
         {
           "name": "condensed"
@@ -19209,14 +17380,6 @@ var cssData = {
         },
         {
           "name": "narrower",
-          "browsers": [
-            "E12",
-            "FF9",
-            "S11",
-            "C60",
-            "IE9",
-            "O47"
-          ],
           "description": "Indicates a narrower value relative to the width of the parent element."
         },
         {
@@ -19236,18 +17399,9 @@ var cssData = {
         },
         {
           "name": "wider",
-          "browsers": [
-            "E12",
-            "FF9",
-            "S11",
-            "C60",
-            "IE9",
-            "O47"
-          ],
           "description": "Indicates a wider value relative to the width of the parent element."
         }
       ],
-      "atRule": "@font-face",
       "syntax": "<font-stretch-absolute>{1,2}",
       "relevance": 56,
       "references": [
@@ -19263,14 +17417,6 @@ var cssData = {
     },
     {
       "name": "font-style",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE4",
-        "O7"
-      ],
       "values": [
         {
           "name": "italic",
@@ -19285,9 +17431,8 @@ var cssData = {
           "description": "Selects a font that is labeled as an 'oblique' face, or an 'italic' face if one is not."
         }
       ],
-      "atRule": "@font-face",
       "syntax": "normal | italic | oblique <angle>{0,2}",
-      "relevance": 89,
+      "relevance": 90,
       "references": [
         {
           "name": "MDN Reference",
@@ -19322,7 +17467,7 @@ var cssData = {
           "description": "Allow synthetic bold faces."
         }
       ],
-      "syntax": "none | [ weight || style || small-caps || position]",
+      "syntax": "none | [ weight || style || small-caps ]",
       "relevance": 50,
       "references": [
         {
@@ -19337,14 +17482,6 @@ var cssData = {
     },
     {
       "name": "font-variant",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE4",
-        "O3.5"
-      ],
       "values": [
         {
           "name": "normal",
@@ -19355,8 +17492,8 @@ var cssData = {
           "description": "Specifies a font that is labeled as a small-caps font. If a genuine small-caps font is not available, user agents should simulate a small-caps font."
         }
       ],
-      "syntax": "normal | none | [ <common-lig-values> || <discretionary-lig-values> || <historical-lig-values> || <contextual-alt-values> || stylistic( <feature-value-name> ) || historical-forms || styleset( <feature-value-name># ) || character-variant( <feature-value-name># ) || swash( <feature-value-name> ) || ornaments( <feature-value-name> ) || annotation( <feature-value-name> ) || [ small-caps | all-small-caps | petite-caps | all-petite-caps | unicase | titling-caps ] || <numeric-figure-values> || <numeric-spacing-values> || <numeric-fraction-values> || ordinal || slashed-zero || <east-asian-variant-values> || <east-asian-width-values> || ruby ]",
-      "relevance": 64,
+      "syntax": "normal | none | [ <common-lig-values> || <discretionary-lig-values> || <historical-lig-values> || <contextual-alt-values> || stylistic(<feature-value-name>) || historical-forms || styleset(<feature-value-name>#) || character-variant(<feature-value-name>#) || swash(<feature-value-name>) || ornaments(<feature-value-name>) || annotation(<feature-value-name>) || [ small-caps | all-small-caps | petite-caps | all-petite-caps | unicase | titling-caps ] || <numeric-figure-values> || <numeric-spacing-values> || <numeric-fraction-values> || ordinal || slashed-zero || <east-asian-variant-values> || <east-asian-width-values> || ruby ]",
+      "relevance": 65,
       "references": [
         {
           "name": "MDN Reference",
@@ -19371,11 +17508,8 @@ var cssData = {
     {
       "name": "font-variant-alternates",
       "browsers": [
-        "E111",
         "FF34",
-        "S9.1",
-        "C111",
-        "O97"
+        "S9.1"
       ],
       "values": [
         {
@@ -19628,7 +17762,7 @@ var cssData = {
           "url": "https://developer.mozilla.org/docs/Web/CSS/font-variant-ligatures"
         }
       ],
-      "description": "Specifies control over which ligatures are enabled or disabled. A value of 'normal' implies that the defaults set by the font are used.",
+      "description": "Specifies control over which ligatures are enabled or disabled. A value of \u2018normal\u2019 implies that the defaults set by the font are used.",
       "restrictions": [
         "enum"
       ]
@@ -19681,7 +17815,7 @@ var cssData = {
         }
       ],
       "syntax": "normal | [ <numeric-figure-values> || <numeric-spacing-values> || <numeric-fraction-values> || ordinal || slashed-zero ]",
-      "relevance": 51,
+      "relevance": 50,
       "references": [
         {
           "name": "MDN Reference",
@@ -19696,11 +17830,8 @@ var cssData = {
     {
       "name": "font-variant-position",
       "browsers": [
-        "E117",
         "FF34",
-        "S9.1",
-        "C117",
-        "O103"
+        "S9.1"
       ],
       "values": [
         {
@@ -19731,14 +17862,6 @@ var cssData = {
     },
     {
       "name": "font-weight",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C2",
-        "IE3",
-        "O3.5"
-      ],
       "values": [
         {
           "name": "100",
@@ -19793,9 +17916,8 @@ var cssData = {
           "description": "Same as 400"
         }
       ],
-      "atRule": "@font-face",
       "syntax": "<font-weight-absolute>{1,2}",
-      "relevance": 93,
+      "relevance": 94,
       "references": [
         {
           "name": "MDN Reference",
@@ -19818,9 +17940,6 @@ var cssData = {
     },
     {
       "name": "glyph-orientation-vertical",
-      "browsers": [
-        "S13.1"
-      ],
       "values": [
         {
           "name": "auto",
@@ -19847,22 +17966,22 @@ var cssData = {
       "values": [
         {
           "name": "auto",
-          "description": "The property contributes nothing to the grid item's placement, indicating auto-placement, an automatic span, or a default span of one."
+          "description": "The property contributes nothing to the grid item\u2019s placement, indicating auto-placement, an automatic span, or a default span of one."
         },
         {
           "name": "span",
-          "description": "Contributes a grid span to the grid item's placement such that the corresponding edge of the grid item's grid area is N lines from its opposite edge."
+          "description": "Contributes a grid span to the grid item\u2019s placement such that the corresponding edge of the grid item\u2019s grid area is N lines from its opposite edge."
         }
       ],
       "syntax": "<grid-line> [ / <grid-line> ]{0,3}",
-      "relevance": 57,
+      "relevance": 53,
       "references": [
         {
           "name": "MDN Reference",
           "url": "https://developer.mozilla.org/docs/Web/CSS/grid-area"
         }
       ],
-      "description": "Determine a grid item's size and location within the grid by contributing a line, a span, or nothing (automatic) to its grid placement. Shorthand for 'grid-row-start', 'grid-column-start', 'grid-row-end', and 'grid-column-end'.",
+      "description": "Determine a grid item\u2019s size and location within the grid by contributing a line, a span, or nothing (automatic) to its grid placement. Shorthand for 'grid-row-start', 'grid-column-start', 'grid-row-end', and 'grid-column-end'.",
       "restrictions": [
         "identifier",
         "integer"
@@ -19896,14 +18015,6 @@ var cssData = {
     },
     {
       "name": "grid-auto-columns",
-      "browsers": [
-        "E16",
-        "FF70",
-        "S10.1",
-        "C57",
-        "IE10",
-        "O44"
-      ],
       "values": [
         {
           "name": "min-content",
@@ -19923,7 +18034,7 @@ var cssData = {
         }
       ],
       "syntax": "<track-size>+",
-      "relevance": 51,
+      "relevance": 50,
       "references": [
         {
           "name": "MDN Reference",
@@ -19956,11 +18067,11 @@ var cssData = {
         },
         {
           "name": "dense",
-          "description": 'If specified, the auto-placement algorithm uses a "dense" packing algorithm, which attempts to fill in holes earlier in the grid if smaller items come up later.'
+          "description": "If specified, the auto-placement algorithm uses a \u201Cdense\u201D packing algorithm, which attempts to fill in holes earlier in the grid if smaller items come up later."
         }
       ],
       "syntax": "[ row | column ] || dense",
-      "relevance": 53,
+      "relevance": 52,
       "references": [
         {
           "name": "MDN Reference",
@@ -19974,14 +18085,6 @@ var cssData = {
     },
     {
       "name": "grid-auto-rows",
-      "browsers": [
-        "E16",
-        "FF70",
-        "S10.1",
-        "C57",
-        "IE10",
-        "O44"
-      ],
       "values": [
         {
           "name": "min-content",
@@ -20001,7 +18104,7 @@ var cssData = {
         }
       ],
       "syntax": "<track-size>+",
-      "relevance": 52,
+      "relevance": 51,
       "references": [
         {
           "name": "MDN Reference",
@@ -20026,15 +18129,15 @@ var cssData = {
       "values": [
         {
           "name": "auto",
-          "description": "The property contributes nothing to the grid item's placement, indicating auto-placement, an automatic span, or a default span of one."
+          "description": "The property contributes nothing to the grid item\u2019s placement, indicating auto-placement, an automatic span, or a default span of one."
         },
         {
           "name": "span",
-          "description": "Contributes a grid span to the grid item's placement such that the corresponding edge of the grid item's grid area is N lines from its opposite edge."
+          "description": "Contributes a grid span to the grid item\u2019s placement such that the corresponding edge of the grid item\u2019s grid area is N lines from its opposite edge."
         }
       ],
       "syntax": "<grid-line> [ / <grid-line> ]?",
-      "relevance": 56,
+      "relevance": 53,
       "references": [
         {
           "name": "MDN Reference",
@@ -20060,22 +18163,22 @@ var cssData = {
       "values": [
         {
           "name": "auto",
-          "description": "The property contributes nothing to the grid item's placement, indicating auto-placement, an automatic span, or a default span of one."
+          "description": "The property contributes nothing to the grid item\u2019s placement, indicating auto-placement, an automatic span, or a default span of one."
         },
         {
           "name": "span",
-          "description": "Contributes a grid span to the grid item's placement such that the corresponding edge of the grid item's grid area is N lines from its opposite edge."
+          "description": "Contributes a grid span to the grid item\u2019s placement such that the corresponding edge of the grid item\u2019s grid area is N lines from its opposite edge."
         }
       ],
       "syntax": "<grid-line>",
-      "relevance": 51,
+      "relevance": 50,
       "references": [
         {
           "name": "MDN Reference",
           "url": "https://developer.mozilla.org/docs/Web/CSS/grid-column-end"
         }
       ],
-      "description": "Determine a grid item's size and location within the grid by contributing a line, a span, or nothing (automatic) to its grid placement.",
+      "description": "Determine a grid item\u2019s size and location within the grid by contributing a line, a span, or nothing (automatic) to its grid placement.",
       "restrictions": [
         "identifier",
         "integer",
@@ -20092,7 +18195,7 @@ var cssData = {
       ],
       "status": "obsolete",
       "syntax": "<length-percentage>",
-      "relevance": 4,
+      "relevance": 2,
       "description": "Specifies the gutters between grid columns. Replaced by 'column-gap' property.",
       "restrictions": [
         "length"
@@ -20110,11 +18213,11 @@ var cssData = {
       "values": [
         {
           "name": "auto",
-          "description": "The property contributes nothing to the grid item's placement, indicating auto-placement, an automatic span, or a default span of one."
+          "description": "The property contributes nothing to the grid item\u2019s placement, indicating auto-placement, an automatic span, or a default span of one."
         },
         {
           "name": "span",
-          "description": "Contributes a grid span to the grid item's placement such that the corresponding edge of the grid item's grid area is N lines from its opposite edge."
+          "description": "Contributes a grid span to the grid item\u2019s placement such that the corresponding edge of the grid item\u2019s grid area is N lines from its opposite edge."
         }
       ],
       "syntax": "<grid-line>",
@@ -20125,7 +18228,7 @@ var cssData = {
           "url": "https://developer.mozilla.org/docs/Web/CSS/grid-column-start"
         }
       ],
-      "description": "Determine a grid item's size and location within the grid by contributing a line, a span, or nothing (automatic) to its grid placement.",
+      "description": "Determine a grid item\u2019s size and location within the grid by contributing a line, a span, or nothing (automatic) to its grid placement.",
       "restrictions": [
         "identifier",
         "integer",
@@ -20142,7 +18245,7 @@ var cssData = {
       ],
       "status": "obsolete",
       "syntax": "<'grid-row-gap'> <'grid-column-gap'>?",
-      "relevance": 5,
+      "relevance": 3,
       "description": "Shorthand that specifies the gutters between grid columns and grid rows in one declaration. Replaced by 'gap' property.",
       "restrictions": [
         "length"
@@ -20160,15 +18263,15 @@ var cssData = {
       "values": [
         {
           "name": "auto",
-          "description": "The property contributes nothing to the grid item's placement, indicating auto-placement, an automatic span, or a default span of one."
+          "description": "The property contributes nothing to the grid item\u2019s placement, indicating auto-placement, an automatic span, or a default span of one."
         },
         {
           "name": "span",
-          "description": "Contributes a grid span to the grid item's placement such that the corresponding edge of the grid item's grid area is N lines from its opposite edge."
+          "description": "Contributes a grid span to the grid item\u2019s placement such that the corresponding edge of the grid item\u2019s grid area is N lines from its opposite edge."
         }
       ],
       "syntax": "<grid-line> [ / <grid-line> ]?",
-      "relevance": 54,
+      "relevance": 52,
       "references": [
         {
           "name": "MDN Reference",
@@ -20194,22 +18297,22 @@ var cssData = {
       "values": [
         {
           "name": "auto",
-          "description": "The property contributes nothing to the grid item's placement, indicating auto-placement, an automatic span, or a default span of one."
+          "description": "The property contributes nothing to the grid item\u2019s placement, indicating auto-placement, an automatic span, or a default span of one."
         },
         {
           "name": "span",
-          "description": "Contributes a grid span to the grid item's placement such that the corresponding edge of the grid item's grid area is N lines from its opposite edge."
+          "description": "Contributes a grid span to the grid item\u2019s placement such that the corresponding edge of the grid item\u2019s grid area is N lines from its opposite edge."
         }
       ],
       "syntax": "<grid-line>",
-      "relevance": 51,
+      "relevance": 50,
       "references": [
         {
           "name": "MDN Reference",
           "url": "https://developer.mozilla.org/docs/Web/CSS/grid-row-end"
         }
       ],
-      "description": "Determine a grid item's size and location within the grid by contributing a line, a span, or nothing (automatic) to its grid placement.",
+      "description": "Determine a grid item\u2019s size and location within the grid by contributing a line, a span, or nothing (automatic) to its grid placement.",
       "restrictions": [
         "identifier",
         "integer",
@@ -20226,7 +18329,7 @@ var cssData = {
       ],
       "status": "obsolete",
       "syntax": "<length-percentage>",
-      "relevance": 2,
+      "relevance": 1,
       "description": "Specifies the gutters between grid rows. Replaced by 'row-gap' property.",
       "restrictions": [
         "length"
@@ -20244,22 +18347,22 @@ var cssData = {
       "values": [
         {
           "name": "auto",
-          "description": "The property contributes nothing to the grid item's placement, indicating auto-placement, an automatic span, or a default span of one."
+          "description": "The property contributes nothing to the grid item\u2019s placement, indicating auto-placement, an automatic span, or a default span of one."
         },
         {
           "name": "span",
-          "description": "Contributes a grid span to the grid item's placement such that the corresponding edge of the grid item's grid area is N lines from its opposite edge."
+          "description": "Contributes a grid span to the grid item\u2019s placement such that the corresponding edge of the grid item\u2019s grid area is N lines from its opposite edge."
         }
       ],
       "syntax": "<grid-line>",
-      "relevance": 51,
+      "relevance": 50,
       "references": [
         {
           "name": "MDN Reference",
           "url": "https://developer.mozilla.org/docs/Web/CSS/grid-row-start"
         }
       ],
-      "description": "Determine a grid item's size and location within the grid by contributing a line, a span, or nothing (automatic) to its grid placement.",
+      "description": "Determine a grid item\u2019s size and location within the grid by contributing a line, a span, or nothing (automatic) to its grid placement.",
       "restrictions": [
         "identifier",
         "integer",
@@ -20334,11 +18437,11 @@ var cssData = {
       "values": [
         {
           "name": "none",
-          "description": "The grid container doesn't define any named grid areas."
+          "description": "The grid container doesn\u2019t define any named grid areas."
         }
       ],
       "syntax": "none | <string>+",
-      "relevance": 54,
+      "relevance": 52,
       "references": [
         {
           "name": "MDN Reference",
@@ -20352,14 +18455,6 @@ var cssData = {
     },
     {
       "name": "grid-template-columns",
-      "browsers": [
-        "E16",
-        "FF52",
-        "S10.1",
-        "C57",
-        "IE10",
-        "O44"
-      ],
       "values": [
         {
           "name": "none",
@@ -20391,7 +18486,7 @@ var cssData = {
         }
       ],
       "syntax": "none | <track-list> | <auto-track-list> | subgrid <line-name-list>?",
-      "relevance": 64,
+      "relevance": 58,
       "references": [
         {
           "name": "MDN Reference",
@@ -20408,14 +18503,6 @@ var cssData = {
     },
     {
       "name": "grid-template-rows",
-      "browsers": [
-        "E16",
-        "FF52",
-        "S10.1",
-        "C57",
-        "IE10",
-        "O44"
-      ],
       "values": [
         {
           "name": "none",
@@ -20447,7 +18534,7 @@ var cssData = {
         }
       ],
       "syntax": "none | <track-list> | <auto-track-list> | subgrid <line-name-list>?",
-      "relevance": 57,
+      "relevance": 53,
       "references": [
         {
           "name": "MDN Reference",
@@ -20465,14 +18552,6 @@ var cssData = {
     },
     {
       "name": "height",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE4",
-        "O7"
-      ],
       "values": [
         {
           "name": "auto",
@@ -20480,42 +18559,18 @@ var cssData = {
         },
         {
           "name": "fit-content",
-          "browsers": [
-            "E12",
-            "FF1",
-            "S1",
-            "C1",
-            "IE4",
-            "O7"
-          ],
           "description": "Use the fit-content inline size or fit-content block size, as appropriate to the writing mode."
         },
         {
           "name": "max-content",
-          "browsers": [
-            "E12",
-            "FF1",
-            "S1",
-            "C1",
-            "IE4",
-            "O7"
-          ],
           "description": "Use the max-content inline size or max-content block size, as appropriate to the writing mode."
         },
         {
           "name": "min-content",
-          "browsers": [
-            "E12",
-            "FF1",
-            "S1",
-            "C1",
-            "IE4",
-            "O7"
-          ],
           "description": "Use the min-content inline size or min-content block size, as appropriate to the writing mode."
         }
       ],
-      "syntax": "auto | <length> | <percentage> | min-content | max-content | fit-content | fit-content(<length-percentage>)",
+      "syntax": "<viewport-length>{1,2}",
       "relevance": 96,
       "references": [
         {
@@ -20531,14 +18586,6 @@ var cssData = {
     },
     {
       "name": "hyphens",
-      "browsers": [
-        "E79",
-        "FF43",
-        "S17",
-        "C55",
-        "IE10",
-        "O42"
-      ],
       "values": [
         {
           "name": "auto",
@@ -20554,7 +18601,7 @@ var cssData = {
         }
       ],
       "syntax": "none | manual | auto",
-      "relevance": 56,
+      "relevance": 55,
       "references": [
         {
           "name": "MDN Reference",
@@ -20640,7 +18687,7 @@ var cssData = {
         }
       ],
       "syntax": "auto | crisp-edges | pixelated",
-      "relevance": 54,
+      "relevance": 55,
       "references": [
         {
           "name": "MDN Reference",
@@ -20711,7 +18758,7 @@ var cssData = {
         }
       ],
       "syntax": "<'width'>",
-      "relevance": 54,
+      "relevance": 50,
       "references": [
         {
           "name": "MDN Reference",
@@ -20744,7 +18791,7 @@ var cssData = {
         }
       ],
       "syntax": "auto | isolate",
-      "relevance": 54,
+      "relevance": 51,
       "references": [
         {
           "name": "MDN Reference",
@@ -20758,14 +18805,6 @@ var cssData = {
     },
     {
       "name": "justify-content",
-      "browsers": [
-        "E12",
-        "FF20",
-        "S9",
-        "C29",
-        "IE11",
-        "O12.1"
-      ],
       "values": [
         {
           "name": "center",
@@ -20833,13 +18872,7 @@ var cssData = {
         }
       ],
       "syntax": "normal | <content-distribution> | <overflow-position>? [ <content-position> | left | right ]",
-      "relevance": 87,
-      "references": [
-        {
-          "name": "MDN Reference",
-          "url": "https://developer.mozilla.org/docs/Web/CSS/justify-content"
-        }
-      ],
+      "relevance": 86,
       "description": "Aligns flex items along the main axis of the current line of the flex container.",
       "restrictions": [
         "enum"
@@ -20862,14 +18895,6 @@ var cssData = {
     },
     {
       "name": "left",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE5.5",
-        "O5"
-      ],
       "values": [
         {
           "name": "auto",
@@ -20877,7 +18902,7 @@ var cssData = {
         }
       ],
       "syntax": "<length> | <percentage> | auto",
-      "relevance": 94,
+      "relevance": 95,
       "references": [
         {
           "name": "MDN Reference",
@@ -20892,14 +18917,6 @@ var cssData = {
     },
     {
       "name": "letter-spacing",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE4",
-        "O3.5"
-      ],
       "values": [
         {
           "name": "normal",
@@ -20907,7 +18924,7 @@ var cssData = {
         }
       ],
       "syntax": "normal | <length>",
-      "relevance": 81,
+      "relevance": 82,
       "references": [
         {
           "name": "MDN Reference",
@@ -20922,12 +18939,12 @@ var cssData = {
     {
       "name": "lighting-color",
       "browsers": [
-        "E12",
-        "FF3",
-        "S6",
+        "E",
         "C5",
-        "IE",
-        "O15"
+        "FF3",
+        "IE10",
+        "O9",
+        "S6"
       ],
       "relevance": 50,
       "description": "Defines the color of the light source for filter primitives 'feDiffuseLighting' and 'feSpecularLighting'.",
@@ -20937,14 +18954,6 @@ var cssData = {
     },
     {
       "name": "line-break",
-      "browsers": [
-        "E14",
-        "FF69",
-        "S11",
-        "C58",
-        "IE5.5",
-        "O45"
-      ],
       "values": [
         {
           "name": "auto",
@@ -20961,14 +18970,10 @@ var cssData = {
         {
           "name": "strict",
           "description": "Breaks CJK scripts using a more restrictive set of line-breaking rules than 'normal'."
-        },
-        {
-          "name": "anywhere",
-          "description": "There is a soft wrap opportunity around every typographic character unit, including around any punctuation character or preserved white spaces, or in the middle of words, disregarding any prohibition against line breaks, even those introduced by characters with the GL, WJ, or ZWJ line breaking classes or mandated by the word-break property."
         }
       ],
       "syntax": "auto | loose | normal | strict | anywhere",
-      "relevance": 52,
+      "relevance": 51,
       "references": [
         {
           "name": "MDN Reference",
@@ -20982,14 +18987,6 @@ var cssData = {
     },
     {
       "name": "line-height",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE4",
-        "O7"
-      ],
       "values": [
         {
           "name": "normal",
@@ -20997,7 +18994,7 @@ var cssData = {
         }
       ],
       "syntax": "normal | <number> | <length> | <percentage>",
-      "relevance": 92,
+      "relevance": 93,
       "references": [
         {
           "name": "MDN Reference",
@@ -21013,14 +19010,6 @@ var cssData = {
     },
     {
       "name": "list-style",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE4",
-        "O7"
-      ],
       "values": [
         {
           "name": "armenian"
@@ -21071,14 +19060,6 @@ var cssData = {
         },
         {
           "name": "symbols()",
-          "browsers": [
-            "E12",
-            "FF1",
-            "S1",
-            "C1",
-            "IE4",
-            "O7"
-          ],
           "description": "Allows a counter style to be defined inline."
         },
         {
@@ -21095,7 +19076,7 @@ var cssData = {
         }
       ],
       "syntax": "<'list-style-type'> || <'list-style-position'> || <'list-style-image'>",
-      "relevance": 83,
+      "relevance": 86,
       "references": [
         {
           "name": "MDN Reference",
@@ -21111,18 +19092,10 @@ var cssData = {
     },
     {
       "name": "list-style-image",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE4",
-        "O7"
-      ],
       "values": [
         {
           "name": "none",
-          "description": "The default contents of the of the list item's marker are given by 'list-style-type' instead."
+          "description": "The default contents of the of the list item\u2019s marker are given by 'list-style-type' instead."
         }
       ],
       "syntax": "<image> | none",
@@ -21140,14 +19113,6 @@ var cssData = {
     },
     {
       "name": "list-style-position",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE4",
-        "O3.5"
-      ],
       "values": [
         {
           "name": "inside",
@@ -21173,14 +19138,6 @@ var cssData = {
     },
     {
       "name": "list-style-type",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE4",
-        "O3.5"
-      ],
       "values": [
         {
           "name": "armenian",
@@ -21232,14 +19189,6 @@ var cssData = {
         },
         {
           "name": "symbols()",
-          "browsers": [
-            "E12",
-            "FF1",
-            "S1",
-            "C1",
-            "IE4",
-            "O3.5"
-          ],
           "description": "Allows a counter style to be defined inline."
         },
         {
@@ -21256,14 +19205,14 @@ var cssData = {
         }
       ],
       "syntax": "<counter-style> | <string> | none",
-      "relevance": 73,
+      "relevance": 75,
       "references": [
         {
           "name": "MDN Reference",
           "url": "https://developer.mozilla.org/docs/Web/CSS/list-style-type"
         }
       ],
-      "description": "Used to construct the default contents of a list item's marker",
+      "description": "Used to construct the default contents of a list item\u2019s marker",
       "restrictions": [
         "enum",
         "string"
@@ -21271,21 +19220,13 @@ var cssData = {
     },
     {
       "name": "margin",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE3",
-        "O3.5"
-      ],
       "values": [
         {
           "name": "auto"
         }
       ],
       "syntax": "[ <length> | <percentage> | auto ]{1,4}",
-      "relevance": 95,
+      "relevance": 96,
       "references": [
         {
           "name": "MDN Reference",
@@ -21313,14 +19254,14 @@ var cssData = {
         }
       ],
       "syntax": "<'margin-left'>",
-      "relevance": 55,
+      "relevance": 53,
       "references": [
         {
           "name": "MDN Reference",
           "url": "https://developer.mozilla.org/docs/Web/CSS/margin-block-end"
         }
       ],
-      "description": "Logical 'margin-bottom'. Mapping depends on the parent element's 'writing-mode', 'direction', and 'text-orientation'.",
+      "description": "Logical 'margin-bottom'. Mapping depends on the parent element\u2019s 'writing-mode', 'direction', and 'text-orientation'.",
       "restrictions": [
         "length",
         "percentage"
@@ -21341,14 +19282,14 @@ var cssData = {
         }
       ],
       "syntax": "<'margin-left'>",
-      "relevance": 56,
+      "relevance": 53,
       "references": [
         {
           "name": "MDN Reference",
           "url": "https://developer.mozilla.org/docs/Web/CSS/margin-block-start"
         }
       ],
-      "description": "Logical 'margin-top'. Mapping depends on the parent element's 'writing-mode', 'direction', and 'text-orientation'.",
+      "description": "Logical 'margin-top'. Mapping depends on the parent element\u2019s 'writing-mode', 'direction', and 'text-orientation'.",
       "restrictions": [
         "length",
         "percentage"
@@ -21356,21 +19297,13 @@ var cssData = {
     },
     {
       "name": "margin-bottom",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE3",
-        "O3.5"
-      ],
       "values": [
         {
           "name": "auto"
         }
       ],
       "syntax": "<length> | <percentage> | auto",
-      "relevance": 91,
+      "relevance": 92,
       "references": [
         {
           "name": "MDN Reference",
@@ -21398,14 +19331,14 @@ var cssData = {
         }
       ],
       "syntax": "<'margin-left'>",
-      "relevance": 58,
+      "relevance": 51,
       "references": [
         {
           "name": "MDN Reference",
           "url": "https://developer.mozilla.org/docs/Web/CSS/margin-inline-end"
         }
       ],
-      "description": "Logical 'margin-right'. Mapping depends on the parent element's 'writing-mode', 'direction', and 'text-orientation'.",
+      "description": "Logical 'margin-right'. Mapping depends on the parent element\u2019s 'writing-mode', 'direction', and 'text-orientation'.",
       "restrictions": [
         "length",
         "percentage"
@@ -21426,14 +19359,14 @@ var cssData = {
         }
       ],
       "syntax": "<'margin-left'>",
-      "relevance": 59,
+      "relevance": 51,
       "references": [
         {
           "name": "MDN Reference",
           "url": "https://developer.mozilla.org/docs/Web/CSS/margin-inline-start"
         }
       ],
-      "description": "Logical 'margin-left'. Mapping depends on the parent element's 'writing-mode', 'direction', and 'text-orientation'.",
+      "description": "Logical 'margin-left'. Mapping depends on the parent element\u2019s 'writing-mode', 'direction', and 'text-orientation'.",
       "restrictions": [
         "length",
         "percentage"
@@ -21441,21 +19374,13 @@ var cssData = {
     },
     {
       "name": "margin-left",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE3",
-        "O3.5"
-      ],
       "values": [
         {
           "name": "auto"
         }
       ],
       "syntax": "<length> | <percentage> | auto",
-      "relevance": 91,
+      "relevance": 92,
       "references": [
         {
           "name": "MDN Reference",
@@ -21470,14 +19395,6 @@ var cssData = {
     },
     {
       "name": "margin-right",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE3",
-        "O3.5"
-      ],
       "values": [
         {
           "name": "auto"
@@ -21499,21 +19416,13 @@ var cssData = {
     },
     {
       "name": "margin-top",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE3",
-        "O3.5"
-      ],
       "values": [
         {
           "name": "auto"
         }
       ],
       "syntax": "<length> | <percentage> | auto",
-      "relevance": 94,
+      "relevance": 95,
       "references": [
         {
           "name": "MDN Reference",
@@ -21528,13 +19437,6 @@ var cssData = {
     },
     {
       "name": "marker",
-      "browsers": [
-        "E80",
-        "FF72",
-        "S13.1",
-        "C80",
-        "O67"
-      ],
       "values": [
         {
           "name": "none",
@@ -21546,20 +19448,13 @@ var cssData = {
         }
       ],
       "relevance": 50,
-      "description": "Specifies the marker symbol that shall be used for all points on the sets the value for all vertices on the given 'path' element or basic shape.",
+      "description": "Specifies the marker symbol that shall be used for all points on the sets the value for all vertices on the given \u2018path\u2019 element or basic shape.",
       "restrictions": [
         "url"
       ]
     },
     {
       "name": "marker-end",
-      "browsers": [
-        "E80",
-        "FF72",
-        "S13.1",
-        "C80",
-        "O67"
-      ],
       "values": [
         {
           "name": "none",
@@ -21578,13 +19473,6 @@ var cssData = {
     },
     {
       "name": "marker-mid",
-      "browsers": [
-        "E80",
-        "FF72",
-        "S13.1",
-        "C80",
-        "O67"
-      ],
       "values": [
         {
           "name": "none",
@@ -21603,13 +19491,6 @@ var cssData = {
     },
     {
       "name": "marker-start",
-      "browsers": [
-        "E80",
-        "FF72",
-        "S13.1",
-        "C80",
-        "O67"
-      ],
       "values": [
         {
           "name": "none",
@@ -21631,8 +19512,8 @@ var cssData = {
       "browsers": [
         "E79",
         "FF53",
-        "S15.4",
-        "C120",
+        "S4",
+        "C1",
         "O15"
       ],
       "values": [
@@ -21646,7 +19527,7 @@ var cssData = {
         }
       ],
       "syntax": "<mask-reference>#",
-      "relevance": 57,
+      "relevance": 50,
       "references": [
         {
           "name": "MDN Reference",
@@ -21663,11 +19544,7 @@ var cssData = {
     {
       "name": "mask-mode",
       "browsers": [
-        "E120",
-        "FF53",
-        "S15.4",
-        "C120",
-        "O106"
+        "FF53"
       ],
       "values": [
         {
@@ -21701,11 +19578,11 @@ var cssData = {
     {
       "name": "mask-origin",
       "browsers": [
-        "E120",
+        "E79",
         "FF53",
-        "S15.4",
-        "C120",
-        "O106"
+        "S4",
+        "C1",
+        "O15"
       ],
       "syntax": "<geometry-box>#",
       "relevance": 50,
@@ -21726,12 +19603,12 @@ var cssData = {
       "browsers": [
         "E79",
         "FF53",
-        "S15.4",
-        "C120",
-        "O106"
+        "S3.1",
+        "C1",
+        "O15"
       ],
       "syntax": "<position>#",
-      "relevance": 52,
+      "relevance": 50,
       "references": [
         {
           "name": "MDN Reference",
@@ -21750,12 +19627,12 @@ var cssData = {
       "browsers": [
         "E79",
         "FF53",
-        "S15.4",
-        "C120",
-        "O106"
+        "S3.1",
+        "C1",
+        "O15"
       ],
       "syntax": "<repeat-style>#",
-      "relevance": 53,
+      "relevance": 50,
       "references": [
         {
           "name": "MDN Reference",
@@ -21772,14 +19649,14 @@ var cssData = {
       "browsers": [
         "E79",
         "FF53",
-        "S15.4",
-        "C120",
-        "O106"
+        "S4",
+        "C4",
+        "O15"
       ],
       "values": [
         {
           "name": "auto",
-          "description": "Resolved by using the image's intrinsic ratio and the size of the other dimension, or failing that, using the image's intrinsic size, or failing that, treating it as 100%."
+          "description": "Resolved by using the image\u2019s intrinsic ratio and the size of the other dimension, or failing that, using the image\u2019s intrinsic size, or failing that, treating it as 100%."
         },
         {
           "name": "contain",
@@ -21791,7 +19668,7 @@ var cssData = {
         }
       ],
       "syntax": "<bg-size>#",
-      "relevance": 54,
+      "relevance": 50,
       "references": [
         {
           "name": "MDN Reference",
@@ -21853,7 +19730,7 @@ var cssData = {
         }
       ],
       "syntax": "<'max-width'>",
-      "relevance": 53,
+      "relevance": 50,
       "references": [
         {
           "name": "MDN Reference",
@@ -21868,14 +19745,6 @@ var cssData = {
     },
     {
       "name": "max-height",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1.3",
-        "C18",
-        "IE7",
-        "O7"
-      ],
       "values": [
         {
           "name": "none",
@@ -21883,43 +19752,19 @@ var cssData = {
         },
         {
           "name": "fit-content",
-          "browsers": [
-            "E12",
-            "FF1",
-            "S1.3",
-            "C18",
-            "IE7",
-            "O7"
-          ],
           "description": "Use the fit-content inline size or fit-content block size, as appropriate to the writing mode."
         },
         {
           "name": "max-content",
-          "browsers": [
-            "E12",
-            "FF1",
-            "S1.3",
-            "C18",
-            "IE7",
-            "O7"
-          ],
           "description": "Use the max-content inline size or max-content block size, as appropriate to the writing mode."
         },
         {
           "name": "min-content",
-          "browsers": [
-            "E12",
-            "FF1",
-            "S1.3",
-            "C18",
-            "IE7",
-            "O7"
-          ],
           "description": "Use the min-content inline size or min-content block size, as appropriate to the writing mode."
         }
       ],
-      "syntax": "none | <length-percentage> | min-content | max-content | fit-content | fit-content(<length-percentage>)",
-      "relevance": 85,
+      "syntax": "<viewport-length>",
+      "relevance": 86,
       "references": [
         {
           "name": "MDN Reference",
@@ -21948,7 +19793,7 @@ var cssData = {
         }
       ],
       "syntax": "<'max-width'>",
-      "relevance": 54,
+      "relevance": 50,
       "references": [
         {
           "name": "MDN Reference",
@@ -21963,14 +19808,6 @@ var cssData = {
     },
     {
       "name": "max-width",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE7",
-        "O4"
-      ],
       "values": [
         {
           "name": "none",
@@ -21978,42 +19815,18 @@ var cssData = {
         },
         {
           "name": "fit-content",
-          "browsers": [
-            "E12",
-            "FF1",
-            "S1",
-            "C1",
-            "IE7",
-            "O4"
-          ],
           "description": "Use the fit-content inline size or fit-content block size, as appropriate to the writing mode."
         },
         {
           "name": "max-content",
-          "browsers": [
-            "E12",
-            "FF1",
-            "S1",
-            "C1",
-            "IE7",
-            "O4"
-          ],
           "description": "Use the max-content inline size or max-content block size, as appropriate to the writing mode."
         },
         {
           "name": "min-content",
-          "browsers": [
-            "E12",
-            "FF1",
-            "S1",
-            "C1",
-            "IE7",
-            "O4"
-          ],
           "description": "Use the min-content inline size or min-content block size, as appropriate to the writing mode."
         }
       ],
-      "syntax": "none | <length-percentage> | min-content | max-content | fit-content | fit-content(<length-percentage>)",
+      "syntax": "<viewport-length>",
       "relevance": 91,
       "references": [
         {
@@ -22037,7 +19850,7 @@ var cssData = {
         "O44"
       ],
       "syntax": "<'min-width'>",
-      "relevance": 53,
+      "relevance": 50,
       "references": [
         {
           "name": "MDN Reference",
@@ -22052,65 +19865,25 @@ var cssData = {
     },
     {
       "name": "min-height",
-      "browsers": [
-        "E12",
-        "FF3",
-        "S1.3",
-        "C1",
-        "IE7",
-        "O4"
-      ],
       "values": [
         {
-          "name": "auto",
-          "browsers": [
-            "E12",
-            "FF3",
-            "S1.3",
-            "C1",
-            "IE7",
-            "O4"
-          ]
+          "name": "auto"
         },
         {
           "name": "fit-content",
-          "browsers": [
-            "E12",
-            "FF3",
-            "S1.3",
-            "C1",
-            "IE7",
-            "O4"
-          ],
           "description": "Use the fit-content inline size or fit-content block size, as appropriate to the writing mode."
         },
         {
           "name": "max-content",
-          "browsers": [
-            "E12",
-            "FF3",
-            "S1.3",
-            "C1",
-            "IE7",
-            "O4"
-          ],
           "description": "Use the max-content inline size or max-content block size, as appropriate to the writing mode."
         },
         {
           "name": "min-content",
-          "browsers": [
-            "E12",
-            "FF3",
-            "S1.3",
-            "C1",
-            "IE7",
-            "O4"
-          ],
           "description": "Use the min-content inline size or min-content block size, as appropriate to the writing mode."
         }
       ],
-      "syntax": "auto | <length> | <percentage> | min-content | max-content | fit-content | fit-content(<length-percentage>)",
-      "relevance": 89,
+      "syntax": "<viewport-length>",
+      "relevance": 90,
       "references": [
         {
           "name": "MDN Reference",
@@ -22133,7 +19906,7 @@ var cssData = {
         "O44"
       ],
       "syntax": "<'min-width'>",
-      "relevance": 54,
+      "relevance": 50,
       "references": [
         {
           "name": "MDN Reference",
@@ -22148,65 +19921,25 @@ var cssData = {
     },
     {
       "name": "min-width",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE7",
-        "O4"
-      ],
       "values": [
         {
-          "name": "auto",
-          "browsers": [
-            "E12",
-            "FF1",
-            "S1",
-            "C1",
-            "IE7",
-            "O4"
-          ]
+          "name": "auto"
         },
         {
           "name": "fit-content",
-          "browsers": [
-            "E12",
-            "FF1",
-            "S1",
-            "C1",
-            "IE7",
-            "O4"
-          ],
           "description": "Use the fit-content inline size or fit-content block size, as appropriate to the writing mode."
         },
         {
           "name": "max-content",
-          "browsers": [
-            "E12",
-            "FF1",
-            "S1",
-            "C1",
-            "IE7",
-            "O4"
-          ],
           "description": "Use the max-content inline size or max-content block size, as appropriate to the writing mode."
         },
         {
           "name": "min-content",
-          "browsers": [
-            "E12",
-            "FF1",
-            "S1",
-            "C1",
-            "IE7",
-            "O4"
-          ],
           "description": "Use the min-content inline size or min-content block size, as appropriate to the writing mode."
         }
       ],
-      "syntax": "auto | <length> | <percentage> | min-content | max-content | fit-content | fit-content(<length-percentage>)",
-      "relevance": 88,
+      "syntax": "<viewport-length>",
+      "relevance": 89,
       "references": [
         {
           "name": "MDN Reference",
@@ -22322,8 +20055,8 @@ var cssData = {
           "description": "Creates a color with the luminosity of the source color and the hue and saturation of the backdrop color."
         }
       ],
-      "syntax": "<blend-mode> | plus-lighter",
-      "relevance": 54,
+      "syntax": "<blend-mode>",
+      "relevance": 52,
       "references": [
         {
           "name": "MDN Reference",
@@ -24051,11 +21784,11 @@ var cssData = {
       "values": [
         {
           "name": "baseline",
-          "description": "If the flex item's inline axis is the same as the cross axis, this value is identical to 'flex-start'. Otherwise, it participates in baseline alignment."
+          "description": "If the flex item\u2019s inline axis is the same as the cross axis, this value is identical to 'flex-start'. Otherwise, it participates in baseline alignment."
         },
         {
           "name": "center",
-          "description": "The flex item's margin box is centered in the cross axis within the line."
+          "description": "The flex item\u2019s margin box is centered in the cross axis within the line."
         },
         {
           "name": "end",
@@ -24084,7 +21817,7 @@ var cssData = {
       "values": [
         {
           "name": "column",
-          "description": "The flex container's main axis has the same orientation as the block axis of the current writing mode."
+          "description": "The flex container\u2019s main axis has the same orientation as the block axis of the current writing mode."
         },
         {
           "name": "column-reverse",
@@ -24092,7 +21825,7 @@ var cssData = {
         },
         {
           "name": "row",
-          "description": "The flex container's main axis has the same orientation as the inline axis of the current writing mode."
+          "description": "The flex container\u2019s main axis has the same orientation as the inline axis of the current writing mode."
         },
         {
           "name": "row-reverse",
@@ -24100,7 +21833,7 @@ var cssData = {
         }
       ],
       "relevance": 50,
-      "description": "Specifies how flex items are placed in the flex container, by setting the direction of the flex container's main axis.",
+      "description": "Specifies how flex items are placed in the flex container, by setting the direction of the flex container\u2019s main axis.",
       "restrictions": [
         "enum"
       ]
@@ -24113,7 +21846,7 @@ var cssData = {
       "values": [
         {
           "name": "column",
-          "description": "The flex container's main axis has the same orientation as the block axis of the current writing mode."
+          "description": "The flex container\u2019s main axis has the same orientation as the block axis of the current writing mode."
         },
         {
           "name": "column-reverse",
@@ -24125,7 +21858,7 @@ var cssData = {
         },
         {
           "name": "row",
-          "description": "The flex container's main axis has the same orientation as the inline axis of the current writing mode."
+          "description": "The flex container\u2019s main axis has the same orientation as the inline axis of the current writing mode."
         },
         {
           "name": "wrap",
@@ -24150,15 +21883,15 @@ var cssData = {
       "values": [
         {
           "name": "auto",
-          "description": "Computes to the value of 'align-items' on the element's parent, or 'stretch' if the element has no parent. On absolutely positioned elements, it computes to itself."
+          "description": "Computes to the value of 'align-items' on the element\u2019s parent, or 'stretch' if the element has no parent. On absolutely positioned elements, it computes to itself."
         },
         {
           "name": "baseline",
-          "description": "If the flex item's inline axis is the same as the cross axis, this value is identical to 'flex-start'. Otherwise, it participates in baseline alignment."
+          "description": "If the flex item\u2019s inline axis is the same as the cross axis, this value is identical to 'flex-start'. Otherwise, it participates in baseline alignment."
         },
         {
           "name": "center",
-          "description": "The flex item's margin box is centered in the cross axis within the line."
+          "description": "The flex item\u2019s margin box is centered in the cross axis within the line."
         },
         {
           "name": "end",
@@ -24211,7 +21944,7 @@ var cssData = {
         }
       ],
       "relevance": 50,
-      "description": "Aligns a flex container's lines within the flex container when there is extra space in the cross-axis, similar to how 'justify-content' aligns individual items within the main-axis.",
+      "description": "Aligns a flex container\u2019s lines within the flex container when there is extra space in the cross-axis, similar to how 'justify-content' aligns individual items within the main-axis.",
       "restrictions": [
         "enum"
       ]
@@ -24328,7 +22061,7 @@ var cssData = {
     {
       "name": "-ms-grid-column",
       "browsers": [
-        "E",
+        "E12",
         "IE10"
       ],
       "values": [
@@ -24353,7 +22086,7 @@ var cssData = {
     {
       "name": "-ms-grid-column-align",
       "browsers": [
-        "E",
+        "E12",
         "IE10"
       ],
       "values": [
@@ -24394,7 +22127,7 @@ var cssData = {
     {
       "name": "-ms-grid-column-span",
       "browsers": [
-        "E",
+        "E12",
         "IE10"
       ],
       "relevance": 50,
@@ -24418,7 +22151,7 @@ var cssData = {
     {
       "name": "-ms-grid-row",
       "browsers": [
-        "E",
+        "E12",
         "IE10"
       ],
       "values": [
@@ -24443,7 +22176,7 @@ var cssData = {
     {
       "name": "-ms-grid-row-align",
       "browsers": [
-        "E",
+        "E12",
         "IE10"
       ],
       "values": [
@@ -24484,7 +22217,7 @@ var cssData = {
     {
       "name": "-ms-grid-row-span",
       "browsers": [
-        "E",
+        "E12",
         "IE10"
       ],
       "relevance": 50,
@@ -25014,11 +22747,17 @@ var cssData = {
     {
       "name": "-ms-scrollbar-track-color",
       "browsers": [
-        "IE8"
+        "IE5"
       ],
       "status": "nonstandard",
       "syntax": "<color>",
       "relevance": 0,
+      "references": [
+        {
+          "name": "MDN Reference",
+          "url": "https://developer.mozilla.org/docs/Web/CSS/-ms-scrollbar-track-color"
+        }
+      ],
       "description": "Determines the color of the track element of a scroll bar.",
       "restrictions": [
         "color"
@@ -25397,7 +23136,7 @@ var cssData = {
         },
         {
           "name": "digits",
-          "description": "Attempt to typeset horizontally each maximal sequence of consecutive ASCII digits (U+0030-U+0039) that has as many or fewer characters than the specified integer such that it takes up the space of a single character within the vertical line box."
+          "description": "Attempt to typeset horizontally each maximal sequence of consecutive ASCII digits (U+0030\u2013U+0039) that has as many or fewer characters than the specified integer such that it takes up the space of a single character within the vertical line box."
         },
         {
           "name": "none",
@@ -25845,7 +23584,7 @@ var cssData = {
         },
         {
           "name": "minimum",
-          "description": "Inline flow content can flow around the edge of the exclusion with the smallest available space within the flow content's containing block, and must leave the other edge of the exclusion empty."
+          "description": "Inline flow content can flow around the edge of the exclusion with the smallest available space within the flow content\u2019s containing block, and must leave the other edge of the exclusion empty."
         },
         {
           "name": "start",
@@ -26104,7 +23843,6 @@ var cssData = {
       "browsers": [
         "FF33"
       ],
-      "atRule": "@counter-style",
       "syntax": "<symbol> <symbol>?",
       "relevance": 50,
       "description": "@counter-style descriptor. Defines how to alter the representation when the counter value is negative.",
@@ -26327,15 +24065,15 @@ var cssData = {
       "values": [
         {
           "name": "contain",
-          "description": "The replaced content is sized to maintain its aspect ratio while fitting within the element's content box: its concrete object size is resolved as a contain constraint against the element's used width and height."
+          "description": "The replaced content is sized to maintain its aspect ratio while fitting within the element\u2019s content box: its concrete object size is resolved as a contain constraint against the element's used width and height."
         },
         {
           "name": "cover",
-          "description": "The replaced content is sized to maintain its aspect ratio while filling the element's entire content box: its concrete object size is resolved as a cover constraint against the element's used width and height."
+          "description": "The replaced content is sized to maintain its aspect ratio while filling the element's entire content box: its concrete object size is resolved as a cover constraint against the element\u2019s used width and height."
         },
         {
           "name": "fill",
-          "description": "The replaced content is sized to fill the element's content box: the object's concrete object size is the element's used width and height."
+          "description": "The replaced content is sized to fill the element\u2019s content box: the object's concrete object size is the element's used width and height."
         },
         {
           "name": "none",
@@ -26343,11 +24081,11 @@ var cssData = {
         },
         {
           "name": "scale-down",
-          "description": "Size the content as if 'none' or 'contain' were specified, whichever would result in a smaller concrete object size."
+          "description": "Size the content as if \u2018none\u2019 or \u2018contain\u2019 were specified, whichever would result in a smaller concrete object size."
         }
       ],
       "syntax": "fill | contain | cover | none | scale-down",
-      "relevance": 72,
+      "relevance": 69,
       "references": [
         {
           "name": "MDN Reference",
@@ -26369,7 +24107,7 @@ var cssData = {
         "O19"
       ],
       "syntax": "<position>",
-      "relevance": 57,
+      "relevance": 54,
       "references": [
         {
           "name": "MDN Reference",
@@ -26435,15 +24173,15 @@ var cssData = {
       "values": [
         {
           "name": "contain",
-          "description": "The replaced content is sized to maintain its aspect ratio while fitting within the element's content box: its concrete object size is resolved as a contain constraint against the element's used width and height."
+          "description": "The replaced content is sized to maintain its aspect ratio while fitting within the element\u2019s content box: its concrete object size is resolved as a contain constraint against the element's used width and height."
         },
         {
           "name": "cover",
-          "description": "The replaced content is sized to maintain its aspect ratio while filling the element's entire content box: its concrete object size is resolved as a cover constraint against the element's used width and height."
+          "description": "The replaced content is sized to maintain its aspect ratio while filling the element's entire content box: its concrete object size is resolved as a cover constraint against the element\u2019s used width and height."
         },
         {
           "name": "fill",
-          "description": "The replaced content is sized to fill the element's content box: the object's concrete object size is the element's used width and height."
+          "description": "The replaced content is sized to fill the element\u2019s content box: the object's concrete object size is the element's used width and height."
         },
         {
           "name": "none",
@@ -26451,7 +24189,7 @@ var cssData = {
         },
         {
           "name": "scale-down",
-          "description": "Size the content as if 'none' or 'contain' were specified, whichever would result in a smaller concrete object size."
+          "description": "Size the content as if \u2018none\u2019 or \u2018contain\u2019 were specified, whichever would result in a smaller concrete object size."
         }
       ],
       "relevance": 50,
@@ -26475,16 +24213,8 @@ var cssData = {
     },
     {
       "name": "opacity",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S2",
-        "C1",
-        "IE9",
-        "O9"
-      ],
       "syntax": "<alpha-value>",
-      "relevance": 92,
+      "relevance": 94,
       "references": [
         {
           "name": "MDN Reference",
@@ -26498,16 +24228,8 @@ var cssData = {
     },
     {
       "name": "order",
-      "browsers": [
-        "E12",
-        "FF20",
-        "S9",
-        "C29",
-        "IE11",
-        "O12.1"
-      ],
       "syntax": "<integer>",
-      "relevance": 67,
+      "relevance": 64,
       "references": [
         {
           "name": "MDN Reference",
@@ -26784,7 +24506,7 @@ var cssData = {
         }
       ],
       "relevance": 50,
-      "description": "Logical 'bottom'. Mapping depends on the parent element's 'writing-mode', 'direction', and 'text-orientation'.",
+      "description": "Logical 'bottom'. Mapping depends on the parent element\u2019s 'writing-mode', 'direction', and 'text-orientation'.",
       "restrictions": [
         "length",
         "percentage"
@@ -26802,7 +24524,7 @@ var cssData = {
         }
       ],
       "relevance": 50,
-      "description": "Logical 'top'. Mapping depends on the parent element's 'writing-mode', 'direction', and 'text-orientation'.",
+      "description": "Logical 'top'. Mapping depends on the parent element\u2019s 'writing-mode', 'direction', and 'text-orientation'.",
       "restrictions": [
         "length",
         "percentage"
@@ -26820,7 +24542,7 @@ var cssData = {
         }
       ],
       "relevance": 50,
-      "description": "Logical 'right'. Mapping depends on the parent element's 'writing-mode', 'direction', and 'text-orientation'.",
+      "description": "Logical 'right'. Mapping depends on the parent element\u2019s 'writing-mode', 'direction', and 'text-orientation'.",
       "restrictions": [
         "length",
         "percentage"
@@ -26838,7 +24560,7 @@ var cssData = {
         }
       ],
       "relevance": 50,
-      "description": "Logical 'left'. Mapping depends on the parent element's 'writing-mode', 'direction', and 'text-orientation'.",
+      "description": "Logical 'left'. Mapping depends on the parent element\u2019s 'writing-mode', 'direction', and 'text-orientation'.",
       "restrictions": [
         "length",
         "percentage"
@@ -26846,14 +24568,6 @@ var cssData = {
     },
     {
       "name": "outline",
-      "browsers": [
-        "E94",
-        "FF88",
-        "S16.4",
-        "C94",
-        "IE8",
-        "O80"
-      ],
       "values": [
         {
           "name": "auto",
@@ -26861,14 +24575,6 @@ var cssData = {
         },
         {
           "name": "invert",
-          "browsers": [
-            "E94",
-            "FF88",
-            "S16.4",
-            "C94",
-            "IE8",
-            "O80"
-          ],
           "description": "Performs a color inversion on the pixels on the screen."
         }
       ],
@@ -26891,30 +24597,14 @@ var cssData = {
     },
     {
       "name": "outline-color",
-      "browsers": [
-        "E12",
-        "FF1.5",
-        "S1.2",
-        "C1",
-        "IE8",
-        "O7"
-      ],
       "values": [
         {
           "name": "invert",
-          "browsers": [
-            "E12",
-            "FF1.5",
-            "S1.2",
-            "C1",
-            "IE8",
-            "O7"
-          ],
           "description": "Performs a color inversion on the pixels on the screen."
         }
       ],
-      "syntax": "auto | <color>",
-      "relevance": 61,
+      "syntax": "<color> | invert",
+      "relevance": 54,
       "references": [
         {
           "name": "MDN Reference",
@@ -26937,7 +24627,7 @@ var cssData = {
         "O9.5"
       ],
       "syntax": "<length>",
-      "relevance": 69,
+      "relevance": 68,
       "references": [
         {
           "name": "MDN Reference",
@@ -26951,14 +24641,6 @@ var cssData = {
     },
     {
       "name": "outline-style",
-      "browsers": [
-        "E12",
-        "FF1.5",
-        "S1.2",
-        "C1",
-        "IE8",
-        "O7"
-      ],
       "values": [
         {
           "name": "auto",
@@ -26981,16 +24663,8 @@ var cssData = {
     },
     {
       "name": "outline-width",
-      "browsers": [
-        "E12",
-        "FF1.5",
-        "S1.2",
-        "C1",
-        "IE8",
-        "O7"
-      ],
       "syntax": "<line-width>",
-      "relevance": 62,
+      "relevance": 61,
       "references": [
         {
           "name": "MDN Reference",
@@ -27005,14 +24679,6 @@ var cssData = {
     },
     {
       "name": "overflow",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE4",
-        "O7"
-      ],
       "values": [
         {
           "name": "auto",
@@ -27024,15 +24690,7 @@ var cssData = {
         },
         {
           "name": "-moz-hidden-unscrollable",
-          "browsers": [
-            "E12",
-            "FF1",
-            "S1",
-            "C1",
-            "IE4",
-            "O7"
-          ],
-          "description": "Same as the standardized 'clip', except doesn't establish a block formatting context."
+          "description": "Same as the standardized 'clip', except doesn\u2019t establish a block formatting context."
         },
         {
           "name": "scroll",
@@ -27058,14 +24716,6 @@ var cssData = {
     },
     {
       "name": "overflow-wrap",
-      "browsers": [
-        "E18",
-        "FF49",
-        "S7",
-        "C23",
-        "IE5.5",
-        "O12.1"
-      ],
       "values": [
         {
           "name": "break-word",
@@ -27077,7 +24727,7 @@ var cssData = {
         }
       ],
       "syntax": "normal | break-word | anywhere",
-      "relevance": 65,
+      "relevance": 64,
       "references": [
         {
           "name": "MDN Reference",
@@ -27091,55 +24741,6 @@ var cssData = {
     },
     {
       "name": "overflow-x",
-      "browsers": [
-        "E12",
-        "FF3.5",
-        "S3",
-        "C1",
-        "IE5",
-        "O9.5"
-      ],
-      "values": [
-        {
-          "name": "auto",
-          "description": "The behavior of the 'auto' value is UA-dependent, but should cause a scrolling mechanism to be provided for overflowing boxes."
-        },
-        {
-          "name": "hidden",
-          "description": "Content is clipped and no scrolling mechanism should be provided to view the content outside the clipping region."
-        },
-        {
-          "name": "scroll",
-          "description": "Content is clipped and if the user agent uses a scrolling mechanism that is visible on the screen (such as a scroll bar or a panner), that mechanism should be displayed for a box whether or not any of its content is clipped."
-        },
-        {
-          "name": "visible",
-          "description": "Content is not clipped, i.e., it may be rendered outside the content box."
-        }
-      ],
-      "syntax": "visible | hidden | clip | scroll | auto",
-      "relevance": 81,
-      "references": [
-        {
-          "name": "MDN Reference",
-          "url": "https://developer.mozilla.org/docs/Web/CSS/overflow-x"
-        }
-      ],
-      "description": "Specifies the handling of overflow in the horizontal direction.",
-      "restrictions": [
-        "enum"
-      ]
-    },
-    {
-      "name": "overflow-y",
-      "browsers": [
-        "E12",
-        "FF3.5",
-        "S3",
-        "C1",
-        "IE5",
-        "O9.5"
-      ],
       "values": [
         {
           "name": "auto",
@@ -27163,6 +24764,39 @@ var cssData = {
       "references": [
         {
           "name": "MDN Reference",
+          "url": "https://developer.mozilla.org/docs/Web/CSS/overflow-x"
+        }
+      ],
+      "description": "Specifies the handling of overflow in the horizontal direction.",
+      "restrictions": [
+        "enum"
+      ]
+    },
+    {
+      "name": "overflow-y",
+      "values": [
+        {
+          "name": "auto",
+          "description": "The behavior of the 'auto' value is UA-dependent, but should cause a scrolling mechanism to be provided for overflowing boxes."
+        },
+        {
+          "name": "hidden",
+          "description": "Content is clipped and no scrolling mechanism should be provided to view the content outside the clipping region."
+        },
+        {
+          "name": "scroll",
+          "description": "Content is clipped and if the user agent uses a scrolling mechanism that is visible on the screen (such as a scroll bar or a panner), that mechanism should be displayed for a box whether or not any of its content is clipped."
+        },
+        {
+          "name": "visible",
+          "description": "Content is not clipped, i.e., it may be rendered outside the content box."
+        }
+      ],
+      "syntax": "visible | hidden | clip | scroll | auto",
+      "relevance": 83,
+      "references": [
+        {
+          "name": "MDN Reference",
           "url": "https://developer.mozilla.org/docs/Web/CSS/overflow-y"
         }
       ],
@@ -27176,10 +24810,9 @@ var cssData = {
       "browsers": [
         "FF33"
       ],
-      "atRule": "@counter-style",
       "syntax": "<integer> && <symbol>",
       "relevance": 50,
-      "description": '@counter-style descriptor. Specifies a "fixed-width" counter style, where representations shorter than the pad value are padded with a particular <symbol>',
+      "description": "@counter-style descriptor. Specifies a \u201Cfixed-width\u201D counter style, where representations shorter than the pad value are padded with a particular <symbol>",
       "restrictions": [
         "integer",
         "image",
@@ -27189,17 +24822,9 @@ var cssData = {
     },
     {
       "name": "padding",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE4",
-        "O3.5"
-      ],
       "values": [],
       "syntax": "[ <length> | <percentage> ]{1,4}",
-      "relevance": 95,
+      "relevance": 96,
       "references": [
         {
           "name": "MDN Reference",
@@ -27214,16 +24839,8 @@ var cssData = {
     },
     {
       "name": "padding-bottom",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE4",
-        "O3.5"
-      ],
       "syntax": "<length> | <percentage>",
-      "relevance": 88,
+      "relevance": 90,
       "references": [
         {
           "name": "MDN Reference",
@@ -27253,7 +24870,7 @@ var cssData = {
           "url": "https://developer.mozilla.org/docs/Web/CSS/padding-block-end"
         }
       ],
-      "description": "Logical 'padding-bottom'. Mapping depends on the parent element's 'writing-mode', 'direction', and 'text-orientation'.",
+      "description": "Logical 'padding-bottom'. Mapping depends on the parent element\u2019s 'writing-mode', 'direction', and 'text-orientation'.",
       "restrictions": [
         "length",
         "percentage"
@@ -27276,7 +24893,7 @@ var cssData = {
           "url": "https://developer.mozilla.org/docs/Web/CSS/padding-block-start"
         }
       ],
-      "description": "Logical 'padding-top'. Mapping depends on the parent element's 'writing-mode', 'direction', and 'text-orientation'.",
+      "description": "Logical 'padding-top'. Mapping depends on the parent element\u2019s 'writing-mode', 'direction', and 'text-orientation'.",
       "restrictions": [
         "length",
         "percentage"
@@ -27292,14 +24909,14 @@ var cssData = {
         "O56"
       ],
       "syntax": "<'padding-left'>",
-      "relevance": 55,
+      "relevance": 51,
       "references": [
         {
           "name": "MDN Reference",
           "url": "https://developer.mozilla.org/docs/Web/CSS/padding-inline-end"
         }
       ],
-      "description": "Logical 'padding-right'. Mapping depends on the parent element's 'writing-mode', 'direction', and 'text-orientation'.",
+      "description": "Logical 'padding-right'. Mapping depends on the parent element\u2019s 'writing-mode', 'direction', and 'text-orientation'.",
       "restrictions": [
         "length",
         "percentage"
@@ -27315,14 +24932,14 @@ var cssData = {
         "O56"
       ],
       "syntax": "<'padding-left'>",
-      "relevance": 56,
+      "relevance": 51,
       "references": [
         {
           "name": "MDN Reference",
           "url": "https://developer.mozilla.org/docs/Web/CSS/padding-inline-start"
         }
       ],
-      "description": "Logical 'padding-left'. Mapping depends on the parent element's 'writing-mode', 'direction', and 'text-orientation'.",
+      "description": "Logical 'padding-left'. Mapping depends on the parent element\u2019s 'writing-mode', 'direction', and 'text-orientation'.",
       "restrictions": [
         "length",
         "percentage"
@@ -27330,16 +24947,8 @@ var cssData = {
     },
     {
       "name": "padding-left",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE4",
-        "O3.5"
-      ],
       "syntax": "<length> | <percentage>",
-      "relevance": 89,
+      "relevance": 91,
       "references": [
         {
           "name": "MDN Reference",
@@ -27354,16 +24963,8 @@ var cssData = {
     },
     {
       "name": "padding-right",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE4",
-        "O3.5"
-      ],
       "syntax": "<length> | <percentage>",
-      "relevance": 88,
+      "relevance": 90,
       "references": [
         {
           "name": "MDN Reference",
@@ -27378,16 +24979,8 @@ var cssData = {
     },
     {
       "name": "padding-top",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE4",
-        "O3.5"
-      ],
       "syntax": "<length> | <percentage>",
-      "relevance": 89,
+      "relevance": 91,
       "references": [
         {
           "name": "MDN Reference",
@@ -27402,14 +24995,6 @@ var cssData = {
     },
     {
       "name": "page-break-after",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1.2",
-        "C1",
-        "IE4",
-        "O7"
-      ],
       "values": [
         {
           "name": "always",
@@ -27447,14 +25032,6 @@ var cssData = {
     },
     {
       "name": "page-break-before",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1.2",
-        "C1",
-        "IE4",
-        "O7"
-      ],
       "values": [
         {
           "name": "always",
@@ -27492,14 +25069,6 @@ var cssData = {
     },
     {
       "name": "page-break-inside",
-      "browsers": [
-        "E12",
-        "FF19",
-        "S1.3",
-        "C1",
-        "IE8",
-        "O7"
-      ],
       "values": [
         {
           "name": "auto",
@@ -27526,9 +25095,9 @@ var cssData = {
     {
       "name": "paint-order",
       "browsers": [
-        "E79",
+        "E17",
         "FF60",
-        "S11",
+        "S8",
         "C35",
         "O22"
       ],
@@ -27562,14 +25131,6 @@ var cssData = {
     },
     {
       "name": "perspective",
-      "browsers": [
-        "E12",
-        "FF16",
-        "S9",
-        "C36",
-        "IE10",
-        "O23"
-      ],
       "values": [
         {
           "name": "none",
@@ -27592,14 +25153,6 @@ var cssData = {
     },
     {
       "name": "perspective-origin",
-      "browsers": [
-        "E12",
-        "FF16",
-        "S9",
-        "C36",
-        "IE10",
-        "O23"
-      ],
       "syntax": "<position>",
       "relevance": 51,
       "references": [
@@ -27617,14 +25170,6 @@ var cssData = {
     },
     {
       "name": "pointer-events",
-      "browsers": [
-        "E12",
-        "FF1.5",
-        "S4",
-        "C1",
-        "IE11",
-        "O9"
-      ],
       "values": [
         {
           "name": "all",
@@ -27648,23 +25193,23 @@ var cssData = {
         },
         {
           "name": "visible",
-          "description": "The given element can be the target element for pointer events when the 'visibility' property is set to visible and the pointer is over either the interior or the perimeter of the element."
+          "description": "The given element can be the target element for pointer events when the \u2018visibility\u2019 property is set to visible and the pointer is over either the interior or the perimeter of the element."
         },
         {
           "name": "visibleFill",
-          "description": "The given element can be the target element for pointer events when the 'visibility' property is set to visible and when the pointer is over the interior of the element."
+          "description": "The given element can be the target element for pointer events when the \u2018visibility\u2019 property is set to visible and when the pointer is over the interior of the element."
         },
         {
           "name": "visiblePainted",
-          "description": "The given element can be the target element for pointer events when the 'visibility' property is set to visible and when the pointer is over a 'painted' area."
+          "description": "The given element can be the target element for pointer events when the \u2018visibility\u2019 property is set to visible and when the pointer is over a \u2018painted\u2019 area."
         },
         {
           "name": "visibleStroke",
-          "description": "The given element can be the target element for pointer events when the 'visibility' property is set to visible and when the pointer is over the perimeter of the element."
+          "description": "The given element can be the target element for pointer events when the \u2018visibility\u2019 property is set to visible and when the pointer is over the perimeter of the element."
         }
       ],
       "syntax": "auto | none | visiblePainted | visibleFill | visibleStroke | visible | painted | fill | stroke | all | inherit",
-      "relevance": 82,
+      "relevance": 83,
       "references": [
         {
           "name": "MDN Reference",
@@ -27678,14 +25223,6 @@ var cssData = {
     },
     {
       "name": "position",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE4",
-        "O4"
-      ],
       "values": [
         {
           "name": "absolute",
@@ -27697,14 +25234,6 @@ var cssData = {
         },
         {
           "name": "-ms-page",
-          "browsers": [
-            "E12",
-            "FF1",
-            "S1",
-            "C1",
-            "IE4",
-            "O4"
-          ],
           "description": "The box's position is calculated according to the 'absolute' model."
         },
         {
@@ -27717,31 +25246,15 @@ var cssData = {
         },
         {
           "name": "sticky",
-          "browsers": [
-            "E12",
-            "FF1",
-            "S1",
-            "C1",
-            "IE4",
-            "O4"
-          ],
           "description": "The box's position is calculated according to the normal flow. Then the box is offset relative to its flow root and containing block and in all cases, including table elements, does not affect the position of any following boxes."
         },
         {
           "name": "-webkit-sticky",
-          "browsers": [
-            "E12",
-            "FF1",
-            "S1",
-            "C1",
-            "IE4",
-            "O4"
-          ],
           "description": "The box's position is calculated according to the normal flow. Then the box is offset relative to its flow root and containing block and in all cases, including table elements, does not affect the position of any following boxes."
         }
       ],
       "syntax": "static | relative | absolute | sticky | fixed",
-      "relevance": 95,
+      "relevance": 96,
       "references": [
         {
           "name": "MDN Reference",
@@ -27758,7 +25271,6 @@ var cssData = {
       "browsers": [
         "FF33"
       ],
-      "atRule": "@counter-style",
       "syntax": "<symbol>",
       "relevance": 50,
       "description": "@counter-style descriptor. Specifies a <symbol> that is prepended to the marker representation.",
@@ -27770,14 +25282,6 @@ var cssData = {
     },
     {
       "name": "quotes",
-      "browsers": [
-        "E12",
-        "FF1.5",
-        "S9",
-        "C11",
-        "IE8",
-        "O4"
-      ],
       "values": [
         {
           "name": "none",
@@ -27785,7 +25289,7 @@ var cssData = {
         }
       ],
       "syntax": "none | auto | [ <string> <string> ]+",
-      "relevance": 53,
+      "relevance": 54,
       "references": [
         {
           "name": "MDN Reference",
@@ -27812,7 +25316,6 @@ var cssData = {
           "description": "If used as the first value in a range, it represents negative infinity; if used as the second value, it represents positive infinity."
         }
       ],
-      "atRule": "@counter-style",
       "syntax": "[ [ <integer> | infinite ]{2} ]# | auto",
       "relevance": 50,
       "description": "@counter-style descriptor. Defines the ranges over which the counter style is defined.",
@@ -27849,7 +25352,7 @@ var cssData = {
         }
       ],
       "syntax": "none | both | horizontal | vertical | block | inline",
-      "relevance": 66,
+      "relevance": 60,
       "references": [
         {
           "name": "MDN Reference",
@@ -27863,14 +25366,6 @@ var cssData = {
     },
     {
       "name": "right",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE5.5",
-        "O5"
-      ],
       "values": [
         {
           "name": "auto",
@@ -27878,7 +25373,7 @@ var cssData = {
         }
       ],
       "syntax": "<length> | <percentage> | auto",
-      "relevance": 91,
+      "relevance": 92,
       "references": [
         {
           "name": "MDN Reference",
@@ -27894,15 +25389,13 @@ var cssData = {
     {
       "name": "ruby-align",
       "browsers": [
-        "FF38",
-        "Spreview"
+        "FF38"
       ],
       "values": [
         {
           "name": "auto",
           "browsers": [
-            "FF38",
-            "Spreview"
+            "FF38"
           ],
           "description": "The user agent determines how the ruby contents are aligned. This is the initial value."
         },
@@ -27913,16 +25406,14 @@ var cssData = {
         {
           "name": "distribute-letter",
           "browsers": [
-            "FF38",
-            "Spreview"
+            "FF38"
           ],
           "description": "If the width of the ruby text is smaller than that of the base, then the ruby text contents are evenly distributed across the width of the base, with the first and last ruby text glyphs lining up with the corresponding first and last base glyphs. If the width of the ruby text is at least the width of the base, then the letters of the base are evenly distributed across the width of the ruby text."
         },
         {
           "name": "distribute-space",
           "browsers": [
-            "FF38",
-            "Spreview"
+            "FF38"
           ],
           "description": "If the width of the ruby text is smaller than that of the base, then the ruby text contents are evenly distributed across the width of the base, with a certain amount of white space preceding the first and following the last character in the ruby text. That amount of white space is normally equal to half the amount of inter-character space of the ruby text."
         },
@@ -27933,40 +25424,35 @@ var cssData = {
         {
           "name": "line-edge",
           "browsers": [
-            "FF38",
-            "Spreview"
+            "FF38"
           ],
           "description": "If the ruby text is not adjacent to a line edge, it is aligned as in 'auto'. If it is adjacent to a line edge, then it is still aligned as in auto, but the side of the ruby text that touches the end of the line is lined up with the corresponding edge of the base."
         },
         {
           "name": "right",
           "browsers": [
-            "FF38",
-            "Spreview"
+            "FF38"
           ],
           "description": "The ruby text content is aligned with the end edge of the base."
         },
         {
           "name": "start",
           "browsers": [
-            "FF38",
-            "Spreview"
+            "FF38"
           ],
           "description": "The ruby text content is aligned with the start edge of the base."
         },
         {
           "name": "space-between",
           "browsers": [
-            "FF38",
-            "Spreview"
+            "FF38"
           ],
           "description": "The ruby content expands as defined for normal text justification (as defined by 'text-justify'),"
         },
         {
           "name": "space-around",
           "browsers": [
-            "FF38",
-            "Spreview"
+            "FF38"
           ],
           "description": "As for 'space-between' except that there exists an extra justification opportunities whose space is distributed half before and half after the ruby content."
         }
@@ -28041,6 +25527,7 @@ var cssData = {
           "description": "The ruby text appears on the right of the base. Unlike 'before' and 'after', this value is not relative to the text flow direction."
         }
       ],
+      "status": "experimental",
       "syntax": "[ alternate || [ over | under ] ] | inter-character",
       "relevance": 50,
       "references": [
@@ -28210,7 +25697,7 @@ var cssData = {
       "browsers": [
         "E79",
         "FF36",
-        "S15.4",
+        "Spreview",
         "C61",
         "O48"
       ],
@@ -28225,7 +25712,7 @@ var cssData = {
         }
       ],
       "syntax": "auto | smooth",
-      "relevance": 55,
+      "relevance": 53,
       "references": [
         {
           "name": "MDN Reference",
@@ -28251,7 +25738,13 @@ var cssData = {
       "status": "obsolete",
       "syntax": "none | <position>#",
       "relevance": 0,
-      "description": "Defines the x and y coordinate within the element which will align with the nearest ancestor scroll container's snap-destination for the respective axis.",
+      "references": [
+        {
+          "name": "MDN Reference",
+          "url": "https://developer.mozilla.org/docs/Web/CSS/scroll-snap-coordinate"
+        }
+      ],
+      "description": "Defines the x and y coordinate within the element which will align with the nearest ancestor scroll container\u2019s snap-destination for the respective axis.",
       "restrictions": [
         "position",
         "length",
@@ -28267,7 +25760,13 @@ var cssData = {
       "status": "obsolete",
       "syntax": "<position>",
       "relevance": 0,
-      "description": "Define the x and y coordinate within the scroll container's visual viewport which element snap points will align with.",
+      "references": [
+        {
+          "name": "MDN Reference",
+          "url": "https://developer.mozilla.org/docs/Web/CSS/scroll-snap-destination"
+        }
+      ],
+      "description": "Define the x and y coordinate within the scroll container\u2019s visual viewport which element snap points will align with.",
       "restrictions": [
         "position",
         "length",
@@ -28277,7 +25776,8 @@ var cssData = {
     {
       "name": "scroll-snap-points-x",
       "browsers": [
-        "FF39"
+        "FF39",
+        "S9"
       ],
       "values": [
         {
@@ -28286,12 +25786,18 @@ var cssData = {
         },
         {
           "name": "repeat()",
-          "description": "Defines an interval at which snap points are defined, starting from the container's relevant start edge."
+          "description": "Defines an interval at which snap points are defined, starting from the container\u2019s relevant start edge."
         }
       ],
       "status": "obsolete",
       "syntax": "none | repeat( <length-percentage> )",
       "relevance": 0,
+      "references": [
+        {
+          "name": "MDN Reference",
+          "url": "https://developer.mozilla.org/docs/Web/CSS/scroll-snap-points-x"
+        }
+      ],
       "description": "Defines the positioning of snap points along the x axis of the scroll container it is applied to.",
       "restrictions": [
         "enum"
@@ -28300,7 +25806,8 @@ var cssData = {
     {
       "name": "scroll-snap-points-y",
       "browsers": [
-        "FF39"
+        "FF39",
+        "S9"
       ],
       "values": [
         {
@@ -28309,12 +25816,18 @@ var cssData = {
         },
         {
           "name": "repeat()",
-          "description": "Defines an interval at which snap points are defined, starting from the container's relevant start edge."
+          "description": "Defines an interval at which snap points are defined, starting from the container\u2019s relevant start edge."
         }
       ],
       "status": "obsolete",
       "syntax": "none | repeat( <length-percentage> )",
       "relevance": 0,
+      "references": [
+        {
+          "name": "MDN Reference",
+          "url": "https://developer.mozilla.org/docs/Web/CSS/scroll-snap-points-y"
+        }
+      ],
       "description": "Defines the positioning of snap points along the y axis of the scroll container it is applied to.",
       "restrictions": [
         "enum"
@@ -28322,14 +25835,6 @@ var cssData = {
     },
     {
       "name": "scroll-snap-type",
-      "browsers": [
-        "E79",
-        "FF99",
-        "S11",
-        "C69",
-        "IE10",
-        "O56"
-      ],
       "values": [
         {
           "name": "none",
@@ -28345,7 +25850,7 @@ var cssData = {
         }
       ],
       "syntax": "none | [ x | y | block | inline | both ] [ mandatory | proximity ]?",
-      "relevance": 53,
+      "relevance": 52,
       "references": [
         {
           "name": "MDN Reference",
@@ -28440,13 +25945,6 @@ var cssData = {
     },
     {
       "name": "shape-rendering",
-      "browsers": [
-        "E80",
-        "FF72",
-        "S13.1",
-        "C80",
-        "O67"
-      ],
       "values": [
         {
           "name": "auto",
@@ -28477,7 +25975,6 @@ var cssData = {
         "C",
         "O8"
       ],
-      "atRule": "@page",
       "syntax": "<length>{1,2} | auto | [ <page-size> || [ portrait | landscape ] ]",
       "relevance": 53,
       "description": "The size CSS at-rule descriptor, used with the @page at-rule, defines the size and orientation of the box which is used to represent a page. Most of the time, this size corresponds to the target size of the printed page if applicable.",
@@ -28501,9 +25998,8 @@ var cssData = {
           "description": "Format-specific string that identifies a locally available copy of a given font."
         }
       ],
-      "atRule": "@font-face",
       "syntax": "[ <url> [ format( <string># ) ]? | local( <family-name> ) ]#",
-      "relevance": 86,
+      "relevance": 87,
       "description": "@font-face descriptor. Specifies the resource containing font data. It is required, whether the font is downloadable or locally installed.",
       "restrictions": [
         "enum",
@@ -28513,14 +26009,7 @@ var cssData = {
     },
     {
       "name": "stop-color",
-      "browsers": [
-        "E80",
-        "FF72",
-        "S13.1",
-        "C80",
-        "O67"
-      ],
-      "relevance": 50,
+      "relevance": 51,
       "description": "Indicates what color to use at that gradient stop.",
       "restrictions": [
         "color"
@@ -28528,13 +26017,6 @@ var cssData = {
     },
     {
       "name": "stop-opacity",
-      "browsers": [
-        "E80",
-        "FF72",
-        "S13.1",
-        "C80",
-        "O67"
-      ],
       "relevance": 50,
       "description": "Defines the opacity of a given gradient stop.",
       "restrictions": [
@@ -28543,24 +26025,17 @@ var cssData = {
     },
     {
       "name": "stroke",
-      "browsers": [
-        "E80",
-        "FF72",
-        "S13.1",
-        "C80",
-        "O67"
-      ],
       "values": [
         {
           "name": "url()",
-          "description": "A URL reference to a paint server element, which is an element that defines a paint server: 'hatch', 'linearGradient', 'mesh', 'pattern', 'radialGradient' and 'solidcolor'."
+          "description": "A URL reference to a paint server element, which is an element that defines a paint server: \u2018hatch\u2019, \u2018linearGradient\u2019, \u2018mesh\u2019, \u2018pattern\u2019, \u2018radialGradient\u2019 and \u2018solidcolor\u2019."
         },
         {
           "name": "none",
           "description": "No paint is applied in this layer."
         }
       ],
-      "relevance": 67,
+      "relevance": 64,
       "description": "Paints along the outline of the given graphical element.",
       "restrictions": [
         "color",
@@ -28570,20 +26045,13 @@ var cssData = {
     },
     {
       "name": "stroke-dasharray",
-      "browsers": [
-        "E80",
-        "FF72",
-        "S13.1",
-        "C80",
-        "O67"
-      ],
       "values": [
         {
           "name": "none",
           "description": "Indicates that no dashing is used."
         }
       ],
-      "relevance": 61,
+      "relevance": 58,
       "description": "Controls the pattern of dashes and gaps used to stroke paths.",
       "restrictions": [
         "length",
@@ -28594,14 +26062,7 @@ var cssData = {
     },
     {
       "name": "stroke-dashoffset",
-      "browsers": [
-        "E80",
-        "FF72",
-        "S13.1",
-        "C80",
-        "O67"
-      ],
-      "relevance": 62,
+      "relevance": 58,
       "description": "Specifies the distance into the dash pattern to start the dash.",
       "restrictions": [
         "percentage",
@@ -28610,13 +26071,6 @@ var cssData = {
     },
     {
       "name": "stroke-linecap",
-      "browsers": [
-        "E80",
-        "FF72",
-        "S13.1",
-        "C80",
-        "O67"
-      ],
       "values": [
         {
           "name": "butt",
@@ -28639,13 +26093,6 @@ var cssData = {
     },
     {
       "name": "stroke-linejoin",
-      "browsers": [
-        "E80",
-        "FF72",
-        "S13.1",
-        "C80",
-        "O67"
-      ],
       "values": [
         {
           "name": "bevel",
@@ -28660,7 +26107,7 @@ var cssData = {
           "description": "Indicates that a round corner is to be used to join path segments."
         }
       ],
-      "relevance": 51,
+      "relevance": 50,
       "description": "Specifies the shape to be used at the corners of paths or basic shapes when they are stroked.",
       "restrictions": [
         "enum"
@@ -28668,14 +26115,7 @@ var cssData = {
     },
     {
       "name": "stroke-miterlimit",
-      "browsers": [
-        "E80",
-        "FF72",
-        "S13.1",
-        "C80",
-        "O67"
-      ],
-      "relevance": 51,
+      "relevance": 50,
       "description": "When two line segments meet at a sharp angle and miter joins have been specified for 'stroke-linejoin', it is possible for the miter to extend far beyond the thickness of the line stroking the path.",
       "restrictions": [
         "number"
@@ -28683,13 +26123,6 @@ var cssData = {
     },
     {
       "name": "stroke-opacity",
-      "browsers": [
-        "E80",
-        "FF72",
-        "S13.1",
-        "C80",
-        "O67"
-      ],
       "relevance": 52,
       "description": "Specifies the opacity of the painting operation used to stroke the current object.",
       "restrictions": [
@@ -28698,14 +26131,7 @@ var cssData = {
     },
     {
       "name": "stroke-width",
-      "browsers": [
-        "E80",
-        "FF72",
-        "S13.1",
-        "C80",
-        "O67"
-      ],
-      "relevance": 64,
+      "relevance": 61,
       "description": "Specifies the width of the stroke on the current object.",
       "restrictions": [
         "percentage",
@@ -28717,7 +26143,6 @@ var cssData = {
       "browsers": [
         "FF33"
       ],
-      "atRule": "@counter-style",
       "syntax": "<symbol>",
       "relevance": 50,
       "description": "@counter-style descriptor. Specifies a <symbol> that is appended to the marker representation.",
@@ -28735,7 +26160,7 @@ var cssData = {
       "values": [
         {
           "name": "additive",
-          "description": 'Represents "sign-value" numbering systems, which, rather than using reusing digits in different positions to change their value, define additional digits with much larger values, so that the value of the number can be obtained by adding all the digits together.'
+          "description": "Represents \u201Csign-value\u201D numbering systems, which, rather than using reusing digits in different positions to change their value, define additional digits with much larger values, so that the value of the number can be obtained by adding all the digits together."
         },
         {
           "name": "alphabetic",
@@ -28762,10 +26187,9 @@ var cssData = {
           "description": "Cycles repeatedly through its provided symbols, doubling, tripling, etc. the symbols on each successive pass through the list."
         }
       ],
-      "atRule": "@counter-style",
       "syntax": "cyclic | numeric | alphabetic | symbolic | additive | [ fixed <integer>? ] | [ extends <counter-style-name> ]",
       "relevance": 50,
-      "description": "@counter-style descriptor. Specifies which algorithm will be used to construct the counter's representation based on the counter value.",
+      "description": "@counter-style descriptor. Specifies which algorithm will be used to construct the counter\u2019s representation based on the counter value.",
       "restrictions": [
         "enum",
         "integer"
@@ -28776,7 +26200,6 @@ var cssData = {
       "browsers": [
         "FF33"
       ],
-      "atRule": "@counter-style",
       "syntax": "<symbol>+",
       "relevance": 50,
       "description": "@counter-style descriptor. Specifies the symbols used by the marker-construction algorithm specified by the system descriptor.",
@@ -28788,14 +26211,6 @@ var cssData = {
     },
     {
       "name": "table-layout",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C14",
-        "IE5",
-        "O7"
-      ],
       "values": [
         {
           "name": "auto",
@@ -28807,7 +26222,7 @@ var cssData = {
         }
       ],
       "syntax": "auto | fixed",
-      "relevance": 58,
+      "relevance": 60,
       "references": [
         {
           "name": "MDN Reference",
@@ -28829,7 +26244,7 @@ var cssData = {
         "O15"
       ],
       "syntax": "<integer> | <length>",
-      "relevance": 53,
+      "relevance": 51,
       "references": [
         {
           "name": "MDN Reference",
@@ -28844,14 +26259,6 @@ var cssData = {
     },
     {
       "name": "text-align",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE3",
-        "O3.5"
-      ],
       "values": [
         {
           "name": "center",
@@ -28859,14 +26266,6 @@ var cssData = {
         },
         {
           "name": "end",
-          "browsers": [
-            "E12",
-            "FF1",
-            "S1",
-            "C1",
-            "IE3",
-            "O3.5"
-          ],
           "description": "The inline contents are aligned to the end edge of the line box."
         },
         {
@@ -28883,19 +26282,11 @@ var cssData = {
         },
         {
           "name": "start",
-          "browsers": [
-            "E12",
-            "FF1",
-            "S1",
-            "C1",
-            "IE3",
-            "O3.5"
-          ],
           "description": "The inline contents are aligned to the start edge of the line box."
         }
       ],
       "syntax": "start | end | left | right | center | justify | match-parent",
-      "relevance": 93,
+      "relevance": 94,
       "references": [
         {
           "name": "MDN Reference",
@@ -28912,7 +26303,6 @@ var cssData = {
       "browsers": [
         "E12",
         "FF49",
-        "S16",
         "C47",
         "IE5.5",
         "O34"
@@ -28954,13 +26344,6 @@ var cssData = {
     },
     {
       "name": "text-anchor",
-      "browsers": [
-        "E80",
-        "FF72",
-        "S13.1",
-        "C80",
-        "O67"
-      ],
       "values": [
         {
           "name": "end",
@@ -28983,14 +26366,6 @@ var cssData = {
     },
     {
       "name": "text-decoration",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE3",
-        "O3.5"
-      ],
       "values": [
         {
           "name": "dashed",
@@ -29030,7 +26405,7 @@ var cssData = {
         }
       ],
       "syntax": "<'text-decoration-line'> || <'text-decoration-style'> || <'text-decoration-color'> || <'text-decoration-thickness'>",
-      "relevance": 91,
+      "relevance": 92,
       "references": [
         {
           "name": "MDN Reference",
@@ -29053,7 +26428,7 @@ var cssData = {
         "O44"
       ],
       "syntax": "<color>",
-      "relevance": 55,
+      "relevance": 52,
       "references": [
         {
           "name": "MDN Reference",
@@ -29093,7 +26468,7 @@ var cssData = {
         }
       ],
       "syntax": "none | [ underline || overline || line-through || blink ] | spelling-error | grammar-error",
-      "relevance": 57,
+      "relevance": 51,
       "references": [
         {
           "name": "MDN Reference",
@@ -29155,17 +26530,9 @@ var cssData = {
     },
     {
       "name": "text-indent",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE3",
-        "O3.5"
-      ],
       "values": [],
       "syntax": "<length-percentage> && hanging? && each-line?",
-      "relevance": 67,
+      "relevance": 68,
       "references": [
         {
           "name": "MDN Reference",
@@ -29181,7 +26548,7 @@ var cssData = {
     {
       "name": "text-justify",
       "browsers": [
-        "E79",
+        "E12",
         "FF55",
         "C32",
         "IE11",
@@ -29284,14 +26651,6 @@ var cssData = {
     },
     {
       "name": "text-overflow",
-      "browsers": [
-        "E12",
-        "FF7",
-        "S1.3",
-        "C1",
-        "IE6",
-        "O11"
-      ],
       "values": [
         {
           "name": "clip",
@@ -29350,21 +26709,13 @@ var cssData = {
           "url": "https://developer.mozilla.org/docs/Web/CSS/text-rendering"
         }
       ],
-      "description": "The creator of SVG content might want to provide a hint to the implementation about what tradeoffs to make as it renders text. The 'text-rendering' property provides these hints.",
+      "description": "The creator of SVG content might want to provide a hint to the implementation about what tradeoffs to make as it renders text. The \u2018text-rendering\u2019 property provides these hints.",
       "restrictions": [
         "enum"
       ]
     },
     {
       "name": "text-shadow",
-      "browsers": [
-        "E12",
-        "FF3.5",
-        "S1.1",
-        "C2",
-        "IE10",
-        "O9.5"
-      ],
       "values": [
         {
           "name": "none",
@@ -29372,7 +26723,7 @@ var cssData = {
         }
       ],
       "syntax": "none | <shadow-t>#",
-      "relevance": 73,
+      "relevance": 75,
       "references": [
         {
           "name": "MDN Reference",
@@ -29387,14 +26738,6 @@ var cssData = {
     },
     {
       "name": "text-transform",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE4",
-        "O7"
-      ],
       "values": [
         {
           "name": "capitalize",
@@ -29421,32 +26764,24 @@ var cssData = {
           "url": "https://developer.mozilla.org/docs/Web/CSS/text-transform"
         }
       ],
-      "description": "Controls capitalization effects of an element's text.",
+      "description": "Controls capitalization effects of an element\u2019s text.",
       "restrictions": [
         "enum"
       ]
     },
     {
       "name": "text-underline-position",
-      "browsers": [
-        "E12",
-        "FF74",
-        "S12.1",
-        "C33",
-        "IE6",
-        "O20"
-      ],
       "values": [
         {
           "name": "above"
         },
         {
           "name": "auto",
-          "description": "The user agent may use any algorithm to determine the underline's position. In horizontal line layout, the underline should be aligned as for alphabetic. In vertical line layout, if the language is set to Japanese or Korean, the underline should be aligned as for over."
+          "description": "The user agent may use any algorithm to determine the underline\u2019s position. In horizontal line layout, the underline should be aligned as for alphabetic. In vertical line layout, if the language is set to Japanese or Korean, the underline should be aligned as for over."
         },
         {
           "name": "below",
-          "description": "The underline is aligned with the under edge of the element's content box."
+          "description": "The underline is aligned with the under edge of the element\u2019s content box."
         }
       ],
       "syntax": "auto | from-font | [ under || [ left | right ] ]",
@@ -29464,14 +26799,6 @@ var cssData = {
     },
     {
       "name": "top",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE5",
-        "O6"
-      ],
       "values": [
         {
           "name": "auto",
@@ -29494,51 +26821,19 @@ var cssData = {
     },
     {
       "name": "touch-action",
-      "browsers": [
-        "E12",
-        "FF52",
-        "S13",
-        "C36",
-        "IE11",
-        "O23"
-      ],
       "values": [
         {
           "name": "auto",
           "description": "The user agent may determine any permitted touch behaviors for touches that begin on the element."
         },
         {
-          "name": "cross-slide-x",
-          "browsers": [
-            "E12",
-            "FF52",
-            "S13",
-            "C36",
-            "IE11",
-            "O23"
-          ]
+          "name": "cross-slide-x"
         },
         {
-          "name": "cross-slide-y",
-          "browsers": [
-            "E12",
-            "FF52",
-            "S13",
-            "C36",
-            "IE11",
-            "O23"
-          ]
+          "name": "cross-slide-y"
         },
         {
-          "name": "double-tap-zoom",
-          "browsers": [
-            "E12",
-            "FF52",
-            "S13",
-            "C36",
-            "IE11",
-            "O23"
-          ]
+          "name": "double-tap-zoom"
         },
         {
           "name": "manipulation",
@@ -29550,26 +26845,18 @@ var cssData = {
         },
         {
           "name": "pan-x",
-          "description": "The user agent may consider touches that begin on the element only for the purposes of horizontally scrolling the element's nearest ancestor with horizontally scrollable content."
+          "description": "The user agent may consider touches that begin on the element only for the purposes of horizontally scrolling the element\u2019s nearest ancestor with horizontally scrollable content."
         },
         {
           "name": "pan-y",
-          "description": "The user agent may consider touches that begin on the element only for the purposes of vertically scrolling the element's nearest ancestor with vertically scrollable content."
+          "description": "The user agent may consider touches that begin on the element only for the purposes of vertically scrolling the element\u2019s nearest ancestor with vertically scrollable content."
         },
         {
-          "name": "pinch-zoom",
-          "browsers": [
-            "E12",
-            "FF52",
-            "S13",
-            "C36",
-            "IE11",
-            "O23"
-          ]
+          "name": "pinch-zoom"
         }
       ],
       "syntax": "auto | none | [ [ pan-x | pan-left | pan-right ] || [ pan-y | pan-up | pan-down ] || pinch-zoom ] | manipulation",
-      "relevance": 69,
+      "relevance": 68,
       "references": [
         {
           "name": "MDN Reference",
@@ -29583,14 +26870,6 @@ var cssData = {
     },
     {
       "name": "transform",
-      "browsers": [
-        "E12",
-        "FF16",
-        "S9",
-        "C36",
-        "IE10",
-        "O23"
-      ],
       "values": [
         {
           "name": "matrix()",
@@ -29681,7 +26960,7 @@ var cssData = {
         }
       ],
       "syntax": "none | <transform-list>",
-      "relevance": 90,
+      "relevance": 91,
       "references": [
         {
           "name": "MDN Reference",
@@ -29695,16 +26974,8 @@ var cssData = {
     },
     {
       "name": "transform-origin",
-      "browsers": [
-        "E12",
-        "FF16",
-        "S9",
-        "C36",
-        "IE10",
-        "O23"
-      ],
       "syntax": "[ <length-percentage> | left | center | right | top | bottom ] | [ [ <length-percentage> | left | center | right ] && [ <length-percentage> | top | center | bottom ] ] <length>?",
-      "relevance": 76,
+      "relevance": 77,
       "references": [
         {
           "name": "MDN Reference",
@@ -29745,7 +27016,7 @@ var cssData = {
         }
       ],
       "syntax": "flat | preserve-3d",
-      "relevance": 56,
+      "relevance": 55,
       "references": [
         {
           "name": "MDN Reference",
@@ -29759,14 +27030,6 @@ var cssData = {
     },
     {
       "name": "transition",
-      "browsers": [
-        "E12",
-        "FF16",
-        "S9",
-        "C26",
-        "IE10",
-        "O12.1"
-      ],
       "values": [
         {
           "name": "all",
@@ -29795,16 +27058,8 @@ var cssData = {
     },
     {
       "name": "transition-delay",
-      "browsers": [
-        "E12",
-        "FF16",
-        "S9",
-        "C26",
-        "IE10",
-        "O12.1"
-      ],
       "syntax": "<time>#",
-      "relevance": 64,
+      "relevance": 63,
       "references": [
         {
           "name": "MDN Reference",
@@ -29818,16 +27073,8 @@ var cssData = {
     },
     {
       "name": "transition-duration",
-      "browsers": [
-        "E12",
-        "FF16",
-        "S9",
-        "C26",
-        "IE10",
-        "O12.1"
-      ],
       "syntax": "<time>#",
-      "relevance": 68,
+      "relevance": 63,
       "references": [
         {
           "name": "MDN Reference",
@@ -29841,14 +27088,6 @@ var cssData = {
     },
     {
       "name": "transition-property",
-      "browsers": [
-        "E12",
-        "FF16",
-        "S9",
-        "C26",
-        "IE10",
-        "O12.1"
-      ],
       "values": [
         {
           "name": "all",
@@ -29860,7 +27099,7 @@ var cssData = {
         }
       ],
       "syntax": "none | <single-transition-property>#",
-      "relevance": 68,
+      "relevance": 64,
       "references": [
         {
           "name": "MDN Reference",
@@ -29874,16 +27113,8 @@ var cssData = {
     },
     {
       "name": "transition-timing-function",
-      "browsers": [
-        "E12",
-        "FF16",
-        "S9",
-        "C26",
-        "IE10",
-        "O12.1"
-      ],
       "syntax": "<easing-function>#",
-      "relevance": 65,
+      "relevance": 64,
       "references": [
         {
           "name": "MDN Reference",
@@ -29897,14 +27128,6 @@ var cssData = {
     },
     {
       "name": "unicode-bidi",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1.3",
-        "C2",
-        "IE5.5",
-        "O9.2"
-      ],
       "values": [
         {
           "name": "bidi-override",
@@ -29916,26 +27139,10 @@ var cssData = {
         },
         {
           "name": "isolate",
-          "browsers": [
-            "E12",
-            "FF1",
-            "S1.3",
-            "C2",
-            "IE5.5",
-            "O9.2"
-          ],
           "description": "The contents of the element are considered to be inside a separate, independent paragraph."
         },
         {
           "name": "isolate-override",
-          "browsers": [
-            "E12",
-            "FF1",
-            "S1.3",
-            "C2",
-            "IE5.5",
-            "O9.2"
-          ],
           "description": "This combines the isolation behavior of 'isolate' with the directional override behavior of 'bidi-override'"
         },
         {
@@ -29944,19 +27151,11 @@ var cssData = {
         },
         {
           "name": "plaintext",
-          "browsers": [
-            "E12",
-            "FF1",
-            "S1.3",
-            "C2",
-            "IE5.5",
-            "O9.2"
-          ],
           "description": "For the purposes of the Unicode bidirectional algorithm, the base directionality of each bidi paragraph for which the element forms the containing block is determined not by the element's computed 'direction'."
         }
       ],
       "syntax": "normal | embed | isolate | bidi-override | isolate-override | plaintext",
-      "relevance": 56,
+      "relevance": 57,
       "references": [
         {
           "name": "MDN Reference",
@@ -29976,7 +27175,7 @@ var cssData = {
           "description": "Ampersand."
         },
         {
-          "name": "U+20-24F, U+2B0-2FF, U+370-4FF, U+1E00-1EFF, U+2000-20CF, U+2100-23FF, U+2500-26FF, U+E000-F8FF, U+FB00-FB4F",
+          "name": "U+20-24F, U+2B0-2FF, U+370-4FF, U+1E00-1EFF, U+2000-20CF, U+2100-23FF, U+2500-26FF, U+E000-F8FF, U+FB00\u2013FB4F",
           "description": "WGL4 character set (Pan-European)."
         },
         {
@@ -30032,167 +27231,167 @@ var cssData = {
           "description": "Cyrillic Supplement. Extra letters for Komi, Khanty, Chukchi, Mordvin, Kurdish, Aleut, Chuvash, Abkhaz, Azerbaijani, and Orok."
         },
         {
-          "name": "U+00-52F, U+1E00-1FFF, U+2200-22FF",
+          "name": "U+00-52F, U+1E00-1FFF, U+2200\u201322FF",
           "description": "Latin, Greek, Cyrillic, some punctuation and symbols."
         },
         {
-          "name": "U+530-58F",
+          "name": "U+530\u201358F",
           "description": "Armenian."
         },
         {
-          "name": "U+590-5FF",
+          "name": "U+590\u20135FF",
           "description": "Hebrew."
         },
         {
-          "name": "U+600-6FF",
+          "name": "U+600\u20136FF",
           "description": "Arabic."
         },
         {
-          "name": "U+750-77F",
+          "name": "U+750\u201377F",
           "description": "Arabic Supplement. Additional letters for African languages, Khowar, Torwali, Burushaski, and early Persian."
         },
         {
-          "name": "U+8A0-8FF",
+          "name": "U+8A0\u20138FF",
           "description": "Arabic Extended-A. Additional letters for African languages, European and Central Asian languages, Rohingya, Tamazight, Arwi, and Koranic annotation signs."
         },
         {
-          "name": "U+700-74F",
+          "name": "U+700\u201374F",
           "description": "Syriac."
         },
         {
-          "name": "U+900-97F",
+          "name": "U+900\u201397F",
           "description": "Devanagari."
         },
         {
-          "name": "U+980-9FF",
+          "name": "U+980\u20139FF",
           "description": "Bengali."
         },
         {
-          "name": "U+A00-A7F",
+          "name": "U+A00\u2013A7F",
           "description": "Gurmukhi."
         },
         {
-          "name": "U+A80-AFF",
+          "name": "U+A80\u2013AFF",
           "description": "Gujarati."
         },
         {
-          "name": "U+B00-B7F",
+          "name": "U+B00\u2013B7F",
           "description": "Oriya."
         },
         {
-          "name": "U+B80-BFF",
+          "name": "U+B80\u2013BFF",
           "description": "Tamil."
         },
         {
-          "name": "U+C00-C7F",
+          "name": "U+C00\u2013C7F",
           "description": "Telugu."
         },
         {
-          "name": "U+C80-CFF",
+          "name": "U+C80\u2013CFF",
           "description": "Kannada."
         },
         {
-          "name": "U+D00-D7F",
+          "name": "U+D00\u2013D7F",
           "description": "Malayalam."
         },
         {
-          "name": "U+D80-DFF",
+          "name": "U+D80\u2013DFF",
           "description": "Sinhala."
         },
         {
-          "name": "U+118A0-118FF",
+          "name": "U+118A0\u2013118FF",
           "description": "Warang Citi."
         },
         {
-          "name": "U+E00-E7F",
+          "name": "U+E00\u2013E7F",
           "description": "Thai."
         },
         {
-          "name": "U+1A20-1AAF",
+          "name": "U+1A20\u20131AAF",
           "description": "Tai Tham."
         },
         {
-          "name": "U+AA80-AADF",
+          "name": "U+AA80\u2013AADF",
           "description": "Tai Viet."
         },
         {
-          "name": "U+E80-EFF",
+          "name": "U+E80\u2013EFF",
           "description": "Lao."
         },
         {
-          "name": "U+F00-FFF",
+          "name": "U+F00\u2013FFF",
           "description": "Tibetan."
         },
         {
-          "name": "U+1000-109F",
+          "name": "U+1000\u2013109F",
           "description": "Myanmar (Burmese)."
         },
         {
-          "name": "U+10A0-10FF",
+          "name": "U+10A0\u201310FF",
           "description": "Georgian."
         },
         {
-          "name": "U+1200-137F",
+          "name": "U+1200\u2013137F",
           "description": "Ethiopic."
         },
         {
-          "name": "U+1380-139F",
+          "name": "U+1380\u2013139F",
           "description": "Ethiopic Supplement. Extra Syllables for Sebatbeit, and Tonal marks"
         },
         {
-          "name": "U+2D80-2DDF",
+          "name": "U+2D80\u20132DDF",
           "description": "Ethiopic Extended. Extra Syllables for Me'en, Blin, and Sebatbeit."
         },
         {
-          "name": "U+AB00-AB2F",
+          "name": "U+AB00\u2013AB2F",
           "description": "Ethiopic Extended-A. Extra characters for Gamo-Gofa-Dawro, Basketo, and Gumuz."
         },
         {
-          "name": "U+1780-17FF",
+          "name": "U+1780\u201317FF",
           "description": "Khmer."
         },
         {
-          "name": "U+1800-18AF",
+          "name": "U+1800\u201318AF",
           "description": "Mongolian."
         },
         {
-          "name": "U+1B80-1BBF",
+          "name": "U+1B80\u20131BBF",
           "description": "Sundanese."
         },
         {
-          "name": "U+1CC0-1CCF",
+          "name": "U+1CC0\u20131CCF",
           "description": "Sundanese Supplement. Punctuation."
         },
         {
-          "name": "U+4E00-9FD5",
+          "name": "U+4E00\u20139FD5",
           "description": "CJK (Chinese, Japanese, Korean) Unified Ideographs. Most common ideographs for modern Chinese and Japanese."
         },
         {
-          "name": "U+3400-4DB5",
+          "name": "U+3400\u20134DB5",
           "description": "CJK Unified Ideographs Extension A. Rare ideographs."
         },
         {
-          "name": "U+2F00-2FDF",
+          "name": "U+2F00\u20132FDF",
           "description": "Kangxi Radicals."
         },
         {
-          "name": "U+2E80-2EFF",
+          "name": "U+2E80\u20132EFF",
           "description": "CJK Radicals Supplement. Alternative forms of Kangxi Radicals."
         },
         {
-          "name": "U+1100-11FF",
+          "name": "U+1100\u201311FF",
           "description": "Hangul Jamo."
         },
         {
-          "name": "U+AC00-D7AF",
+          "name": "U+AC00\u2013D7AF",
           "description": "Hangul Syllables."
         },
         {
-          "name": "U+3040-309F",
+          "name": "U+3040\u2013309F",
           "description": "Hiragana."
         },
         {
-          "name": "U+30A0-30FF",
+          "name": "U+30A0\u201330FF",
           "description": "Katakana."
         },
         {
@@ -30200,15 +27399,15 @@ var cssData = {
           "description": "Japanese Kanji, Hiragana and Katakana characters plus Yen/Yuan symbol."
         },
         {
-          "name": "U+A4D0-A4FF",
+          "name": "U+A4D0\u2013A4FF",
           "description": "Lisu."
         },
         {
-          "name": "U+A000-A48F",
+          "name": "U+A000\u2013A48F",
           "description": "Yi Syllables."
         },
         {
-          "name": "U+A490-A4CF",
+          "name": "U+A490\u2013A4CF",
           "description": "Yi Radicals."
         },
         {
@@ -30216,35 +27415,35 @@ var cssData = {
           "description": "General Punctuation."
         },
         {
-          "name": "U+3000-303F",
+          "name": "U+3000\u2013303F",
           "description": "CJK Symbols and Punctuation."
         },
         {
-          "name": "U+2070-209F",
+          "name": "U+2070\u2013209F",
           "description": "Superscripts and Subscripts."
         },
         {
-          "name": "U+20A0-20CF",
+          "name": "U+20A0\u201320CF",
           "description": "Currency Symbols."
         },
         {
-          "name": "U+2100-214F",
+          "name": "U+2100\u2013214F",
           "description": "Letterlike Symbols."
         },
         {
-          "name": "U+2150-218F",
+          "name": "U+2150\u2013218F",
           "description": "Number Forms."
         },
         {
-          "name": "U+2190-21FF",
+          "name": "U+2190\u201321FF",
           "description": "Arrows."
         },
         {
-          "name": "U+2200-22FF",
+          "name": "U+2200\u201322FF",
           "description": "Mathematical Operators."
         },
         {
-          "name": "U+2300-23FF",
+          "name": "U+2300\u201323FF",
           "description": "Miscellaneous Technical."
         },
         {
@@ -30252,37 +27451,36 @@ var cssData = {
           "description": "Private Use Area."
         },
         {
-          "name": "U+FB00-FB4F",
+          "name": "U+FB00\u2013FB4F",
           "description": "Alphabetic Presentation Forms. Ligatures for latin, Armenian, and Hebrew."
         },
         {
-          "name": "U+FB50-FDFF",
+          "name": "U+FB50\u2013FDFF",
           "description": "Arabic Presentation Forms-A. Contextual forms / ligatures for Persian, Urdu, Sindhi, Central Asian languages, etc, Arabic pedagogical symbols, word ligatures."
         },
         {
-          "name": "U+1F600-1F64F",
+          "name": "U+1F600\u20131F64F",
           "description": "Emoji: Emoticons."
         },
         {
-          "name": "U+2600-26FF",
+          "name": "U+2600\u201326FF",
           "description": "Emoji: Miscellaneous Symbols."
         },
         {
-          "name": "U+1F300-1F5FF",
+          "name": "U+1F300\u20131F5FF",
           "description": "Emoji: Miscellaneous Symbols and Pictographs."
         },
         {
-          "name": "U+1F900-1F9FF",
+          "name": "U+1F900\u20131F9FF",
           "description": "Emoji: Supplemental Symbols and Pictographs."
         },
         {
-          "name": "U+1F680-1F6FF",
+          "name": "U+1F680\u20131F6FF",
           "description": "Emoji: Transport and Map Symbols."
         }
       ],
-      "atRule": "@font-face",
       "syntax": "<unicode-range>#",
-      "relevance": 72,
+      "relevance": 73,
       "description": "@font-face descriptor. Defines the set of Unicode codepoints that may be supported by the font face for which it is declared.",
       "restrictions": [
         "unicode-range"
@@ -30290,14 +27488,6 @@ var cssData = {
     },
     {
       "name": "user-select",
-      "browsers": [
-        "E79",
-        "FF69",
-        "S3",
-        "C54",
-        "IE10",
-        "O41"
-      ],
       "values": [
         {
           "name": "all",
@@ -30320,7 +27510,7 @@ var cssData = {
         }
       ],
       "syntax": "auto | text | none | contain | all",
-      "relevance": 82,
+      "relevance": 78,
       "references": [
         {
           "name": "MDN Reference",
@@ -30334,14 +27524,6 @@ var cssData = {
     },
     {
       "name": "vertical-align",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE4",
-        "O4"
-      ],
       "values": [
         {
           "name": "auto",
@@ -30380,19 +27562,11 @@ var cssData = {
           "description": "Align the before edge of the extended inline box with the before-edge of the line box."
         },
         {
-          "name": "-webkit-baseline-middle",
-          "browsers": [
-            "E12",
-            "FF1",
-            "S1",
-            "C1",
-            "IE4",
-            "O4"
-          ]
+          "name": "-webkit-baseline-middle"
         }
       ],
       "syntax": "baseline | sub | super | text-top | text-bottom | middle | top | bottom | <percentage> | <length>",
-      "relevance": 90,
+      "relevance": 92,
       "references": [
         {
           "name": "MDN Reference",
@@ -30407,14 +27581,6 @@ var cssData = {
     },
     {
       "name": "visibility",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE4",
-        "O4"
-      ],
       "values": [
         {
           "name": "collapse",
@@ -30430,14 +27596,14 @@ var cssData = {
         }
       ],
       "syntax": "visible | hidden | collapse",
-      "relevance": 87,
+      "relevance": 88,
       "references": [
         {
           "name": "MDN Reference",
           "url": "https://developer.mozilla.org/docs/Web/CSS/visibility"
         }
       ],
-      "description": "Specifies whether the boxes generated by an element are rendered. Invisible boxes still affect layout (set the 'display' property to 'none' to suppress box generation altogether).",
+      "description": "Specifies whether the boxes generated by an element are rendered. Invisible boxes still affect layout (set the \u2018display\u2019 property to \u2018none\u2019 to suppress box generation altogether).",
       "restrictions": [
         "enum"
       ]
@@ -31329,10 +28495,8 @@ var cssData = {
     {
       "name": "-webkit-column-break-after",
       "browsers": [
-        "E80",
-        "S13.1",
-        "C80",
-        "O67"
+        "C",
+        "S3"
       ],
       "values": [
         {
@@ -31387,10 +28551,8 @@ var cssData = {
     {
       "name": "-webkit-column-break-before",
       "browsers": [
-        "E80",
-        "S13.1",
-        "C80",
-        "O67"
+        "C",
+        "S3"
       ],
       "values": [
         {
@@ -31445,10 +28607,8 @@ var cssData = {
     {
       "name": "-webkit-column-break-inside",
       "browsers": [
-        "E80",
-        "S13.1",
-        "C80",
-        "O67"
+        "C",
+        "S3"
       ],
       "values": [
         {
@@ -31682,7 +28842,7 @@ var cssData = {
         }
       ],
       "relevance": 50,
-      "description": "Processes an element's rendering before it is displayed in the document, by applying one or more filter effects.",
+      "description": "Processes an element\u2019s rendering before it is displayed in the document, by applying one or more filter effects.",
       "restrictions": [
         "enum",
         "url"
@@ -31980,7 +29140,7 @@ var cssData = {
       "values": [
         {
           "name": "auto",
-          "description": "Resolved by using the image's intrinsic ratio and the size of the other dimension, or failing that, using the image's intrinsic size, or failing that, treating it as 100%."
+          "description": "Resolved by using the image\u2019s intrinsic ratio and the size of the other dimension, or failing that, using the image\u2019s intrinsic size, or failing that, treating it as 100%."
         },
         {
           "name": "contain",
@@ -32004,7 +29164,8 @@ var cssData = {
     {
       "name": "-webkit-nbsp-mode",
       "browsers": [
-        "S13.1"
+        "C",
+        "S3"
       ],
       "values": [
         {
@@ -32136,8 +29297,9 @@ var cssData = {
         "C1",
         "O15"
       ],
+      "status": "nonstandard",
       "syntax": "<color>",
-      "relevance": 50,
+      "relevance": 0,
       "references": [
         {
           "name": "MDN Reference",
@@ -32180,8 +29342,9 @@ var cssData = {
         "C4",
         "O15"
       ],
+      "status": "nonstandard",
       "syntax": "<length> || <color>",
-      "relevance": 50,
+      "relevance": 0,
       "references": [
         {
           "name": "MDN Reference",
@@ -32204,8 +29367,9 @@ var cssData = {
         "C1",
         "O15"
       ],
+      "status": "nonstandard",
       "syntax": "<color>",
-      "relevance": 50,
+      "relevance": 0,
       "references": [
         {
           "name": "MDN Reference",
@@ -32225,8 +29389,9 @@ var cssData = {
         "C1",
         "O15"
       ],
+      "status": "nonstandard",
       "syntax": "<length>",
-      "relevance": 50,
+      "relevance": 0,
       "references": [
         {
           "name": "MDN Reference",
@@ -32382,10 +29547,8 @@ var cssData = {
     {
       "name": "-webkit-transform-origin-x",
       "browsers": [
-        "E80",
-        "S13.1",
-        "C80",
-        "O67"
+        "C",
+        "S3.1"
       ],
       "relevance": 50,
       "description": "The x coordinate of the origin for transforms applied to an element with respect to its border box.",
@@ -32397,10 +29560,8 @@ var cssData = {
     {
       "name": "-webkit-transform-origin-y",
       "browsers": [
-        "E80",
-        "S13.1",
-        "C80",
-        "O67"
+        "C",
+        "S3.1"
       ],
       "relevance": 50,
       "description": "The y coordinate of the origin for transforms applied to an element with respect to its border box.",
@@ -32412,10 +29573,8 @@ var cssData = {
     {
       "name": "-webkit-transform-origin-z",
       "browsers": [
-        "E80",
-        "S13.1",
-        "C80",
-        "O67"
+        "C",
+        "S4"
       ],
       "relevance": 50,
       "description": "The z coordinate of the origin for transforms applied to an element with respect to its border box.",
@@ -32533,10 +29692,7 @@ var cssData = {
     {
       "name": "-webkit-user-drag",
       "browsers": [
-        "E80",
-        "S13.1",
-        "C80",
-        "O67"
+        "S3"
       ],
       "values": [
         {
@@ -32557,10 +29713,8 @@ var cssData = {
     {
       "name": "-webkit-user-modify",
       "browsers": [
-        "E80",
-        "S13.1",
-        "C80",
-        "O67"
+        "C",
+        "S3"
       ],
       "values": [
         {
@@ -32573,8 +29727,9 @@ var cssData = {
           "name": "read-write-plaintext-only"
         }
       ],
+      "status": "nonstandard",
       "syntax": "read-only | read-write | read-write-plaintext-only",
-      "relevance": 50,
+      "relevance": 0,
       "description": "Determines whether a user can edit the content of an element.",
       "restrictions": [
         "enum"
@@ -32604,6 +29759,43 @@ var cssData = {
       ]
     },
     {
+      "name": "white-space",
+      "values": [
+        {
+          "name": "normal",
+          "description": "Sets 'white-space-collapsing' to 'collapse' and 'text-wrap' to 'normal'."
+        },
+        {
+          "name": "nowrap",
+          "description": "Sets 'white-space-collapsing' to 'collapse' and 'text-wrap' to 'none'."
+        },
+        {
+          "name": "pre",
+          "description": "Sets 'white-space-collapsing' to 'preserve' and 'text-wrap' to 'none'."
+        },
+        {
+          "name": "pre-line",
+          "description": "Sets 'white-space-collapsing' to 'preserve-breaks' and 'text-wrap' to 'normal'."
+        },
+        {
+          "name": "pre-wrap",
+          "description": "Sets 'white-space-collapsing' to 'preserve' and 'text-wrap' to 'normal'."
+        }
+      ],
+      "syntax": "normal | pre | nowrap | pre-wrap | pre-line | break-spaces",
+      "relevance": 90,
+      "references": [
+        {
+          "name": "MDN Reference",
+          "url": "https://developer.mozilla.org/docs/Web/CSS/white-space"
+        }
+      ],
+      "description": "Shorthand property for the 'white-space-collapsing' and 'text-wrap' properties.",
+      "restrictions": [
+        "enum"
+      ]
+    },
+    {
       "name": "widows",
       "browsers": [
         "E12",
@@ -32627,14 +29819,6 @@ var cssData = {
     },
     {
       "name": "width",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE4",
-        "O3.5"
-      ],
       "values": [
         {
           "name": "auto",
@@ -32642,42 +29826,18 @@ var cssData = {
         },
         {
           "name": "fit-content",
-          "browsers": [
-            "E12",
-            "FF1",
-            "S1",
-            "C1",
-            "IE4",
-            "O3.5"
-          ],
           "description": "Use the fit-content inline size or fit-content block size, as appropriate to the writing mode."
         },
         {
           "name": "max-content",
-          "browsers": [
-            "E12",
-            "FF1",
-            "S1",
-            "C1",
-            "IE4",
-            "O3.5"
-          ],
           "description": "Use the max-content inline size or max-content block size, as appropriate to the writing mode."
         },
         {
           "name": "min-content",
-          "browsers": [
-            "E12",
-            "FF1",
-            "S1",
-            "C1",
-            "IE4",
-            "O3.5"
-          ],
           "description": "Use the min-content inline size or min-content block size, as appropriate to the writing mode."
         }
       ],
-      "syntax": "auto | <length> | <percentage> | min-content | max-content | fit-content | fit-content(<length-percentage>)",
+      "syntax": "<viewport-length>{1,2}",
       "relevance": 96,
       "references": [
         {
@@ -32707,7 +29867,7 @@ var cssData = {
         },
         {
           "name": "contents",
-          "description": "Indicates that the author expects to animate or change something about the element's contents in the near future."
+          "description": "Indicates that the author expects to animate or change something about the element\u2019s contents in the near future."
         },
         {
           "name": "scroll-position",
@@ -32715,7 +29875,7 @@ var cssData = {
         }
       ],
       "syntax": "auto | <animateable-feature>#",
-      "relevance": 65,
+      "relevance": 64,
       "references": [
         {
           "name": "MDN Reference",
@@ -32730,14 +29890,6 @@ var cssData = {
     },
     {
       "name": "word-break",
-      "browsers": [
-        "E12",
-        "FF15",
-        "S3",
-        "C1",
-        "IE5.5",
-        "O15"
-      ],
       "values": [
         {
           "name": "break-all",
@@ -32753,7 +29905,7 @@ var cssData = {
         }
       ],
       "syntax": "normal | break-all | keep-all | break-word",
-      "relevance": 76,
+      "relevance": 75,
       "references": [
         {
           "name": "MDN Reference",
@@ -32767,14 +29919,6 @@ var cssData = {
     },
     {
       "name": "word-spacing",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE6",
-        "O3.5"
-      ],
       "values": [
         {
           "name": "normal",
@@ -32789,7 +29933,7 @@ var cssData = {
           "url": "https://developer.mozilla.org/docs/Web/CSS/word-spacing"
         }
       ],
-      "description": 'Specifies additional spacing between "words".',
+      "description": "Specifies additional spacing between \u201Cwords\u201D.",
       "restrictions": [
         "length",
         "percentage"
@@ -32797,13 +29941,6 @@ var cssData = {
     },
     {
       "name": "word-wrap",
-      "browsers": [
-        "E80",
-        "FF72",
-        "S13.1",
-        "C80",
-        "O67"
-      ],
       "values": [
         {
           "name": "break-word",
@@ -32815,7 +29952,7 @@ var cssData = {
         }
       ],
       "syntax": "normal | break-word",
-      "relevance": 77,
+      "relevance": 78,
       "description": "Specifies whether the UA may break within a word to prevent overflow when an otherwise-unbreakable string is too long to fit.",
       "restrictions": [
         "enum"
@@ -32823,14 +29960,6 @@ var cssData = {
     },
     {
       "name": "writing-mode",
-      "browsers": [
-        "E12",
-        "FF41",
-        "S10.1",
-        "C48",
-        "IE9",
-        "O35"
-      ],
       "values": [
         {
           "name": "horizontal-tb",
@@ -32838,26 +29967,10 @@ var cssData = {
         },
         {
           "name": "sideways-lr",
-          "browsers": [
-            "E12",
-            "FF41",
-            "S10.1",
-            "C48",
-            "IE9",
-            "O35"
-          ],
           "description": "Left-to-right block flow direction. The writing mode is vertical, while the typographic mode is horizontal."
         },
         {
           "name": "sideways-rl",
-          "browsers": [
-            "E12",
-            "FF41",
-            "S10.1",
-            "C48",
-            "IE9",
-            "O35"
-          ],
           "description": "Right-to-left block flow direction. The writing mode is vertical, while the typographic mode is horizontal."
         },
         {
@@ -32884,14 +29997,6 @@ var cssData = {
     },
     {
       "name": "z-index",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE4",
-        "O4"
-      ],
       "values": [
         {
           "name": "auto",
@@ -32915,7 +30020,6 @@ var cssData = {
       "name": "zoom",
       "browsers": [
         "E12",
-        "FFpreview",
         "S3.1",
         "C1",
         "IE5.5",
@@ -32926,9 +30030,8 @@ var cssData = {
           "name": "normal"
         }
       ],
-      "status": "nonstandard",
-      "syntax": "normal | reset | <number> | <percentage>",
-      "relevance": 15,
+      "syntax": "auto | <number> | <percentage>",
+      "relevance": 68,
       "references": [
         {
           "name": "MDN Reference",
@@ -32947,14 +30050,6 @@ var cssData = {
       "name": "-ms-ime-align",
       "status": "nonstandard",
       "syntax": "auto | after",
-      "values": [
-        {
-          "name": "auto"
-        },
-        {
-          "name": "after"
-        }
-      ],
       "relevance": 0,
       "description": "Aligns the Input Method Editor (IME) candidate window box relative to the element on which the IME composition is active."
     },
@@ -32963,6 +30058,15 @@ var cssData = {
       "status": "nonstandard",
       "syntax": "<url> | none",
       "relevance": 0,
+      "browsers": [
+        "FF1"
+      ],
+      "references": [
+        {
+          "name": "MDN Reference",
+          "url": "https://developer.mozilla.org/docs/Web/CSS/-moz-binding"
+        }
+      ],
       "description": "The -moz-binding CSS property is used by Mozilla-based applications to attach an XBL binding to a DOM element."
     },
     {
@@ -32970,26 +30074,21 @@ var cssData = {
       "status": "nonstandard",
       "syntax": "none | [ fill | fill-opacity | stroke | stroke-opacity ]#",
       "relevance": 0,
+      "browsers": [
+        "FF55"
+      ],
+      "references": [
+        {
+          "name": "MDN Reference",
+          "url": "https://developer.mozilla.org/docs/Web/CSS/-moz-context-properties"
+        }
+      ],
       "description": "If you reference an SVG image in a webpage (such as with the <img> element or as a background image), the SVG image can coordinate with the embedding element (its context) to have the image adopt property values set on the embedding element. To do this the embedding element needs to list the properties that are to be made available to the image by listing them as values of the -moz-context-properties property, and the image needs to opt in to using those properties by using values such as the context-fill value.\n\nThis feature is available since Firefox 55, but is only currently supported with SVG images loaded via chrome:// or resource:// URLs. To experiment with the feature in SVG on the Web it is necessary to set the svg.context-properties.content.enabled pref to true."
     },
     {
       "name": "-moz-float-edge",
-      "status": "obsolete",
+      "status": "nonstandard",
       "syntax": "border-box | content-box | margin-box | padding-box",
-      "values": [
-        {
-          "name": "border-box"
-        },
-        {
-          "name": "content-box"
-        },
-        {
-          "name": "margin-box"
-        },
-        {
-          "name": "padding-box"
-        }
-      ],
       "relevance": 0,
       "browsers": [
         "FF1"
@@ -33004,16 +30103,8 @@ var cssData = {
     },
     {
       "name": "-moz-force-broken-image-icon",
-      "status": "obsolete",
+      "status": "nonstandard",
       "syntax": "0 | 1",
-      "values": [
-        {
-          "name": "0"
-        },
-        {
-          "name": "1"
-        }
-      ],
       "relevance": 0,
       "browsers": [
         "FF1"
@@ -33046,20 +30137,6 @@ var cssData = {
       "name": "-moz-orient",
       "status": "nonstandard",
       "syntax": "inline | block | horizontal | vertical",
-      "values": [
-        {
-          "name": "inline"
-        },
-        {
-          "name": "block"
-        },
-        {
-          "name": "horizontal"
-        },
-        {
-          "name": "vertical"
-        }
-      ],
       "relevance": 0,
       "browsers": [
         "FF6"
@@ -33077,6 +30154,15 @@ var cssData = {
       "status": "nonstandard",
       "syntax": "<outline-radius>{1,4} [ / <outline-radius>{1,4} ]?",
       "relevance": 0,
+      "browsers": [
+        "FF1"
+      ],
+      "references": [
+        {
+          "name": "MDN Reference",
+          "url": "https://developer.mozilla.org/docs/Web/CSS/-moz-outline-radius"
+        }
+      ],
       "description": "In Mozilla applications like Firefox, the -moz-outline-radius CSS property can be used to give an element's outline rounded corners."
     },
     {
@@ -33084,6 +30170,15 @@ var cssData = {
       "status": "nonstandard",
       "syntax": "<outline-radius>",
       "relevance": 0,
+      "browsers": [
+        "FF1"
+      ],
+      "references": [
+        {
+          "name": "MDN Reference",
+          "url": "https://developer.mozilla.org/docs/Web/CSS/-moz-outline-radius-bottomleft"
+        }
+      ],
       "description": "In Mozilla applications, the -moz-outline-radius-bottomleft CSS property can be used to round the bottom-left corner of an element's outline."
     },
     {
@@ -33091,6 +30186,15 @@ var cssData = {
       "status": "nonstandard",
       "syntax": "<outline-radius>",
       "relevance": 0,
+      "browsers": [
+        "FF1"
+      ],
+      "references": [
+        {
+          "name": "MDN Reference",
+          "url": "https://developer.mozilla.org/docs/Web/CSS/-moz-outline-radius-bottomright"
+        }
+      ],
       "description": "In Mozilla applications, the -moz-outline-radius-bottomright CSS property can be used to round the bottom-right corner of an element's outline."
     },
     {
@@ -33098,6 +30202,15 @@ var cssData = {
       "status": "nonstandard",
       "syntax": "<outline-radius>",
       "relevance": 0,
+      "browsers": [
+        "FF1"
+      ],
+      "references": [
+        {
+          "name": "MDN Reference",
+          "url": "https://developer.mozilla.org/docs/Web/CSS/-moz-outline-radius-topleft"
+        }
+      ],
       "description": "In Mozilla applications, the -moz-outline-radius-topleft CSS property can be used to round the top-left corner of an element's outline."
     },
     {
@@ -33105,20 +30218,21 @@ var cssData = {
       "status": "nonstandard",
       "syntax": "<outline-radius>",
       "relevance": 0,
+      "browsers": [
+        "FF1"
+      ],
+      "references": [
+        {
+          "name": "MDN Reference",
+          "url": "https://developer.mozilla.org/docs/Web/CSS/-moz-outline-radius-topright"
+        }
+      ],
       "description": "In Mozilla applications, the -moz-outline-radius-topright CSS property can be used to round the top-right corner of an element's outline."
     },
     {
       "name": "-moz-stack-sizing",
       "status": "nonstandard",
       "syntax": "ignore | stretch-to-fit",
-      "values": [
-        {
-          "name": "ignore"
-        },
-        {
-          "name": "stretch-to-fit"
-        }
-      ],
       "relevance": 0,
       "description": "-moz-stack-sizing is an extended CSS property. Normally, a stack will change its size so that all of its child elements are completely visible. For example, moving a child of the stack far to the right will widen the stack so the child remains visible."
     },
@@ -33126,35 +30240,13 @@ var cssData = {
       "name": "-moz-text-blink",
       "status": "nonstandard",
       "syntax": "none | blink",
-      "values": [
-        {
-          "name": "none"
-        },
-        {
-          "name": "blink"
-        }
-      ],
       "relevance": 0,
       "description": "The -moz-text-blink non-standard Mozilla CSS extension specifies the blink mode."
     },
     {
       "name": "-moz-user-input",
-      "status": "obsolete",
+      "status": "nonstandard",
       "syntax": "auto | none | enabled | disabled",
-      "values": [
-        {
-          "name": "auto"
-        },
-        {
-          "name": "none"
-        },
-        {
-          "name": "enabled"
-        },
-        {
-          "name": "disabled"
-        }
-      ],
       "relevance": 0,
       "browsers": [
         "FF1"
@@ -33171,17 +30263,6 @@ var cssData = {
       "name": "-moz-user-modify",
       "status": "nonstandard",
       "syntax": "read-only | read-write | write-only",
-      "values": [
-        {
-          "name": "read-only"
-        },
-        {
-          "name": "read-write"
-        },
-        {
-          "name": "write-only"
-        }
-      ],
       "relevance": 0,
       "description": "The -moz-user-modify property has no effect. It was originally planned to determine whether or not the content of an element can be edited by a user."
     },
@@ -33189,14 +30270,6 @@ var cssData = {
       "name": "-moz-window-dragging",
       "status": "nonstandard",
       "syntax": "drag | no-drag",
-      "values": [
-        {
-          "name": "drag"
-        },
-        {
-          "name": "no-drag"
-        }
-      ],
       "relevance": 0,
       "description": "The -moz-window-dragging CSS property specifies whether a window is draggable or not. It only works in Chrome code, and only on Mac OS X."
     },
@@ -33204,23 +30277,6 @@ var cssData = {
       "name": "-moz-window-shadow",
       "status": "nonstandard",
       "syntax": "default | menu | tooltip | sheet | none",
-      "values": [
-        {
-          "name": "default"
-        },
-        {
-          "name": "menu"
-        },
-        {
-          "name": "tooltip"
-        },
-        {
-          "name": "sheet"
-        },
-        {
-          "name": "none"
-        }
-      ],
       "relevance": 0,
       "description": "The -moz-window-shadow CSS property specifies whether a window will have a shadow. It only works on Mac OS X."
     },
@@ -33314,6 +30370,7 @@ var cssData = {
       "relevance": 0,
       "browsers": [
         "E18",
+        "FF53",
         "S3.1",
         "C1",
         "O15"
@@ -33377,23 +30434,9 @@ var cssData = {
       "name": "-webkit-mask-repeat-x",
       "status": "nonstandard",
       "syntax": "repeat | no-repeat | space | round",
-      "values": [
-        {
-          "name": "repeat"
-        },
-        {
-          "name": "no-repeat"
-        },
-        {
-          "name": "space"
-        },
-        {
-          "name": "round"
-        }
-      ],
       "relevance": 0,
       "browsers": [
-        "E79",
+        "E18",
         "S5",
         "C3",
         "O15"
@@ -33410,23 +30453,9 @@ var cssData = {
       "name": "-webkit-mask-repeat-y",
       "status": "nonstandard",
       "syntax": "repeat | no-repeat | space | round",
-      "values": [
-        {
-          "name": "repeat"
-        },
-        {
-          "name": "no-repeat"
-        },
-        {
-          "name": "space"
-        },
-        {
-          "name": "round"
-        }
-      ],
       "relevance": 0,
       "browsers": [
-        "E79",
+        "E18",
         "S5",
         "C3",
         "O15"
@@ -33446,7 +30475,7 @@ var cssData = {
       "browsers": [
         "E93",
         "FF92",
-        "S15.4",
+        "Spreview",
         "C93",
         "O79"
       ],
@@ -33475,105 +30504,14 @@ var cssData = {
       "description": "The align-tracks CSS property sets the alignment in the masonry axis for grid containers that have masonry in their block axis."
     },
     {
-      "name": "animation-composition",
-      "syntax": "<single-animation-composition>#",
-      "relevance": 50,
-      "browsers": [
-        "E112",
-        "FF115",
-        "S16",
-        "C112",
-        "O98"
-      ],
-      "references": [
-        {
-          "name": "MDN Reference",
-          "url": "https://developer.mozilla.org/docs/Web/CSS/animation-composition"
-        }
-      ],
-      "description": "The composite operation to use when multiple animations affect the same property."
-    },
-    {
-      "name": "animation-range",
-      "status": "experimental",
-      "syntax": "[ <'animation-range-start'> <'animation-range-end'>? ]#",
-      "relevance": 50,
-      "browsers": [
-        "E115",
-        "C115",
-        "O101"
-      ],
-      "references": [
-        {
-          "name": "MDN Reference",
-          "url": "https://developer.mozilla.org/docs/Web/CSS/animation-range"
-        }
-      ],
-      "description": "The animation-range CSS shorthand property is used to set the start and end of an animation's attachment range along its timeline, i.e. where along the timeline an animation will start and end."
-    },
-    {
-      "name": "animation-range-end",
-      "status": "experimental",
-      "syntax": "[ normal | <length-percentage> | <timeline-range-name> <length-percentage>? ]#",
-      "relevance": 50,
-      "browsers": [
-        "E115",
-        "C115",
-        "O101"
-      ],
-      "references": [
-        {
-          "name": "MDN Reference",
-          "url": "https://developer.mozilla.org/docs/Web/CSS/animation-range-end"
-        }
-      ],
-      "description": "The animation-range-end CSS property is used to set the end of an animation's attachment range along its timeline, i.e. where along the timeline an animation will end."
-    },
-    {
-      "name": "animation-range-start",
-      "status": "experimental",
-      "syntax": "[ normal | <length-percentage> | <timeline-range-name> <length-percentage>? ]#",
-      "relevance": 50,
-      "browsers": [
-        "E115",
-        "C115",
-        "O101"
-      ],
-      "references": [
-        {
-          "name": "MDN Reference",
-          "url": "https://developer.mozilla.org/docs/Web/CSS/animation-range-start"
-        }
-      ],
-      "description": "The animation-range-start CSS property is used to set the start of an animation's attachment range along its timeline, i.e. where along the timeline an animation will start."
-    },
-    {
-      "name": "animation-timeline",
-      "status": "experimental",
-      "syntax": "<single-animation-timeline>#",
-      "relevance": 50,
-      "browsers": [
-        "E115",
-        "FF110",
-        "C115",
-        "O101"
-      ],
-      "references": [
-        {
-          "name": "MDN Reference",
-          "url": "https://developer.mozilla.org/docs/Web/CSS/animation-timeline"
-        }
-      ],
-      "description": "Specifies the names of one or more @scroll-timeline at-rules to describe the element's scroll animations."
-    },
-    {
       "name": "appearance",
+      "status": "experimental",
       "syntax": "none | auto | textfield | menulist-button | <compat-auto>",
-      "relevance": 69,
+      "relevance": 62,
       "browsers": [
         "E84",
         "FF80",
-        "S15.4",
+        "Spreview",
         "C84",
         "O70"
       ],
@@ -33587,8 +30525,9 @@ var cssData = {
     },
     {
       "name": "aspect-ratio",
+      "status": "experimental",
       "syntax": "auto | <ratio>",
-      "relevance": 60,
+      "relevance": 53,
       "browsers": [
         "E88",
         "FF89",
@@ -33614,10 +30553,10 @@ var cssData = {
     {
       "name": "backdrop-filter",
       "syntax": "none | <filter-function-list>",
-      "relevance": 58,
+      "relevance": 53,
       "browsers": [
         "E17",
-        "FF103",
+        "FF70",
         "S9",
         "C76",
         "O63"
@@ -33709,7 +30648,7 @@ var cssData = {
     {
       "name": "border-end-end-radius",
       "syntax": "<length-percentage>{1,2}",
-      "relevance": 53,
+      "relevance": 50,
       "browsers": [
         "E89",
         "FF66",
@@ -33728,7 +30667,7 @@ var cssData = {
     {
       "name": "border-end-start-radius",
       "syntax": "<length-percentage>{1,2}",
-      "relevance": 53,
+      "relevance": 50,
       "browsers": [
         "E89",
         "FF66",
@@ -33823,7 +30762,7 @@ var cssData = {
     {
       "name": "border-start-end-radius",
       "syntax": "<length-percentage>{1,2}",
-      "relevance": 53,
+      "relevance": 50,
       "browsers": [
         "E89",
         "FF66",
@@ -33842,7 +30781,7 @@ var cssData = {
     {
       "name": "border-start-start-radius",
       "syntax": "<length-percentage>{1,2}",
-      "relevance": 53,
+      "relevance": 50,
       "browsers": [
         "E89",
         "FF66",
@@ -33860,29 +30799,12 @@ var cssData = {
     },
     {
       "name": "box-align",
-      "status": "obsolete",
+      "status": "nonstandard",
       "syntax": "start | center | end | baseline | stretch",
-      "values": [
-        {
-          "name": "start"
-        },
-        {
-          "name": "center"
-        },
-        {
-          "name": "end"
-        },
-        {
-          "name": "baseline"
-        },
-        {
-          "name": "stretch"
-        }
-      ],
       "relevance": 0,
       "browsers": [
         "E12",
-        "FF49",
+        "FF1",
         "S3",
         "C1",
         "O15"
@@ -33897,23 +30819,12 @@ var cssData = {
     },
     {
       "name": "box-direction",
-      "status": "obsolete",
+      "status": "nonstandard",
       "syntax": "normal | reverse | inherit",
-      "values": [
-        {
-          "name": "normal"
-        },
-        {
-          "name": "reverse"
-        },
-        {
-          "name": "inherit"
-        }
-      ],
       "relevance": 0,
       "browsers": [
         "E12",
-        "FF49",
+        "FF1",
         "S3",
         "C1",
         "O15"
@@ -33928,12 +30839,12 @@ var cssData = {
     },
     {
       "name": "box-flex",
-      "status": "obsolete",
+      "status": "nonstandard",
       "syntax": "<number>",
       "relevance": 0,
       "browsers": [
         "E12",
-        "FF49",
+        "FF1",
         "S3",
         "C1",
         "O15"
@@ -33948,7 +30859,7 @@ var cssData = {
     },
     {
       "name": "box-flex-group",
-      "status": "obsolete",
+      "status": "nonstandard",
       "syntax": "<integer>",
       "relevance": 0,
       "browsers": [
@@ -33966,16 +30877,8 @@ var cssData = {
     },
     {
       "name": "box-lines",
-      "status": "obsolete",
+      "status": "nonstandard",
       "syntax": "single | multiple",
-      "values": [
-        {
-          "name": "single"
-        },
-        {
-          "name": "multiple"
-        }
-      ],
       "relevance": 0,
       "browsers": [
         "S3",
@@ -33992,12 +30895,12 @@ var cssData = {
     },
     {
       "name": "box-ordinal-group",
-      "status": "obsolete",
+      "status": "nonstandard",
       "syntax": "<integer>",
       "relevance": 0,
       "browsers": [
         "E12",
-        "FF49",
+        "FF1",
         "S3",
         "C1",
         "O15"
@@ -34012,29 +30915,12 @@ var cssData = {
     },
     {
       "name": "box-orient",
-      "status": "obsolete",
+      "status": "nonstandard",
       "syntax": "horizontal | vertical | inline-axis | block-axis | inherit",
-      "values": [
-        {
-          "name": "horizontal"
-        },
-        {
-          "name": "vertical"
-        },
-        {
-          "name": "inline-axis"
-        },
-        {
-          "name": "block-axis"
-        },
-        {
-          "name": "inherit"
-        }
-      ],
       "relevance": 0,
       "browsers": [
         "E12",
-        "FF49",
+        "FF1",
         "S3",
         "C1",
         "O15"
@@ -34049,26 +30935,12 @@ var cssData = {
     },
     {
       "name": "box-pack",
-      "status": "obsolete",
+      "status": "nonstandard",
       "syntax": "start | center | end | justify",
-      "values": [
-        {
-          "name": "start"
-        },
-        {
-          "name": "center"
-        },
-        {
-          "name": "end"
-        },
-        {
-          "name": "justify"
-        }
-      ],
       "relevance": 0,
       "browsers": [
         "E12",
-        "FF49",
+        "FF1",
         "S3",
         "C1",
         "O15"
@@ -34082,35 +30954,28 @@ var cssData = {
       "description": "The -moz-box-pack and -webkit-box-pack CSS properties specify how a -moz-box or -webkit-box packs its contents in the direction of its layout. The effect of this is only visible if there is extra space in the box."
     },
     {
-      "name": "caret",
-      "syntax": "<'caret-color'> || <'caret-shape'>",
+      "name": "color-adjust",
+      "syntax": "economy | exact",
       "relevance": 50,
-      "description": "Shorthand for setting caret-color and caret-shape."
-    },
-    {
-      "name": "caret-shape",
-      "syntax": "auto | bar | block | underscore",
-      "values": [
+      "browsers": [
+        "E79",
+        "FF48",
+        "S6",
+        "C49",
+        "O15"
+      ],
+      "references": [
         {
-          "name": "auto"
-        },
-        {
-          "name": "bar"
-        },
-        {
-          "name": "block"
-        },
-        {
-          "name": "underscore"
+          "name": "MDN Reference",
+          "url": "https://developer.mozilla.org/docs/Web/CSS/color-adjust"
         }
       ],
-      "relevance": 50,
-      "description": "Specifies the desired shape of the text insertion caret."
+      "description": "The color-adjust property is a non-standard CSS extension that can be used to force printing of background colors and images in browsers based on the WebKit engine."
     },
     {
       "name": "color-scheme",
       "syntax": "normal | [ light | dark | <custom-ident> ]+ && only?",
-      "relevance": 57,
+      "relevance": 51,
       "browsers": [
         "E81",
         "FF96",
@@ -34127,187 +30992,11 @@ var cssData = {
       "description": "The color-scheme CSS property allows an element to indicate which color schemes it can comfortably be rendered in."
     },
     {
-      "name": "contain-intrinsic-size",
-      "syntax": "[ auto? [ none | <length> ] ]{1,2}",
-      "relevance": 50,
-      "browsers": [
-        "E83",
-        "FF107",
-        "S17",
-        "C83",
-        "O69"
-      ],
-      "references": [
-        {
-          "name": "MDN Reference",
-          "url": "https://developer.mozilla.org/docs/Web/CSS/contain-intrinsic-size"
-        }
-      ],
-      "description": "Size of an element when the element is subject to size containment."
-    },
-    {
-      "name": "contain-intrinsic-block-size",
-      "syntax": "auto? [ none | <length> ]",
-      "relevance": 50,
-      "browsers": [
-        "E95",
-        "FF107",
-        "S17",
-        "C95",
-        "O81"
-      ],
-      "references": [
-        {
-          "name": "MDN Reference",
-          "url": "https://developer.mozilla.org/docs/Web/CSS/contain-intrinsic-contain-intrinsic-block-size"
-        }
-      ],
-      "description": "Block size of an element when the element is subject to size containment."
-    },
-    {
-      "name": "contain-intrinsic-height",
-      "syntax": "auto? [ none | <length> ]",
-      "relevance": 50,
-      "browsers": [
-        "E95",
-        "FF107",
-        "S17",
-        "C95",
-        "O81"
-      ],
-      "references": [
-        {
-          "name": "MDN Reference",
-          "url": "https://developer.mozilla.org/docs/Web/CSS/contain-intrinsic-height"
-        }
-      ],
-      "description": "Height of an element when the element is subject to size containment."
-    },
-    {
-      "name": "contain-intrinsic-inline-size",
-      "syntax": "auto? [ none | <length> ]",
-      "relevance": 50,
-      "browsers": [
-        "E95",
-        "FF107",
-        "S17",
-        "C95",
-        "O81"
-      ],
-      "references": [
-        {
-          "name": "MDN Reference",
-          "url": "https://developer.mozilla.org/docs/Web/CSS/contain-intrinsic-contain-intrinsic-inline-size"
-        }
-      ],
-      "description": "Inline size of an element when the element is subject to size containment."
-    },
-    {
-      "name": "contain-intrinsic-width",
-      "syntax": "auto? [ none | <length> ]",
-      "relevance": 50,
-      "browsers": [
-        "E95",
-        "FF107",
-        "S17",
-        "C95",
-        "O81"
-      ],
-      "references": [
-        {
-          "name": "MDN Reference",
-          "url": "https://developer.mozilla.org/docs/Web/CSS/contain-intrinsic-width"
-        }
-      ],
-      "description": "Width of an element when the element is subject to size containment."
-    },
-    {
-      "name": "container",
-      "syntax": "<'container-name'> [ / <'container-type'> ]?",
-      "relevance": 53,
-      "browsers": [
-        "E105",
-        "FF110",
-        "S16",
-        "C105",
-        "O91"
-      ],
-      "references": [
-        {
-          "name": "MDN Reference",
-          "url": "https://developer.mozilla.org/docs/Web/CSS/container"
-        }
-      ],
-      "description": "The container shorthand CSS property establishes the element as a query container and specifies the name or name for the containment context used in a container query."
-    },
-    {
-      "name": "container-name",
-      "syntax": "none | <custom-ident>+",
-      "relevance": 50,
-      "browsers": [
-        "E105",
-        "FF110",
-        "S16",
-        "C105",
-        "O91"
-      ],
-      "references": [
-        {
-          "name": "MDN Reference",
-          "url": "https://developer.mozilla.org/docs/Web/CSS/container-name"
-        }
-      ],
-      "description": "The container-name CSS property specifies a list of query container names used by the @container at-rule in a container query."
-    },
-    {
-      "name": "container-type",
-      "syntax": "normal | size | inline-size",
-      "values": [
-        {
-          "name": "normal"
-        },
-        {
-          "name": "size"
-        },
-        {
-          "name": "inline-size"
-        }
-      ],
-      "relevance": 50,
-      "browsers": [
-        "E105",
-        "FF110",
-        "S16",
-        "C105",
-        "O91"
-      ],
-      "references": [
-        {
-          "name": "MDN Reference",
-          "url": "https://developer.mozilla.org/docs/Web/CSS/container-type"
-        }
-      ],
-      "description": "The container-type CSS property is used to define the type of containment used in a container query."
-    },
-    {
       "name": "content-visibility",
       "syntax": "visible | auto | hidden",
-      "values": [
-        {
-          "name": "visible"
-        },
-        {
-          "name": "auto"
-        },
-        {
-          "name": "hidden"
-        }
-      ],
       "relevance": 52,
       "browsers": [
         "E85",
-        "FFpreview",
-        "Spreview",
         "C85",
         "O71"
       ],
@@ -34326,7 +31015,6 @@ var cssData = {
       "browsers": [
         "E85",
         "FF68",
-        "S17.2",
         "C85",
         "O71"
       ],
@@ -34341,14 +31029,6 @@ var cssData = {
     {
       "name": "font-optical-sizing",
       "syntax": "auto | none",
-      "values": [
-        {
-          "name": "auto"
-        },
-        {
-          "name": "none"
-        }
-      ],
       "relevance": 50,
       "browsers": [
         "E17",
@@ -34366,29 +31046,9 @@ var cssData = {
       "description": "The font-optical-sizing CSS property allows developers to control whether browsers render text with slightly differing visual representations to optimize viewing at different sizes, or not. This only works for fonts that have an optical size variation axis."
     },
     {
-      "name": "font-palette",
-      "syntax": "normal | light | dark | <palette-identifier>",
-      "relevance": 50,
-      "browsers": [
-        "E101",
-        "FF107",
-        "S15.4",
-        "C101",
-        "O87"
-      ],
-      "references": [
-        {
-          "name": "MDN Reference",
-          "url": "https://developer.mozilla.org/docs/Web/CSS/font-palette"
-        }
-      ],
-      "description": "The font-palette CSS property allows specifying one of the many palettes contained in a font that a user agent should use for the font. Users can also override the values in a palette or create a new palette by using the @font-palette-values at-rule."
-    },
-    {
       "name": "font-variation-settings",
-      "atRule": "@font-face",
       "syntax": "normal | [ <string> <number> ]#",
-      "relevance": 51,
+      "relevance": 50,
       "browsers": [
         "E17",
         "FF62",
@@ -34425,156 +31085,14 @@ var cssData = {
       "description": "The font-smooth CSS property controls the application of anti-aliasing when fonts are rendered."
     },
     {
-      "name": "font-synthesis-position",
-      "syntax": "auto | none",
-      "values": [
-        {
-          "name": "auto"
-        },
-        {
-          "name": "none"
-        }
-      ],
-      "relevance": 50,
-      "browsers": [
-        "FF118"
-      ],
-      "references": [
-        {
-          "name": "MDN Reference",
-          "url": "https://developer.mozilla.org/docs/Web/CSS/font-synthesis-position"
-        }
-      ],
-      "description": 'The font-synthesis-position CSS property lets you specify whether or not a browser may synthesize the subscript and superscript "position" typefaces when they are missing in a font family, while using font-variant-position to set the positions.'
-    },
-    {
-      "name": "font-synthesis-small-caps",
-      "syntax": "auto | none",
-      "values": [
-        {
-          "name": "auto"
-        },
-        {
-          "name": "none"
-        }
-      ],
-      "relevance": 50,
-      "browsers": [
-        "E97",
-        "FF111",
-        "S16.4",
-        "C97",
-        "O83"
-      ],
-      "references": [
-        {
-          "name": "MDN Reference",
-          "url": "https://developer.mozilla.org/docs/Web/CSS/font-synthesis-small-caps"
-        }
-      ],
-      "description": "The font-synthesis-small-caps CSS property lets you specify whether or not the browser may synthesize small-caps typeface when it is missing in a font family. Small-caps glyphs typically use the form of uppercase letters but are reduced to the size of lowercase letters."
-    },
-    {
-      "name": "font-synthesis-style",
-      "syntax": "auto | none",
-      "values": [
-        {
-          "name": "auto"
-        },
-        {
-          "name": "none"
-        }
-      ],
-      "relevance": 50,
-      "browsers": [
-        "E97",
-        "FF111",
-        "S16.4",
-        "C97",
-        "O83"
-      ],
-      "references": [
-        {
-          "name": "MDN Reference",
-          "url": "https://developer.mozilla.org/docs/Web/CSS/font-synthesis-style"
-        }
-      ],
-      "description": "The font-synthesis-style CSS property lets you specify whether or not the browser may synthesize the oblique typeface when it is missing in a font family."
-    },
-    {
-      "name": "font-synthesis-weight",
-      "syntax": "auto | none",
-      "values": [
-        {
-          "name": "auto"
-        },
-        {
-          "name": "none"
-        }
-      ],
-      "relevance": 50,
-      "browsers": [
-        "E97",
-        "FF111",
-        "S16.4",
-        "C97",
-        "O83"
-      ],
-      "references": [
-        {
-          "name": "MDN Reference",
-          "url": "https://developer.mozilla.org/docs/Web/CSS/font-synthesis-weight"
-        }
-      ],
-      "description": "The font-synthesis-weight CSS property lets you specify whether or not the browser may synthesize the bold typeface when it is missing in a font family."
-    },
-    {
-      "name": "font-variant-emoji",
-      "syntax": "normal | text | emoji | unicode",
-      "values": [
-        {
-          "name": "normal"
-        },
-        {
-          "name": "text"
-        },
-        {
-          "name": "emoji"
-        },
-        {
-          "name": "unicode"
-        }
-      ],
-      "relevance": 50,
-      "browsers": [
-        "FF108"
-      ],
-      "references": [
-        {
-          "name": "MDN Reference",
-          "url": "https://developer.mozilla.org/docs/Web/CSS/font-variant-emoji"
-        }
-      ],
-      "description": "The font-variant-emoji CSS property specifies the default presentation style for displaying emojis."
-    },
-    {
       "name": "forced-color-adjust",
+      "status": "experimental",
       "syntax": "auto | none",
-      "values": [
-        {
-          "name": "auto"
-        },
-        {
-          "name": "none"
-        }
-      ],
-      "relevance": 57,
+      "relevance": 51,
       "browsers": [
         "E79",
-        "FF113",
         "C89",
-        "IE10",
-        "O75"
+        "IE10"
       ],
       "references": [
         {
@@ -34587,19 +31105,13 @@ var cssData = {
     {
       "name": "gap",
       "syntax": "<'row-gap'> <'column-gap'>?",
-      "relevance": 70,
+      "relevance": 53,
       "browsers": [
-        "E16",
-        "FF52",
-        "S10.1",
-        "C57",
-        "O44"
-      ],
-      "references": [
-        {
-          "name": "MDN Reference",
-          "url": "https://developer.mozilla.org/docs/Web/CSS/gap"
-        }
+        "E84",
+        "FF63",
+        "S14.1",
+        "C84",
+        "O70"
       ],
       "description": "The gap CSS property is a shorthand property for row-gap and column-gap specifying the gutters between grid rows and columns."
     },
@@ -34622,31 +31134,7 @@ var cssData = {
       "name": "hyphenate-character",
       "syntax": "auto | <string>",
       "relevance": 50,
-      "browsers": [
-        "E106",
-        "FF98",
-        "S17",
-        "C106",
-        "O92"
-      ],
-      "references": [
-        {
-          "name": "MDN Reference",
-          "url": "https://developer.mozilla.org/docs/Web/CSS/hyphenate-character"
-        }
-      ],
       "description": "A hyphenate character used at the end of a line."
-    },
-    {
-      "name": "hyphenate-limit-chars",
-      "syntax": "[ auto | <integer> ]{1,3}",
-      "relevance": 50,
-      "browsers": [
-        "E109",
-        "C109",
-        "O95"
-      ],
-      "description": "The hyphenate-limit-chars CSS property specifies the minimum word length to allow hyphenation of words as well as the minimum number of characters before and after the hyphen."
     },
     {
       "name": "image-resolution",
@@ -34661,10 +31149,7 @@ var cssData = {
       "syntax": "normal | [ <number> <integer>? ]",
       "relevance": 50,
       "browsers": [
-        "E110",
-        "S9",
-        "C110",
-        "O96"
+        "S9"
       ],
       "references": [
         {
@@ -34690,21 +31175,13 @@ var cssData = {
     {
       "name": "input-security",
       "syntax": "auto | none",
-      "values": [
-        {
-          "name": "auto"
-        },
-        {
-          "name": "none"
-        }
-      ],
       "relevance": 50,
       "description": "Enables or disables the obscuring a sensitive test input."
     },
     {
       "name": "inset",
       "syntax": "<'top'>{1,4}",
-      "relevance": 58,
+      "relevance": 51,
       "browsers": [
         "E87",
         "FF66",
@@ -34723,7 +31200,7 @@ var cssData = {
     {
       "name": "inset-block",
       "syntax": "<'top'>{1,2}",
-      "relevance": 53,
+      "relevance": 50,
       "browsers": [
         "E87",
         "FF63",
@@ -34761,7 +31238,7 @@ var cssData = {
     {
       "name": "inset-block-start",
       "syntax": "<'top'>",
-      "relevance": 53,
+      "relevance": 50,
       "browsers": [
         "E87",
         "FF63",
@@ -34780,7 +31257,7 @@ var cssData = {
     {
       "name": "inset-inline",
       "syntax": "<'top'>{1,2}",
-      "relevance": 53,
+      "relevance": 50,
       "browsers": [
         "E87",
         "FF63",
@@ -34799,7 +31276,7 @@ var cssData = {
     {
       "name": "inset-inline-end",
       "syntax": "<'top'>",
-      "relevance": 51,
+      "relevance": 50,
       "browsers": [
         "E87",
         "FF63",
@@ -34818,7 +31295,7 @@ var cssData = {
     {
       "name": "inset-inline-start",
       "syntax": "<'top'>",
-      "relevance": 54,
+      "relevance": 50,
       "browsers": [
         "E87",
         "FF63",
@@ -34878,7 +31355,7 @@ var cssData = {
     {
       "name": "margin-block",
       "syntax": "<'margin-left'>{1,2}",
-      "relevance": 54,
+      "relevance": 50,
       "browsers": [
         "E87",
         "FF66",
@@ -34897,7 +31374,7 @@ var cssData = {
     {
       "name": "margin-inline",
       "syntax": "<'margin-left'>{1,2}",
-      "relevance": 54,
+      "relevance": 50,
       "browsers": [
         "E87",
         "FF66",
@@ -34917,21 +31394,7 @@ var cssData = {
       "name": "margin-trim",
       "status": "experimental",
       "syntax": "none | in-flow | all",
-      "values": [
-        {
-          "name": "none"
-        },
-        {
-          "name": "in-flow"
-        },
-        {
-          "name": "all"
-        }
-      ],
       "relevance": 50,
-      "browsers": [
-        "S16.4"
-      ],
       "references": [
         {
           "name": "MDN Reference",
@@ -34943,11 +31406,11 @@ var cssData = {
     {
       "name": "mask",
       "syntax": "<mask-layer>#",
-      "relevance": 55,
+      "relevance": 50,
       "browsers": [
         "E79",
-        "FF53",
-        "S15.4",
+        "FF2",
+        "S3.1",
         "C1",
         "O15"
       ],
@@ -34965,7 +31428,7 @@ var cssData = {
       "relevance": 50,
       "browsers": [
         "E79",
-        "S17.2",
+        "S3.1",
         "C1",
         "O15"
       ],
@@ -34980,14 +31443,6 @@ var cssData = {
     {
       "name": "mask-border-mode",
       "syntax": "luminance | alpha",
-      "values": [
-        {
-          "name": "luminance"
-        },
-        {
-          "name": "alpha"
-        }
-      ],
       "relevance": 50,
       "description": "The mask-border-mode CSS property specifies the blending mode used in a mask border."
     },
@@ -34997,7 +31452,7 @@ var cssData = {
       "relevance": 50,
       "browsers": [
         "E79",
-        "S17.2",
+        "S3.1",
         "C1",
         "O15"
       ],
@@ -35015,7 +31470,7 @@ var cssData = {
       "relevance": 50,
       "browsers": [
         "E79",
-        "S17.2",
+        "S3.1",
         "C1",
         "O15"
       ],
@@ -35033,7 +31488,7 @@ var cssData = {
       "relevance": 50,
       "browsers": [
         "E79",
-        "S17.2",
+        "S3.1",
         "C1",
         "O15"
       ],
@@ -35051,7 +31506,7 @@ var cssData = {
       "relevance": 50,
       "browsers": [
         "E79",
-        "S17.2",
+        "S3.1",
         "C1",
         "O15"
       ],
@@ -35069,7 +31524,7 @@ var cssData = {
       "relevance": 50,
       "browsers": [
         "E79",
-        "S17.2",
+        "S3.1",
         "C1",
         "O15"
       ],
@@ -35086,11 +31541,11 @@ var cssData = {
       "syntax": "[ <geometry-box> | no-clip ]#",
       "relevance": 50,
       "browsers": [
-        "E120",
+        "E79",
         "FF53",
-        "S15.4",
-        "C120",
-        "O106"
+        "S4",
+        "C1",
+        "O15"
       ],
       "references": [
         {
@@ -35106,10 +31561,7 @@ var cssData = {
       "relevance": 50,
       "browsers": [
         "E18",
-        "FF53",
-        "S15.4",
-        "C120",
-        "O106"
+        "FF53"
       ],
       "references": [
         {
@@ -35124,9 +31576,6 @@ var cssData = {
       "status": "experimental",
       "syntax": "[ pack | next ] || [ definite-first | ordered ]",
       "relevance": 50,
-      "browsers": [
-        "Spreview"
-      ],
       "references": [
         {
           "name": "MDN Reference",
@@ -35136,66 +31585,13 @@ var cssData = {
       "description": "The masonry-auto-flow CSS property modifies how items are placed when using masonry in CSS Grid Layout."
     },
     {
-      "name": "math-depth",
-      "syntax": "auto-add | add(<integer>) | <integer>",
-      "relevance": 50,
-      "browsers": [
-        "E109",
-        "FF117",
-        "C109",
-        "O95"
-      ],
-      "references": [
-        {
-          "name": "MDN Reference",
-          "url": "https://developer.mozilla.org/docs/Web/CSS/math-depth"
-        }
-      ],
-      "description": 'Describe a notion of "depth" for each element of a mathematical formula, with respect to the top-level container of that formula.'
-    },
-    {
-      "name": "math-shift",
-      "syntax": "normal | compact",
-      "values": [
-        {
-          "name": "normal"
-        },
-        {
-          "name": "compact"
-        }
-      ],
-      "relevance": 50,
-      "browsers": [
-        "E109",
-        "C109",
-        "O95"
-      ],
-      "references": [
-        {
-          "name": "MDN Reference",
-          "url": "https://developer.mozilla.org/docs/Web/CSS/math-shift"
-        }
-      ],
-      "description": "Used for positioning superscript during the layout of MathML scripted elements."
-    },
-    {
       "name": "math-style",
       "syntax": "normal | compact",
-      "values": [
-        {
-          "name": "normal"
-        },
-        {
-          "name": "compact"
-        }
-      ],
       "relevance": 50,
       "browsers": [
-        "E109",
-        "FF117",
+        "FF83",
         "S14.1",
-        "C109",
-        "O95"
+        "C83"
       ],
       "references": [
         {
@@ -35210,7 +31606,7 @@ var cssData = {
       "status": "experimental",
       "syntax": "none | <integer>",
       "relevance": 50,
-      "description": "The max-lines property forces a break after a set number of lines"
+      "description": "The max-liens property forces a break after a set number of lines"
     },
     {
       "name": "offset",
@@ -35219,7 +31615,6 @@ var cssData = {
       "browsers": [
         "E79",
         "FF72",
-        "S16",
         "C55",
         "O42"
       ],
@@ -35236,11 +31631,9 @@ var cssData = {
       "syntax": "auto | <position>",
       "relevance": 50,
       "browsers": [
-        "E116",
+        "E79",
         "FF72",
-        "S16",
-        "C116",
-        "O102"
+        "C79"
       ],
       "references": [
         {
@@ -35257,7 +31650,6 @@ var cssData = {
       "browsers": [
         "E79",
         "FF72",
-        "S16",
         "C55",
         "O42"
       ],
@@ -35271,12 +31663,11 @@ var cssData = {
     },
     {
       "name": "offset-path",
-      "syntax": "none | <offset-path> || <coord-box>",
+      "syntax": "none | ray( [ <angle> && <size> && contain? ] ) | <path()> | <url> | [ <basic-shape> || <geometry-box> ]",
       "relevance": 50,
       "browsers": [
         "E79",
         "FF72",
-        "S15.4",
         "C55",
         "O45"
       ],
@@ -35290,15 +31681,9 @@ var cssData = {
     },
     {
       "name": "offset-position",
-      "syntax": "normal | auto | <position>",
+      "status": "experimental",
+      "syntax": "auto | <position>",
       "relevance": 50,
-      "browsers": [
-        "E116",
-        "FF122",
-        "S16",
-        "C116",
-        "O102"
-      ],
       "references": [
         {
           "name": "MDN Reference",
@@ -35314,7 +31699,6 @@ var cssData = {
       "browsers": [
         "E79",
         "FF72",
-        "S16",
         "C56",
         "O43"
       ],
@@ -35329,19 +31713,10 @@ var cssData = {
     {
       "name": "overflow-anchor",
       "syntax": "auto | none",
-      "values": [
-        {
-          "name": "auto"
-        },
-        {
-          "name": "none"
-        }
-      ],
       "relevance": 52,
       "browsers": [
         "E79",
         "FF66",
-        "Spreview",
         "C56",
         "O43"
       ],
@@ -35356,23 +31731,6 @@ var cssData = {
     {
       "name": "overflow-block",
       "syntax": "visible | hidden | clip | scroll | auto",
-      "values": [
-        {
-          "name": "visible"
-        },
-        {
-          "name": "hidden"
-        },
-        {
-          "name": "clip"
-        },
-        {
-          "name": "scroll"
-        },
-        {
-          "name": "auto"
-        }
-      ],
       "relevance": 50,
       "browsers": [
         "FF69"
@@ -35389,15 +31747,16 @@ var cssData = {
       "name": "overflow-clip-box",
       "status": "nonstandard",
       "syntax": "padding-box | content-box",
-      "values": [
+      "relevance": 0,
+      "browsers": [
+        "FF29"
+      ],
+      "references": [
         {
-          "name": "padding-box"
-        },
-        {
-          "name": "content-box"
+          "name": "MDN Reference",
+          "url": "https://developer.mozilla.org/docs/Mozilla/Gecko/Chrome/CSS/overflow-clip-box"
         }
       ],
-      "relevance": 0,
       "description": "The overflow-clip-box CSS property specifies relative to which box the clipping happens when there is an overflow. It is short hand for the overflow-clip-box-inline and overflow-clip-box-block properties."
     },
     {
@@ -35406,7 +31765,6 @@ var cssData = {
       "relevance": 50,
       "browsers": [
         "E90",
-        "FF102",
         "C90",
         "O76"
       ],
@@ -35421,23 +31779,6 @@ var cssData = {
     {
       "name": "overflow-inline",
       "syntax": "visible | hidden | clip | scroll | auto",
-      "values": [
-        {
-          "name": "visible"
-        },
-        {
-          "name": "hidden"
-        },
-        {
-          "name": "clip"
-        },
-        {
-          "name": "scroll"
-        },
-        {
-          "name": "auto"
-        }
-      ],
       "relevance": 50,
       "browsers": [
         "FF69"
@@ -35451,39 +31792,12 @@ var cssData = {
       "description": "The overflow-inline CSS media feature can be used to test how the output device handles content that overflows the initial containing block along the inline axis."
     },
     {
-      "name": "overlay",
-      "status": "experimental",
-      "syntax": "none | auto",
-      "values": [
-        {
-          "name": "none"
-        },
-        {
-          "name": "auto"
-        }
-      ],
-      "relevance": 50,
-      "browsers": [
-        "E117",
-        "C117",
-        "O103"
-      ],
-      "references": [
-        {
-          "name": "MDN Reference",
-          "url": "https://developer.mozilla.org/docs/Web/CSS/overlay"
-        }
-      ],
-      "description": 'The overlay CSS property specifies whether an element appearing in the top layer (for example, a shown popover or modal {{htmlelement("dialog")}} element) is actually rendered in the top layer. This property is only relevant within a list of transition-property values, and only if allow-discrete is set as the transition-behavior.'
-    },
-    {
       "name": "overscroll-behavior",
       "syntax": "[ contain | none | auto ]{1,2}",
       "relevance": 50,
       "browsers": [
         "E18",
         "FF59",
-        "S16",
         "C63",
         "O50"
       ],
@@ -35498,22 +31812,10 @@ var cssData = {
     {
       "name": "overscroll-behavior-block",
       "syntax": "contain | none | auto",
-      "values": [
-        {
-          "name": "contain"
-        },
-        {
-          "name": "none"
-        },
-        {
-          "name": "auto"
-        }
-      ],
       "relevance": 50,
       "browsers": [
         "E79",
         "FF73",
-        "S16",
         "C77",
         "O64"
       ],
@@ -35528,22 +31830,10 @@ var cssData = {
     {
       "name": "overscroll-behavior-inline",
       "syntax": "contain | none | auto",
-      "values": [
-        {
-          "name": "contain"
-        },
-        {
-          "name": "none"
-        },
-        {
-          "name": "auto"
-        }
-      ],
       "relevance": 50,
       "browsers": [
         "E79",
         "FF73",
-        "S16",
         "C77",
         "O64"
       ],
@@ -35558,22 +31848,10 @@ var cssData = {
     {
       "name": "overscroll-behavior-x",
       "syntax": "contain | none | auto",
-      "values": [
-        {
-          "name": "contain"
-        },
-        {
-          "name": "none"
-        },
-        {
-          "name": "auto"
-        }
-      ],
       "relevance": 50,
       "browsers": [
         "E18",
         "FF59",
-        "S16",
         "C63",
         "O50"
       ],
@@ -35588,22 +31866,10 @@ var cssData = {
     {
       "name": "overscroll-behavior-y",
       "syntax": "contain | none | auto",
-      "values": [
-        {
-          "name": "contain"
-        },
-        {
-          "name": "none"
-        },
-        {
-          "name": "auto"
-        }
-      ],
       "relevance": 50,
       "browsers": [
         "E18",
         "FF59",
-        "S16",
         "C63",
         "O50"
       ],
@@ -35618,7 +31884,7 @@ var cssData = {
     {
       "name": "padding-block",
       "syntax": "<'padding-left'>{1,2}",
-      "relevance": 54,
+      "relevance": 50,
       "browsers": [
         "E87",
         "FF66",
@@ -35637,7 +31903,7 @@ var cssData = {
     {
       "name": "padding-inline",
       "syntax": "<'padding-left'>{1,2}",
-      "relevance": 54,
+      "relevance": 50,
       "browsers": [
         "E87",
         "FF66",
@@ -35654,28 +31920,9 @@ var cssData = {
       "description": "The padding-inline CSS property defines the logical inline start and end padding of an element, which maps to physical padding properties depending on the element's writing mode, directionality, and text orientation."
     },
     {
-      "name": "page",
-      "syntax": "auto | <custom-ident>",
-      "relevance": 50,
-      "browsers": [
-        "E85",
-        "FF110",
-        "S13.1",
-        "C85",
-        "O71"
-      ],
-      "references": [
-        {
-          "name": "MDN Reference",
-          "url": "https://developer.mozilla.org/docs/Web/CSS/page"
-        }
-      ],
-      "description": "The page CSS property is used to specify the named page, a specific type of page defined by the @page at-rule."
-    },
-    {
       "name": "place-content",
       "syntax": "<'align-content'> <'justify-content'>?",
-      "relevance": 51,
+      "relevance": 50,
       "browsers": [
         "E79",
         "FF45",
@@ -35694,7 +31941,7 @@ var cssData = {
     {
       "name": "place-items",
       "syntax": "<'align-items'> <'justify-items'>?",
-      "relevance": 51,
+      "relevance": 50,
       "browsers": [
         "E79",
         "FF45",
@@ -35730,42 +31977,12 @@ var cssData = {
       "description": "The place-self CSS property is a shorthand property sets both the align-self and justify-self properties. The first value is the align-self property value, the second the justify-self one. If the second value is not present, the first value is also used for it."
     },
     {
-      "name": "print-color-adjust",
-      "syntax": "economy | exact",
-      "values": [
-        {
-          "name": "economy"
-        },
-        {
-          "name": "exact"
-        }
-      ],
-      "relevance": 50,
-      "browsers": [
-        "E79",
-        "FF97",
-        "S15.4",
-        "C17",
-        "O15"
-      ],
-      "references": [
-        {
-          "name": "MDN Reference",
-          "url": "https://developer.mozilla.org/docs/Web/CSS/print-color-adjust"
-        }
-      ],
-      "description": "Defines what optimization the user agent is allowed to do when adjusting the appearance for an output device."
-    },
-    {
       "name": "rotate",
       "syntax": "none | <angle> | [ x | y | z | <number>{3} ] && <angle>",
       "relevance": 50,
       "browsers": [
-        "E104",
         "FF72",
-        "S14.1",
-        "C104",
-        "O90"
+        "S14.1"
       ],
       "references": [
         {
@@ -35778,19 +31995,13 @@ var cssData = {
     {
       "name": "row-gap",
       "syntax": "normal | <length-percentage>",
-      "relevance": 58,
+      "relevance": 50,
       "browsers": [
-        "E16",
-        "FF52",
-        "S10.1",
-        "C47",
-        "O34"
-      ],
-      "references": [
-        {
-          "name": "MDN Reference",
-          "url": "https://developer.mozilla.org/docs/Web/CSS/row-gap"
-        }
+        "E84",
+        "FF63",
+        "S14.1",
+        "C84",
+        "O70"
       ],
       "description": "The row-gap CSS property specifies the gutter between grid rows."
     },
@@ -35798,30 +32009,16 @@ var cssData = {
       "name": "ruby-merge",
       "status": "experimental",
       "syntax": "separate | collapse | auto",
-      "values": [
-        {
-          "name": "separate"
-        },
-        {
-          "name": "collapse"
-        },
-        {
-          "name": "auto"
-        }
-      ],
       "relevance": 50,
       "description": "This property controls how ruby annotation boxes should be rendered when there are more than one in a ruby container box: whether each pair should be kept separate, the annotations should be collapsed and rendered as a group, or the separation should be determined based on the space available."
     },
     {
       "name": "scale",
       "syntax": "none | <number>{1,3}",
-      "relevance": 51,
+      "relevance": 50,
       "browsers": [
-        "E104",
         "FF72",
-        "S14.1",
-        "C104",
-        "O90"
+        "S14.1"
       ],
       "references": [
         {
@@ -35834,11 +32031,9 @@ var cssData = {
     {
       "name": "scrollbar-color",
       "syntax": "auto | <color>{2}",
-      "relevance": 52,
+      "relevance": 50,
       "browsers": [
-        "E121",
-        "FF64",
-        "C121"
+        "FF64"
       ],
       "references": [
         {
@@ -35855,7 +32050,6 @@ var cssData = {
       "browsers": [
         "E94",
         "FF97",
-        "S17",
         "C94",
         "O80"
       ],
@@ -35870,22 +32064,9 @@ var cssData = {
     {
       "name": "scrollbar-width",
       "syntax": "auto | thin | none",
-      "values": [
-        {
-          "name": "auto"
-        },
-        {
-          "name": "thin"
-        },
-        {
-          "name": "none"
-        }
-      ],
-      "relevance": 63,
+      "relevance": 50,
       "browsers": [
-        "E121",
-        "FF64",
-        "C121"
+        "FF64"
       ],
       "references": [
         {
@@ -35921,7 +32102,7 @@ var cssData = {
       "browsers": [
         "E79",
         "FF68",
-        "S15",
+        "S14.1",
         "C69",
         "O56"
       ],
@@ -35940,7 +32121,7 @@ var cssData = {
       "browsers": [
         "E79",
         "FF68",
-        "S15",
+        "S14.1",
         "C69",
         "O56"
       ],
@@ -35959,7 +32140,7 @@ var cssData = {
       "browsers": [
         "E79",
         "FF68",
-        "S15",
+        "S14.1",
         "C69",
         "O56"
       ],
@@ -35997,7 +32178,7 @@ var cssData = {
       "browsers": [
         "E79",
         "FF68",
-        "S15",
+        "S14.1",
         "C69",
         "O56"
       ],
@@ -36016,7 +32197,7 @@ var cssData = {
       "browsers": [
         "E79",
         "FF68",
-        "S15",
+        "S14.1",
         "C69",
         "O56"
       ],
@@ -36035,7 +32216,7 @@ var cssData = {
       "browsers": [
         "E79",
         "FF68",
-        "S15",
+        "S14.1",
         "C69",
         "O56"
       ],
@@ -36297,7 +32478,7 @@ var cssData = {
     {
       "name": "scroll-padding-top",
       "syntax": "auto | <length-percentage>",
-      "relevance": 50,
+      "relevance": 51,
       "browsers": [
         "E79",
         "FF68",
@@ -36335,18 +32516,9 @@ var cssData = {
     {
       "name": "scroll-snap-stop",
       "syntax": "normal | always",
-      "values": [
-        {
-          "name": "normal"
-        },
-        {
-          "name": "always"
-        }
-      ],
-      "relevance": 51,
+      "relevance": 50,
       "browsers": [
         "E79",
-        "FF103",
         "S15",
         "C75",
         "O62"
@@ -36363,107 +32535,39 @@ var cssData = {
       "name": "scroll-snap-type-x",
       "status": "obsolete",
       "syntax": "none | mandatory | proximity",
-      "values": [
+      "relevance": 0,
+      "browsers": [
+        "FF39",
+        "S9"
+      ],
+      "references": [
         {
-          "name": "none"
-        },
-        {
-          "name": "mandatory"
-        },
-        {
-          "name": "proximity"
+          "name": "MDN Reference",
+          "url": "https://developer.mozilla.org/docs/Web/CSS/scroll-snap-type-x"
         }
       ],
-      "relevance": 0,
       "description": "The scroll-snap-type-x CSS property defines how strictly snap points are enforced on the horizontal axis of the scroll container in case there is one.\n\nSpecifying any precise animations or physics used to enforce those snap points is not covered by this property but instead left up to the user agent."
     },
     {
       "name": "scroll-snap-type-y",
       "status": "obsolete",
       "syntax": "none | mandatory | proximity",
-      "values": [
-        {
-          "name": "none"
-        },
-        {
-          "name": "mandatory"
-        },
-        {
-          "name": "proximity"
-        }
-      ],
       "relevance": 0,
+      "browsers": [
+        "FF39"
+      ],
+      "references": [
+        {
+          "name": "MDN Reference",
+          "url": "https://developer.mozilla.org/docs/Web/CSS/scroll-snap-type-y"
+        }
+      ],
       "description": "The scroll-snap-type-y CSS property defines how strictly snap points are enforced on the vertical axis of the scroll container in case there is one.\n\nSpecifying any precise animations or physics used to enforce those snap points is not covered by this property but instead left up to the user agent."
-    },
-    {
-      "name": "scroll-timeline",
-      "status": "experimental",
-      "syntax": "[ <'scroll-timeline-name'> <'scroll-timeline-axis'>? ]#",
-      "relevance": 50,
-      "browsers": [
-        "E115",
-        "FF111",
-        "C115",
-        "O101"
-      ],
-      "references": [
-        {
-          "name": "MDN Reference",
-          "url": "https://developer.mozilla.org/docs/Web/CSS/scroll-timeline"
-        }
-      ],
-      "description": "Defines a name that can be used to identify the source element of a scroll timeline, along with the scrollbar axis that should provide the timeline."
-    },
-    {
-      "name": "scroll-timeline-axis",
-      "status": "experimental",
-      "syntax": "[ block | inline | x | y ]#",
-      "relevance": 50,
-      "browsers": [
-        "E115",
-        "FF111",
-        "C115",
-        "O101"
-      ],
-      "references": [
-        {
-          "name": "MDN Reference",
-          "url": "https://developer.mozilla.org/docs/Web/CSS/scroll-timeline-axis"
-        }
-      ],
-      "description": "Specifies the scrollbar that will be used to provide the timeline for a scroll-timeline animation"
-    },
-    {
-      "name": "scroll-timeline-name",
-      "status": "experimental",
-      "syntax": "none | <dashed-ident>#",
-      "relevance": 50,
-      "browsers": [
-        "E115",
-        "FF111",
-        "C115",
-        "O101"
-      ],
-      "references": [
-        {
-          "name": "MDN Reference",
-          "url": "https://developer.mozilla.org/docs/Web/CSS/scroll-timeline-name"
-        }
-      ],
-      "description": "Defines a name that can be used to identify an element as the source of a scroll-timeline."
     },
     {
       "name": "text-combine-upright",
       "syntax": "none | all | [ digits <integer>? ]",
       "relevance": 50,
-      "browsers": [
-        "E79",
-        "FF48",
-        "S15.4",
-        "C48",
-        "IE11",
-        "O35"
-      ],
       "references": [
         {
           "name": "MDN Reference",
@@ -36493,22 +32597,11 @@ var cssData = {
     {
       "name": "text-decoration-skip-ink",
       "syntax": "auto | all | none",
-      "values": [
-        {
-          "name": "auto"
-        },
-        {
-          "name": "all"
-        },
-        {
-          "name": "none"
-        }
-      ],
-      "relevance": 51,
+      "relevance": 50,
       "browsers": [
         "E79",
         "FF70",
-        "S15.4",
+        "Spreview",
         "C64",
         "O50"
       ],
@@ -36544,11 +32637,11 @@ var cssData = {
       "syntax": "<'text-emphasis-style'> || <'text-emphasis-color'>",
       "relevance": 50,
       "browsers": [
-        "E99",
+        "E79",
         "FF46",
         "S7",
-        "C99",
-        "O85"
+        "C25",
+        "O15"
       ],
       "references": [
         {
@@ -36563,11 +32656,11 @@ var cssData = {
       "syntax": "<color>",
       "relevance": 50,
       "browsers": [
-        "E99",
+        "E79",
         "FF46",
         "S7",
-        "C99",
-        "O85"
+        "C25",
+        "O15"
       ],
       "references": [
         {
@@ -36582,11 +32675,11 @@ var cssData = {
       "syntax": "[ over | under ] && [ right | left ]",
       "relevance": 50,
       "browsers": [
-        "E99",
+        "E79",
         "FF46",
         "S7",
-        "C99",
-        "O85"
+        "C25",
+        "O15"
       ],
       "references": [
         {
@@ -36601,11 +32694,11 @@ var cssData = {
       "syntax": "none | [ [ filled | open ] || [ dot | circle | double-circle | triangle | sesame ] ] | <string>",
       "relevance": 50,
       "browsers": [
-        "E99",
+        "E79",
         "FF46",
         "S7",
-        "C99",
-        "O85"
+        "C25",
+        "O15"
       ],
       "references": [
         {
@@ -36636,7 +32729,7 @@ var cssData = {
     {
       "name": "text-underline-offset",
       "syntax": "auto | <length> | <percentage> ",
-      "relevance": 51,
+      "relevance": 50,
       "browsers": [
         "E87",
         "FF70",
@@ -36653,79 +32746,8 @@ var cssData = {
       "description": "The text-underline-offset CSS property sets the offset distance of an underline text decoration line (applied using text-decoration) from its original position."
     },
     {
-      "name": "text-wrap",
-      "syntax": "wrap | nowrap | balance | stable | pretty",
-      "values": [
-        {
-          "name": "wrap"
-        },
-        {
-          "name": "nowrap"
-        },
-        {
-          "name": "balance"
-        },
-        {
-          "name": "stable"
-        },
-        {
-          "name": "pretty"
-        }
-      ],
-      "relevance": 54,
-      "browsers": [
-        "E114",
-        "FF121",
-        "Spreview",
-        "C114",
-        "O100"
-      ],
-      "references": [
-        {
-          "name": "MDN Reference",
-          "url": "https://developer.mozilla.org/docs/Web/CSS/text-wrap"
-        }
-      ],
-      "description": "The text-wrap CSS property controls how text inside an element is wrapped."
-    },
-    {
-      "name": "timeline-scope",
-      "status": "experimental",
-      "syntax": "none | <dashed-ident>#",
-      "relevance": 50,
-      "browsers": [
-        "E116",
-        "C116",
-        "O102"
-      ],
-      "references": [
-        {
-          "name": "MDN Reference",
-          "url": "https://developer.mozilla.org/docs/Web/CSS/timeline-scope"
-        }
-      ],
-      "description": "The timeline-scope CSS property modifies the scope of a named animation timeline."
-    },
-    {
       "name": "transform-box",
       "syntax": "content-box | border-box | fill-box | stroke-box | view-box",
-      "values": [
-        {
-          "name": "content-box"
-        },
-        {
-          "name": "border-box"
-        },
-        {
-          "name": "fill-box"
-        },
-        {
-          "name": "stroke-box"
-        },
-        {
-          "name": "view-box"
-        }
-      ],
       "relevance": 50,
       "browsers": [
         "E79",
@@ -36743,33 +32765,12 @@ var cssData = {
       "description": "The transform-box CSS property defines the layout box to which the transform and transform-origin properties relate."
     },
     {
-      "name": "transition-behavior",
-      "status": "experimental",
-      "syntax": "<transition-behavior-value>#",
-      "relevance": 50,
-      "browsers": [
-        "E117",
-        "C117",
-        "O103"
-      ],
-      "references": [
-        {
-          "name": "MDN Reference",
-          "url": "https://developer.mozilla.org/docs/Web/CSS/transition-behavior"
-        }
-      ],
-      "description": "The transition-behavior CSS property specifies whether transitions will be started for properties whose animation behavior is discrete."
-    },
-    {
       "name": "translate",
       "syntax": "none | <length-percentage> [ <length-percentage> <length>? ]?",
       "relevance": 50,
       "browsers": [
-        "E104",
         "FF72",
-        "S14.1",
-        "C104",
-        "O90"
+        "S14.1"
       ],
       "references": [
         {
@@ -36780,183 +32781,13 @@ var cssData = {
       "description": "The translate CSS property allows you to specify translation transforms individually and independently of the transform property. This maps better to typical user interface usage, and saves having to remember the exact order of transform functions to specify in the transform value."
     },
     {
-      "name": "view-timeline",
-      "status": "experimental",
-      "syntax": "[ <'view-timeline-name'> <'view-timeline-axis'>? ]#",
-      "relevance": 50,
-      "browsers": [
-        "E115",
-        "FF114",
-        "C115",
-        "O101"
-      ],
-      "references": [
-        {
-          "name": "MDN Reference",
-          "url": "https://developer.mozilla.org/docs/Web/CSS/view-timeline"
-        }
-      ],
-      "description": "The view-timeline CSS shorthand property is used to define a named view progress timeline, which is progressed through based on the change in visibility of an element (known as the subject) inside a scrollable element (scroller). view-timeline is set on the subject."
-    },
-    {
-      "name": "view-timeline-axis",
-      "status": "experimental",
-      "syntax": "[ block | inline | x | y ]#",
-      "relevance": 50,
-      "browsers": [
-        "E115",
-        "FF114",
-        "C115",
-        "O101"
-      ],
-      "references": [
-        {
-          "name": "MDN Reference",
-          "url": "https://developer.mozilla.org/docs/Web/CSS/view-timeline-axis"
-        }
-      ],
-      "description": "The view-timeline-axis CSS property is used to specify the scrollbar direction that will be used to provide the timeline for a named view progress timeline animation, which is progressed through based on the change in visibility of an element (known as the subject) inside a scrollable element (scroller). view-timeline-axis is set on the subject. See CSS scroll-driven animations for more details."
-    },
-    {
-      "name": "view-timeline-inset",
-      "status": "experimental",
-      "syntax": "[ [ auto | <length-percentage> ]{1,2} ]#",
-      "relevance": 50,
-      "browsers": [
-        "E115",
-        "C115",
-        "O101"
-      ],
-      "references": [
-        {
-          "name": "MDN Reference",
-          "url": "https://developer.mozilla.org/docs/Web/CSS/view-timeline-inset"
-        }
-      ],
-      "description": "The view-timeline-inset CSS property is used to specify one or two values representing an adjustment to the position of the scrollport (see Scroll container for more details) in which the subject element of a named view progress timeline animation is deemed to be visible. Put another way, this allows you to specify start and/or end inset (or outset) values that offset the position of the timeline."
-    },
-    {
-      "name": "view-timeline-name",
-      "status": "experimental",
-      "syntax": "none | <dashed-ident>#",
-      "relevance": 50,
-      "browsers": [
-        "E115",
-        "FF111",
-        "C115",
-        "O101"
-      ],
-      "references": [
-        {
-          "name": "MDN Reference",
-          "url": "https://developer.mozilla.org/docs/Web/CSS/view-timeline-name"
-        }
-      ],
-      "description": "The view-timeline-name CSS property is used to define the name of a named view progress timeline, which is progressed through based on the change in visibility of an element (known as the subject) inside a scrollable element (scroller). view-timeline is set on the subject."
-    },
-    {
-      "name": "view-transition-name",
-      "status": "experimental",
-      "syntax": "none | <custom-ident>",
-      "relevance": 50,
-      "browsers": [
-        "E111",
-        "C111",
-        "O97"
-      ],
-      "references": [
-        {
-          "name": "MDN Reference",
-          "url": "https://developer.mozilla.org/docs/Web/CSS/view-transition-name"
-        }
-      ],
-      "description": "The view-transition-name CSS property provides the selected element with a distinct identifying name (a custom-ident) and causes it to participate in a separate view transition from the root view transition \u2014 or no view transition if the none value is specified."
-    },
-    {
-      "name": "white-space",
-      "syntax": "normal | pre | nowrap | pre-wrap | pre-line | break-spaces | [ <'white-space-collapse'> || <'text-wrap'> || <'white-space-trim'> ]",
-      "relevance": 89,
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE5.5",
-        "O4"
-      ],
-      "references": [
-        {
-          "name": "MDN Reference",
-          "url": "https://developer.mozilla.org/docs/Web/CSS/white-space"
-        }
-      ],
-      "description": "Specifies how whitespace is handled in an element."
-    },
-    {
-      "name": "white-space-collapse",
-      "syntax": "collapse | discard | preserve | preserve-breaks | preserve-spaces | break-spaces",
-      "values": [
-        {
-          "name": "collapse"
-        },
-        {
-          "name": "discard"
-        },
-        {
-          "name": "preserve"
-        },
-        {
-          "name": "preserve-breaks"
-        },
-        {
-          "name": "preserve-spaces"
-        },
-        {
-          "name": "break-spaces"
-        }
-      ],
-      "relevance": 50,
-      "browsers": [
-        "E114",
-        "Spreview",
-        "C114",
-        "O100"
-      ],
-      "references": [
-        {
-          "name": "MDN Reference",
-          "url": "https://developer.mozilla.org/docs/Web/CSS/white-space-collapse"
-        }
-      ],
-      "description": "The white-space-collapse CSS property controls how white space inside an element is collapsed."
-    },
-    {
       "name": "speak-as",
-      "atRule": "@counter-style",
       "syntax": "auto | bullets | numbers | words | spell-out | <counter-style-name>",
       "relevance": 50,
-      "browsers": [
-        "S11.1"
-      ],
       "description": "The speak-as descriptor specifies how a counter symbol constructed with a given @counter-style will be represented in the spoken form. For example, an author can specify a counter symbol to be either spoken as its numerical value or just represented with an audio cue."
     },
     {
-      "name": "base-palette",
-      "atRule": "@font-palette-values",
-      "syntax": "light | dark | <integer [0,\u221E]>",
-      "relevance": 50,
-      "description": "The base-palette CSS descriptor is used to specify the name or index of a pre-defined palette to be used for creating a new palette. If the specified base-palette does not exist, then the palette defined at index 0 will be used."
-    },
-    {
-      "name": "override-colors",
-      "atRule": "@font-palette-values",
-      "syntax": "[ <integer [0,\u221E]> <absolute-color-base> ]#",
-      "relevance": 50,
-      "description": "The override-colors CSS descriptor is used to override colors in the chosen base-palette for a color font."
-    },
-    {
       "name": "ascent-override",
-      "atRule": "@font-face",
       "status": "experimental",
       "syntax": "normal | <percentage>",
       "relevance": 50,
@@ -36964,7 +32795,6 @@ var cssData = {
     },
     {
       "name": "descent-override",
-      "atRule": "@font-face",
       "status": "experimental",
       "syntax": "normal | <percentage>",
       "relevance": 50,
@@ -36972,15 +32802,13 @@ var cssData = {
     },
     {
       "name": "font-display",
-      "atRule": "@font-face",
       "status": "experimental",
       "syntax": "[ auto | block | swap | fallback | optional ]",
-      "relevance": 74,
+      "relevance": 71,
       "description": "The font-display descriptor determines how a font face is displayed based on whether and when it is downloaded and ready to use."
     },
     {
       "name": "line-gap-override",
-      "atRule": "@font-face",
       "status": "experimental",
       "syntax": "normal | <percentage>",
       "relevance": 50,
@@ -36988,7 +32816,6 @@ var cssData = {
     },
     {
       "name": "size-adjust",
-      "atRule": "@font-face",
       "status": "experimental",
       "syntax": "<percentage>",
       "relevance": 50,
@@ -36996,28 +32823,18 @@ var cssData = {
     },
     {
       "name": "bleed",
-      "atRule": "@page",
       "syntax": "auto | <length>",
       "relevance": 50,
       "description": "The bleed CSS at-rule descriptor, used with the @page at-rule, specifies the extent of the page bleed area outside the page box. This property only has effect if crop marks are enabled using the marks property."
     },
     {
       "name": "marks",
-      "atRule": "@page",
       "syntax": "none | [ crop || cross ]",
       "relevance": 50,
       "description": "The marks CSS at-rule descriptor, used with the @page at-rule, adds crop and/or cross marks to the presentation of the document. Crop marks indicate where the page should be cut. Cross marks are used to align sheets."
     },
     {
-      "name": "page-orientation",
-      "atRule": "@page",
-      "syntax": "upright | rotate-left | rotate-right ",
-      "relevance": 50,
-      "description": "The page-orientation CSS descriptor for the @page at-rule controls the rotation of a printed page. It handles the flow of content across pages when the orientation of a page is changed. This behavior differs from the size descriptor in that a user can define the direction in which to rotate the page."
-    },
-    {
       "name": "syntax",
-      "atRule": "@property",
       "status": "experimental",
       "syntax": "<string>",
       "relevance": 50,
@@ -37025,40 +32842,52 @@ var cssData = {
     },
     {
       "name": "inherits",
-      "atRule": "@property",
       "status": "experimental",
       "syntax": "true | false",
-      "values": [
-        {
-          "name": "true"
-        },
-        {
-          "name": "false"
-        }
-      ],
       "relevance": 50,
       "description": "Specifies the inherit flag of the custom property registration represented by the @property rule, controlling whether or not the property inherits by default."
     },
     {
       "name": "initial-value",
-      "atRule": "@property",
       "status": "experimental",
-      "syntax": "<declaration-value>?",
+      "syntax": "<string>",
       "relevance": 50,
       "description": "Specifies the initial value of the custom property registration represented by the @property rule, controlling the property\u2019s initial value."
+    },
+    {
+      "name": "max-zoom",
+      "syntax": "auto | <number> | <percentage>",
+      "relevance": 50,
+      "description": "The max-zoom CSS descriptor sets the maximum zoom factor of a document defined by the @viewport at-rule. The browser will not zoom in any further than this, whether automatically or at the user's request.\n\nA zoom factor of 1.0 or 100% corresponds to no zooming. Larger values are zoomed in. Smaller values are zoomed out."
+    },
+    {
+      "name": "min-zoom",
+      "syntax": "auto | <number> | <percentage>",
+      "relevance": 50,
+      "description": "The min-zoom CSS descriptor sets the minimum zoom factor of a document defined by the @viewport at-rule. The browser will not zoom out any further than this, whether automatically or at the user's request.\n\nA zoom factor of 1.0 or 100% corresponds to no zooming. Larger values are zoomed in. Smaller values are zoomed out."
+    },
+    {
+      "name": "orientation",
+      "syntax": "auto | portrait | landscape",
+      "relevance": 50,
+      "description": "The orientation CSS @media media feature can be used to apply styles based on the orientation of the viewport (or the page box, for paged media)."
+    },
+    {
+      "name": "user-zoom",
+      "syntax": "zoom | fixed",
+      "relevance": 50,
+      "description": "The user-zoom CSS descriptor controls whether or not the user can change the zoom factor of a document defined by @viewport."
+    },
+    {
+      "name": "viewport-fit",
+      "syntax": "auto | contain | cover",
+      "relevance": 50,
+      "description": "The border-block-style CSS property defines the style of the logical block borders of an element, which maps to a physical border style depending on the element's writing mode, directionality, and text orientation."
     }
   ],
   "atDirectives": [
     {
       "name": "@charset",
-      "browsers": [
-        "E12",
-        "FF1.5",
-        "S4",
-        "C2",
-        "IE5.5",
-        "O9"
-      ],
       "references": [
         {
           "name": "MDN Reference",
@@ -37072,7 +32901,6 @@ var cssData = {
       "browsers": [
         "E91",
         "FF33",
-        "S17",
         "C91",
         "O77"
       ],
@@ -37086,14 +32914,6 @@ var cssData = {
     },
     {
       "name": "@font-face",
-      "browsers": [
-        "E12",
-        "FF3.5",
-        "S3.1",
-        "C1",
-        "IE4",
-        "O10"
-      ],
       "references": [
         {
           "name": "MDN Reference",
@@ -37105,11 +32925,8 @@ var cssData = {
     {
       "name": "@font-feature-values",
       "browsers": [
-        "E111",
         "FF34",
-        "S9.1",
-        "C111",
-        "O97"
+        "S9.1"
       ],
       "references": [
         {
@@ -37121,14 +32938,6 @@ var cssData = {
     },
     {
       "name": "@import",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE5.5",
-        "O3.5"
-      ],
       "references": [
         {
           "name": "MDN Reference",
@@ -37139,14 +32948,6 @@ var cssData = {
     },
     {
       "name": "@keyframes",
-      "browsers": [
-        "E12",
-        "FF16",
-        "S9",
-        "C43",
-        "IE10",
-        "O30"
-      ],
       "references": [
         {
           "name": "MDN Reference",
@@ -37156,32 +32957,7 @@ var cssData = {
       "description": "Defines set of animation key frames."
     },
     {
-      "name": "@layer",
-      "browsers": [
-        "E99",
-        "FF97",
-        "S15.4",
-        "C99",
-        "O85"
-      ],
-      "references": [
-        {
-          "name": "MDN Reference",
-          "url": "https://developer.mozilla.org/docs/Web/CSS/@layer"
-        }
-      ],
-      "description": "Declare a cascade layer and the order of precedence in case of multiple cascade layers."
-    },
-    {
       "name": "@media",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S3",
-        "C1",
-        "IE6",
-        "O9.2"
-      ],
       "references": [
         {
           "name": "MDN Reference",
@@ -37214,14 +32990,6 @@ var cssData = {
     },
     {
       "name": "@namespace",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE9",
-        "O8"
-      ],
       "references": [
         {
           "name": "MDN Reference",
@@ -37249,7 +33017,6 @@ var cssData = {
       "browsers": [
         "E12",
         "FF19",
-        "S13.1",
         "C2",
         "IE8",
         "O6"
@@ -37261,23 +33028,6 @@ var cssData = {
         }
       ],
       "description": "Directive defines various page parameters."
-    },
-    {
-      "name": "@property",
-      "browsers": [
-        "E85",
-        "FFpreview",
-        "S16.4",
-        "C85",
-        "O71"
-      ],
-      "references": [
-        {
-          "name": "MDN Reference",
-          "url": "https://developer.mozilla.org/docs/Web/CSS/@property"
-        }
-      ],
-      "description": "Describes the aspect of custom properties and variables."
     },
     {
       "name": "@supports",
@@ -37308,14 +33058,6 @@ var cssData = {
   "pseudoClasses": [
     {
       "name": ":active",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE4",
-        "O5"
-      ],
       "references": [
         {
           "name": "MDN Reference",
@@ -37343,14 +33085,6 @@ var cssData = {
     },
     {
       "name": ":checked",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S3.1",
-        "C1",
-        "IE9",
-        "O9"
-      ],
       "references": [
         {
           "name": "MDN Reference",
@@ -37373,7 +33107,7 @@ var cssData = {
         "C",
         "S5"
       ],
-      "description": "Non-standard. Applies to buttons and track pieces. Indicates whether or not the button or track piece will decrement the view's position when used."
+      "description": "Non-standard. Applies to buttons and track pieces. Indicates whether or not the button or track piece will decrement the view\u2019s position when used."
     },
     {
       "name": ":default",
@@ -37394,14 +33128,6 @@ var cssData = {
     },
     {
       "name": ":disabled",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S3.1",
-        "C1",
-        "IE9",
-        "O9"
-      ],
       "references": [
         {
           "name": "MDN Reference",
@@ -37420,14 +33146,6 @@ var cssData = {
     },
     {
       "name": ":empty",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S3.1",
-        "C1",
-        "IE9",
-        "O9.5"
-      ],
       "references": [
         {
           "name": "MDN Reference",
@@ -37438,14 +33156,6 @@ var cssData = {
     },
     {
       "name": ":enabled",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S3.1",
-        "C1",
-        "IE9",
-        "O9"
-      ],
       "references": [
         {
           "name": "MDN Reference",
@@ -37466,7 +33176,6 @@ var cssData = {
       "name": ":first",
       "browsers": [
         "E12",
-        "FF116",
         "S6",
         "C18",
         "IE8",
@@ -37482,14 +33191,6 @@ var cssData = {
     },
     {
       "name": ":first-child",
-      "browsers": [
-        "E12",
-        "FF3",
-        "S3.1",
-        "C4",
-        "IE7",
-        "O9.5"
-      ],
       "references": [
         {
           "name": "MDN Reference",
@@ -37500,14 +33201,6 @@ var cssData = {
     },
     {
       "name": ":first-of-type",
-      "browsers": [
-        "E12",
-        "FF3.5",
-        "S3.1",
-        "C1",
-        "IE9",
-        "O9.5"
-      ],
       "references": [
         {
           "name": "MDN Reference",
@@ -37518,14 +33211,6 @@ var cssData = {
     },
     {
       "name": ":focus",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE8",
-        "O7"
-      ],
       "references": [
         {
           "name": "MDN Reference",
@@ -37536,14 +33221,6 @@ var cssData = {
     },
     {
       "name": ":fullscreen",
-      "browsers": [
-        "E12",
-        "FF64",
-        "S16.4",
-        "C71",
-        "IE11",
-        "O58"
-      ],
       "references": [
         {
           "name": "MDN Reference",
@@ -37555,10 +33232,7 @@ var cssData = {
     {
       "name": ":future",
       "browsers": [
-        "E79",
-        "S7",
-        "C23",
-        "O15"
+        "S7"
       ],
       "references": [
         {
@@ -37591,7 +33265,7 @@ var cssData = {
           "url": "https://developer.mozilla.org/docs/Web/CSS/:host"
         }
       ],
-      "description": "When evaluated in the context of a shadow tree, matches the shadow tree's host element."
+      "description": "When evaluated in the context of a shadow tree, matches the shadow tree\u2019s host element."
     },
     {
       "name": ":host()",
@@ -37599,7 +33273,7 @@ var cssData = {
         "C35",
         "O22"
       ],
-      "description": "When evaluated in the context of a shadow tree, it matches the shadow tree's host element if the host element, in its normal context, matches the selector argument."
+      "description": "When evaluated in the context of a shadow tree, it matches the shadow tree\u2019s host element if the host element, in its normal context, matches the selector argument."
     },
     {
       "name": ":host-context()",
@@ -37611,14 +33285,6 @@ var cssData = {
     },
     {
       "name": ":hover",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S2",
-        "C1",
-        "IE4",
-        "O4"
-      ],
       "references": [
         {
           "name": "MDN Reference",
@@ -37633,18 +33299,10 @@ var cssData = {
         "C",
         "S5"
       ],
-      "description": "Non-standard. Applies to buttons and track pieces. Indicates whether or not the button or track piece will increment the view's position when used."
+      "description": "Non-standard. Applies to buttons and track pieces. Indicates whether or not the button or track piece will increment the view\u2019s position when used."
     },
     {
       "name": ":indeterminate",
-      "browsers": [
-        "E12",
-        "FF2",
-        "S3",
-        "C1",
-        "IE10",
-        "O9"
-      ],
       "references": [
         {
           "name": "MDN Reference",
@@ -37672,14 +33330,6 @@ var cssData = {
     },
     {
       "name": ":invalid",
-      "browsers": [
-        "E12",
-        "FF4",
-        "S5",
-        "C10",
-        "IE10",
-        "O10"
-      ],
       "references": [
         {
           "name": "MDN Reference",
@@ -37702,14 +33352,6 @@ var cssData = {
     },
     {
       "name": ":last-child",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S3.1",
-        "C1",
-        "IE9",
-        "O9.5"
-      ],
       "references": [
         {
           "name": "MDN Reference",
@@ -37720,14 +33362,6 @@ var cssData = {
     },
     {
       "name": ":last-of-type",
-      "browsers": [
-        "E12",
-        "FF3.5",
-        "S3.1",
-        "C1",
-        "IE9",
-        "O9.5"
-      ],
       "references": [
         {
           "name": "MDN Reference",
@@ -37740,7 +33374,7 @@ var cssData = {
       "name": ":left",
       "browsers": [
         "E12",
-        "S5",
+        "S5.1",
         "C6",
         "IE8",
         "O9.2"
@@ -37755,14 +33389,6 @@ var cssData = {
     },
     {
       "name": ":link",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE3",
-        "O3.5"
-      ],
       "references": [
         {
           "name": "MDN Reference",
@@ -37815,7 +33441,7 @@ var cssData = {
     {
       "name": ":-moz-first-node",
       "browsers": [
-        "FF72"
+        "FF1"
       ],
       "description": "Non-standard. Represents an element that is the first child node of some other element."
     },
@@ -37836,7 +33462,7 @@ var cssData = {
     {
       "name": ":-moz-last-node",
       "browsers": [
-        "FF72"
+        "FF1"
       ],
       "description": "Non-standard. Represents an element that is the last child node of some other element."
     },
@@ -37845,7 +33471,7 @@ var cssData = {
       "browsers": [
         "FF3"
       ],
-      "description": "Non-standard. Matches elements, such as images, that haven't started loading yet."
+      "description": "Non-standard. Matches elements, such as images, that haven\u2019t started loading yet."
     },
     {
       "name": ":-moz-only-whitespace",
@@ -37906,7 +33532,7 @@ var cssData = {
       "browsers": [
         "FF3"
       ],
-      "description": "Non-standard. Matches elements representing images that have been disabled due to the user's preferences."
+      "description": "Non-standard. Matches elements representing images that have been disabled due to the user\u2019s preferences."
     },
     {
       "name": ":-moz-window-inactive",
@@ -38020,14 +33646,6 @@ var cssData = {
     },
     {
       "name": ":only-child",
-      "browsers": [
-        "E12",
-        "FF1.5",
-        "S3.1",
-        "C2",
-        "IE9",
-        "O9.5"
-      ],
       "references": [
         {
           "name": "MDN Reference",
@@ -38038,14 +33656,6 @@ var cssData = {
     },
     {
       "name": ":only-of-type",
-      "browsers": [
-        "E12",
-        "FF3.5",
-        "S3.1",
-        "C1",
-        "IE9",
-        "O9.5"
-      ],
       "references": [
         {
           "name": "MDN Reference",
@@ -38056,14 +33666,6 @@ var cssData = {
     },
     {
       "name": ":optional",
-      "browsers": [
-        "E12",
-        "FF4",
-        "S5",
-        "C10",
-        "IE10",
-        "O10"
-      ],
       "references": [
         {
           "name": "MDN Reference",
@@ -38092,10 +33694,7 @@ var cssData = {
     {
       "name": ":past",
       "browsers": [
-        "E79",
-        "S7",
-        "C23",
-        "O15"
+        "S7"
       ],
       "references": [
         {
@@ -38141,14 +33740,6 @@ var cssData = {
     },
     {
       "name": ":required",
-      "browsers": [
-        "E12",
-        "FF4",
-        "S5",
-        "C10",
-        "IE10",
-        "O10"
-      ],
       "references": [
         {
           "name": "MDN Reference",
@@ -38161,7 +33752,7 @@ var cssData = {
       "name": ":right",
       "browsers": [
         "E12",
-        "S5",
+        "S5.1",
         "C6",
         "IE8",
         "O9.2"
@@ -38176,14 +33767,6 @@ var cssData = {
     },
     {
       "name": ":root",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE9",
-        "O9.5"
-      ],
       "references": [
         {
           "name": "MDN Reference",
@@ -38227,14 +33810,6 @@ var cssData = {
     },
     {
       "name": ":target",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1.3",
-        "C1",
-        "IE9",
-        "O9.5"
-      ],
       "references": [
         {
           "name": "MDN Reference",
@@ -38245,14 +33820,6 @@ var cssData = {
     },
     {
       "name": ":valid",
-      "browsers": [
-        "E12",
-        "FF4",
-        "S5",
-        "C10",
-        "IE10",
-        "O10"
-      ],
       "references": [
         {
           "name": "MDN Reference",
@@ -38271,14 +33838,6 @@ var cssData = {
     },
     {
       "name": ":visited",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE4",
-        "O3.5"
-      ],
       "references": [
         {
           "name": "MDN Reference",
@@ -38348,11 +33907,7 @@ var cssData = {
     {
       "name": ":dir",
       "browsers": [
-        "E120",
-        "FF49",
-        "S16.4",
-        "C120",
-        "O106"
+        "FF49"
       ],
       "references": [
         {
@@ -38367,7 +33922,6 @@ var cssData = {
       "browsers": [
         "E86",
         "FF85",
-        "S15.4",
         "C86",
         "O72"
       ],
@@ -38400,11 +33954,7 @@ var cssData = {
       "name": ":has",
       "status": "experimental",
       "browsers": [
-        "E105",
-        "FF121",
-        "S15.4",
-        "C105",
-        "O91"
+        "Spreview"
       ],
       "references": [
         {
@@ -38438,30 +33988,23 @@ var cssData = {
       "description": "The :local-link CSS pseudo-class represents an link to the same document"
     },
     {
+      "name": ":nth-col",
+      "status": "experimental",
+      "description": "The :nth-col() CSS pseudo-class is designed for tables and grids. It accepts the An+B notation such as used with the :nth-child selector, using this to target every nth column. "
+    },
+    {
+      "name": ":nth-last-col",
+      "status": "experimental",
+      "description": "The :nth-last-col() CSS pseudo-class is designed for tables and grids. It accepts the An+B notation such as used with the :nth-child selector, using this to target every nth column before it, therefore counting back from the end of the set of columns."
+    },
+    {
       "name": ":paused",
       "status": "experimental",
-      "browsers": [
-        "S15.4"
-      ],
-      "references": [
-        {
-          "name": "MDN Reference",
-          "url": "https://developer.mozilla.org/docs/Web/CSS/:paused"
-        }
-      ],
       "description": "The :paused CSS pseudo-class selector is a resource state pseudo-class that will match an audio, video, or similar resource that is capable of being \u201Cplayed\u201D or \u201Cpaused\u201D, when that element is \u201Cpaused\u201D."
     },
     {
       "name": ":placeholder-shown",
       "status": "experimental",
-      "browsers": [
-        "E79",
-        "FF51",
-        "S9",
-        "C47",
-        "IE10",
-        "O34"
-      ],
       "references": [
         {
           "name": "MDN Reference",
@@ -38473,15 +34016,6 @@ var cssData = {
     {
       "name": ":playing",
       "status": "experimental",
-      "browsers": [
-        "S15.4"
-      ],
-      "references": [
-        {
-          "name": "MDN Reference",
-          "url": "https://developer.mozilla.org/docs/Web/CSS/:playing"
-        }
-      ],
       "description": "The :playing CSS pseudo-class selector is a resource state pseudo-class that will match an audio, video, or similar resource that is capable of being \u201Cplayed\u201D or \u201Cpaused\u201D, when that element is \u201Cplaying\u201D. "
     },
     {
@@ -38499,11 +34033,7 @@ var cssData = {
       "name": ":user-invalid",
       "status": "experimental",
       "browsers": [
-        "E119",
-        "FF88",
-        "S16.5",
-        "C119",
-        "O105"
+        "FF88"
       ],
       "references": [
         {
@@ -38517,11 +34047,7 @@ var cssData = {
       "name": ":user-valid",
       "status": "experimental",
       "browsers": [
-        "E119",
-        "FF88",
-        "S16.5",
-        "C119",
-        "O105"
+        "FF88"
       ],
       "references": [
         {
@@ -38552,50 +34078,22 @@ var cssData = {
     {
       "name": ":picture-in-picture",
       "status": "experimental",
-      "browsers": [
-        "E110",
-        "S13.1",
-        "C110",
-        "O96"
-      ],
-      "references": [
-        {
-          "name": "MDN Reference",
-          "url": "https://developer.mozilla.org/docs/Web/CSS/:picture-in-picture"
-        }
-      ],
       "description": "The :picture-in-picture CSS pseudo-class matches the element which is currently in picture-in-picture mode."
     }
   ],
   "pseudoElements": [
     {
       "name": "::after",
-      "browsers": [
-        "E12",
-        "FF1.5",
-        "S4",
-        "C1",
-        "IE9",
-        "O7"
-      ],
       "references": [
         {
           "name": "MDN Reference",
           "url": "https://developer.mozilla.org/docs/Web/CSS/::after"
         }
       ],
-      "description": "Represents a styleable child pseudo-element immediately after the originating element's actual content."
+      "description": "Represents a styleable child pseudo-element immediately after the originating element\u2019s actual content."
     },
     {
       "name": "::backdrop",
-      "browsers": [
-        "E79",
-        "FF47",
-        "S15.4",
-        "C37",
-        "IE11",
-        "O24"
-      ],
       "references": [
         {
           "name": "MDN Reference",
@@ -38606,21 +34104,13 @@ var cssData = {
     },
     {
       "name": "::before",
-      "browsers": [
-        "E12",
-        "FF1.5",
-        "S4",
-        "C1",
-        "IE9",
-        "O7"
-      ],
       "references": [
         {
           "name": "MDN Reference",
           "url": "https://developer.mozilla.org/docs/Web/CSS/::before"
         }
       ],
-      "description": "Represents a styleable child pseudo-element immediately before the originating element's actual content."
+      "description": "Represents a styleable child pseudo-element immediately before the originating element\u2019s actual content."
     },
     {
       "name": "::content",
@@ -38672,14 +34162,6 @@ var cssData = {
     },
     {
       "name": "::first-letter",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE9",
-        "O7"
-      ],
       "references": [
         {
           "name": "MDN Reference",
@@ -38690,14 +34172,6 @@ var cssData = {
     },
     {
       "name": "::first-line",
-      "browsers": [
-        "E12",
-        "FF1",
-        "S1",
-        "C1",
-        "IE9",
-        "O7"
-      ],
       "references": [
         {
           "name": "MDN Reference",
@@ -38709,7 +34183,7 @@ var cssData = {
     {
       "name": "::-moz-focus-inner",
       "browsers": [
-        "FF72"
+        "FF4"
       ]
     },
     {
@@ -38721,14 +34195,14 @@ var cssData = {
     {
       "name": "::-moz-list-bullet",
       "browsers": [
-        "FF72"
+        "FF1"
       ],
       "description": "Used to style the bullet of a list element. Similar to the standardized ::marker."
     },
     {
       "name": "::-moz-list-number",
       "browsers": [
-        "FF72"
+        "FF1"
       ],
       "description": "Used to style the numbers of a list element. Similar to the standardized ::marker."
     },
@@ -38742,7 +34216,7 @@ var cssData = {
     {
       "name": "::-moz-progress-bar",
       "browsers": [
-        "FF72"
+        "FF9"
       ],
       "description": "Represents the bar portion of a progress bar."
     },
@@ -38874,14 +34348,6 @@ var cssData = {
     },
     {
       "name": "::selection",
-      "browsers": [
-        "E12",
-        "FF62",
-        "S1.1",
-        "C1",
-        "IE9",
-        "O9.5"
-      ],
       "references": [
         {
           "name": "MDN Reference",
@@ -38999,9 +34465,14 @@ var cssData = {
     {
       "name": "::-webkit-outer-spin-button",
       "browsers": [
-        "C",
-        "O",
-        "S6"
+        "S5",
+        "C6"
+      ],
+      "references": [
+        {
+          "name": "MDN Reference",
+          "url": "https://developer.mozilla.org/docs/Web/CSS/::-webkit-outer-spin-button"
+        }
       ]
     },
     {
@@ -39201,17 +34672,17 @@ var cssData = {
     {
       "name": "::-webkit-slider-runnable-track",
       "browsers": [
-        "E83",
-        "C83",
-        "O69"
+        "C",
+        "O",
+        "S6"
       ]
     },
     {
       "name": "::-webkit-slider-thumb",
       "browsers": [
-        "E83",
-        "C83",
-        "O69"
+        "C",
+        "O",
+        "S6"
       ]
     },
     {
@@ -39336,11 +34807,6 @@ var cssData = {
     {
       "name": "::grammar-error",
       "status": "experimental",
-      "browsers": [
-        "E121",
-        "Spreview",
-        "C121"
-      ],
       "references": [
         {
           "name": "MDN Reference",
@@ -39421,11 +34887,6 @@ var cssData = {
     {
       "name": "::spelling-error",
       "status": "experimental",
-      "browsers": [
-        "E121",
-        "Spreview",
-        "C121"
-      ],
       "references": [
         {
           "name": "MDN Reference",
@@ -39433,147 +34894,67 @@ var cssData = {
         }
       ],
       "description": "The ::spelling-error CSS pseudo-element represents a text segment which the user agent has flagged as incorrectly spelled."
-    },
-    {
-      "name": "::view-transition",
-      "status": "experimental",
-      "browsers": [
-        "E109",
-        "C109",
-        "O95"
-      ],
-      "references": [
-        {
-          "name": "MDN Reference",
-          "url": "https://developer.mozilla.org/docs/Web/CSS/::view-transition"
-        }
-      ],
-      "description": "The ::view-transition CSS pseudo-element represents the root of the view transitions overlay, which contains all view transitions and sits over the top of all other page content."
-    },
-    {
-      "name": "::view-transition-group",
-      "status": "experimental",
-      "browsers": [
-        "E109",
-        "C109",
-        "O95"
-      ],
-      "references": [
-        {
-          "name": "MDN Reference",
-          "url": "https://developer.mozilla.org/docs/Web/CSS/::view-transition-group"
-        }
-      ],
-      "description": "The ::view-transition-group CSS pseudo-element represents a single view transition group."
-    },
-    {
-      "name": "::view-transition-image-pair",
-      "status": "experimental",
-      "browsers": [
-        "E109",
-        "C109",
-        "O95"
-      ],
-      "references": [
-        {
-          "name": "MDN Reference",
-          "url": "https://developer.mozilla.org/docs/Web/CSS/::view-transition-image-pair"
-        }
-      ],
-      "description": `The ::view-transition-image-pair CSS pseudo-element represents a container for a view transition's "old" and "new" view states \u2014 before and after the transition.`
-    },
-    {
-      "name": "::view-transition-new",
-      "status": "experimental",
-      "browsers": [
-        "E109",
-        "C109",
-        "O95"
-      ],
-      "references": [
-        {
-          "name": "MDN Reference",
-          "url": "https://developer.mozilla.org/docs/Web/CSS/::view-transition-new"
-        }
-      ],
-      "description": 'The ::view-transition-new CSS pseudo-element represents the "new" view state of a view transition \u2014 a live representation of the new view, after the transition.'
-    },
-    {
-      "name": "::view-transition-old",
-      "status": "experimental",
-      "browsers": [
-        "E109",
-        "C109",
-        "O95"
-      ],
-      "references": [
-        {
-          "name": "MDN Reference",
-          "url": "https://developer.mozilla.org/docs/Web/CSS/::view-transition-old"
-        }
-      ],
-      "description": 'The ::view-transition-old CSS pseudo-element represents the "old" view state of a view transition \u2014 a static screenshot of the old view, before the transition.'
     }
   ]
 };
 
 // node_modules/vscode-css-languageservice/lib/esm/languageFacts/dataProvider.js
-var CSSDataProvider = class {
-  /**
-   * Currently, unversioned data uses the V1 implementation
-   * In the future when the provider handles multiple versions of HTML custom data,
-   * use the latest implementation for unversioned data
-   */
-  constructor(data) {
+var CSSDataProvider = function() {
+  function CSSDataProvider2(data) {
     this._properties = [];
     this._atDirectives = [];
     this._pseudoClasses = [];
     this._pseudoElements = [];
     this.addData(data);
   }
-  provideProperties() {
+  CSSDataProvider2.prototype.provideProperties = function() {
     return this._properties;
-  }
-  provideAtDirectives() {
+  };
+  CSSDataProvider2.prototype.provideAtDirectives = function() {
     return this._atDirectives;
-  }
-  providePseudoClasses() {
+  };
+  CSSDataProvider2.prototype.providePseudoClasses = function() {
     return this._pseudoClasses;
-  }
-  providePseudoElements() {
+  };
+  CSSDataProvider2.prototype.providePseudoElements = function() {
     return this._pseudoElements;
-  }
-  addData(data) {
+  };
+  CSSDataProvider2.prototype.addData = function(data) {
     if (Array.isArray(data.properties)) {
-      for (const prop of data.properties) {
+      for (var _i = 0, _a2 = data.properties; _i < _a2.length; _i++) {
+        var prop = _a2[_i];
         if (isPropertyData(prop)) {
           this._properties.push(prop);
         }
       }
     }
     if (Array.isArray(data.atDirectives)) {
-      for (const prop of data.atDirectives) {
+      for (var _b = 0, _c = data.atDirectives; _b < _c.length; _b++) {
+        var prop = _c[_b];
         if (isAtDirective(prop)) {
           this._atDirectives.push(prop);
         }
       }
     }
     if (Array.isArray(data.pseudoClasses)) {
-      for (const prop of data.pseudoClasses) {
+      for (var _d = 0, _e = data.pseudoClasses; _d < _e.length; _d++) {
+        var prop = _e[_d];
         if (isPseudoClassData(prop)) {
           this._pseudoClasses.push(prop);
         }
       }
     }
     if (Array.isArray(data.pseudoElements)) {
-      for (const prop of data.pseudoElements) {
+      for (var _f2 = 0, _g = data.pseudoElements; _f2 < _g.length; _f2++) {
+        var prop = _g[_f2];
         if (isPseudoElementData(prop)) {
           this._pseudoElements.push(prop);
         }
       }
     }
-  }
-};
+  };
+  return CSSDataProvider2;
+}();
 function isPropertyData(d) {
   return typeof d.name === "string";
 }
@@ -39588,8 +34969,8 @@ function isPseudoElementData(d) {
 }
 
 // node_modules/vscode-css-languageservice/lib/esm/languageFacts/dataManager.js
-var CSSDataManager = class {
-  constructor(options) {
+var CSSDataManager = function() {
+  function CSSDataManager2(options) {
     this.dataProviders = [];
     this._propertySet = {};
     this._atDirectiveSet = {};
@@ -39599,43 +34980,42 @@ var CSSDataManager = class {
     this._atDirectives = [];
     this._pseudoClasses = [];
     this._pseudoElements = [];
-    this.setDataProviders(options?.useDefaultDataProvider !== false, options?.customDataProviders || []);
+    this.setDataProviders((options === null || options === void 0 ? void 0 : options.useDefaultDataProvider) !== false, (options === null || options === void 0 ? void 0 : options.customDataProviders) || []);
   }
-  setDataProviders(builtIn, providers) {
+  CSSDataManager2.prototype.setDataProviders = function(builtIn, providers) {
+    var _a2;
     this.dataProviders = [];
     if (builtIn) {
       this.dataProviders.push(new CSSDataProvider(cssData));
     }
-    this.dataProviders.push(...providers);
+    (_a2 = this.dataProviders).push.apply(_a2, providers);
     this.collectData();
-  }
-  /**
-   * Collect all data  & handle duplicates
-   */
-  collectData() {
+  };
+  CSSDataManager2.prototype.collectData = function() {
+    var _this = this;
     this._propertySet = {};
     this._atDirectiveSet = {};
     this._pseudoClassSet = {};
     this._pseudoElementSet = {};
-    this.dataProviders.forEach((provider) => {
-      provider.provideProperties().forEach((p) => {
-        if (!this._propertySet[p.name]) {
-          this._propertySet[p.name] = p;
+    this.dataProviders.forEach(function(provider) {
+      provider.provideProperties().forEach(function(p) {
+        if (!_this._propertySet[p.name]) {
+          _this._propertySet[p.name] = p;
         }
       });
-      provider.provideAtDirectives().forEach((p) => {
-        if (!this._atDirectiveSet[p.name]) {
-          this._atDirectiveSet[p.name] = p;
+      provider.provideAtDirectives().forEach(function(p) {
+        if (!_this._atDirectiveSet[p.name]) {
+          _this._atDirectiveSet[p.name] = p;
         }
       });
-      provider.providePseudoClasses().forEach((p) => {
-        if (!this._pseudoClassSet[p.name]) {
-          this._pseudoClassSet[p.name] = p;
+      provider.providePseudoClasses().forEach(function(p) {
+        if (!_this._pseudoClassSet[p.name]) {
+          _this._pseudoClassSet[p.name] = p;
         }
       });
-      provider.providePseudoElements().forEach((p) => {
-        if (!this._pseudoElementSet[p.name]) {
-          this._pseudoElementSet[p.name] = p;
+      provider.providePseudoElements().forEach(function(p) {
+        if (!_this._pseudoElementSet[p.name]) {
+          _this._pseudoElementSet[p.name] = p;
         }
       });
     });
@@ -39643,45 +35023,46 @@ var CSSDataManager = class {
     this._atDirectives = values(this._atDirectiveSet);
     this._pseudoClasses = values(this._pseudoClassSet);
     this._pseudoElements = values(this._pseudoElementSet);
-  }
-  getProperty(name) {
+  };
+  CSSDataManager2.prototype.getProperty = function(name) {
     return this._propertySet[name];
-  }
-  getAtDirective(name) {
+  };
+  CSSDataManager2.prototype.getAtDirective = function(name) {
     return this._atDirectiveSet[name];
-  }
-  getPseudoClass(name) {
+  };
+  CSSDataManager2.prototype.getPseudoClass = function(name) {
     return this._pseudoClassSet[name];
-  }
-  getPseudoElement(name) {
+  };
+  CSSDataManager2.prototype.getPseudoElement = function(name) {
     return this._pseudoElementSet[name];
-  }
-  getProperties() {
+  };
+  CSSDataManager2.prototype.getProperties = function() {
     return this._properties;
-  }
-  getAtDirectives() {
+  };
+  CSSDataManager2.prototype.getAtDirectives = function() {
     return this._atDirectives;
-  }
-  getPseudoClasses() {
+  };
+  CSSDataManager2.prototype.getPseudoClasses = function() {
     return this._pseudoClasses;
-  }
-  getPseudoElements() {
+  };
+  CSSDataManager2.prototype.getPseudoElements = function() {
     return this._pseudoElements;
-  }
-  isKnownProperty(name) {
+  };
+  CSSDataManager2.prototype.isKnownProperty = function(name) {
     return name.toLowerCase() in this._propertySet;
-  }
-  isStandardProperty(name) {
+  };
+  CSSDataManager2.prototype.isStandardProperty = function(name) {
     return this.isKnownProperty(name) && (!this._propertySet[name.toLowerCase()].status || this._propertySet[name.toLowerCase()].status === "standard");
-  }
-};
+  };
+  return CSSDataManager2;
+}();
 
 // node_modules/vscode-css-languageservice/lib/esm/services/cssSelectionRange.js
 function getSelectionRanges(document, positions, stylesheet) {
   function getSelectionRange(position) {
-    const applicableRanges = getApplicableRanges(position);
-    let current = void 0;
-    for (let index = applicableRanges.length - 1; index >= 0; index--) {
+    var applicableRanges = getApplicableRanges(position);
+    var current = void 0;
+    for (var index = applicableRanges.length - 1; index >= 0; index--) {
       current = SelectionRange.create(Range.create(document.positionAt(applicableRanges[index][0]), document.positionAt(applicableRanges[index][1])), current);
     }
     if (!current) {
@@ -39691,12 +35072,12 @@ function getSelectionRanges(document, positions, stylesheet) {
   }
   return positions.map(getSelectionRange);
   function getApplicableRanges(position) {
-    const offset = document.offsetAt(position);
-    let currNode = stylesheet.findChildAtOffset(offset, true);
+    var offset = document.offsetAt(position);
+    var currNode = stylesheet.findChildAtOffset(offset, true);
     if (!currNode) {
       return [];
     }
-    const result = [];
+    var result = [];
     while (currNode) {
       if (currNode.parent && currNode.offset === currNode.parent.offset && currNode.end === currNode.parent.end) {
         currNode = currNode.parent;
@@ -39715,52 +35096,220 @@ function getSelectionRanges(document, positions, stylesheet) {
 }
 
 // node_modules/vscode-css-languageservice/lib/esm/services/scssNavigation.js
-var SCSSNavigation = class extends CSSNavigation {
-  constructor(fileSystemProvider) {
-    super(fileSystemProvider, true);
+var __extends10 = function() {
+  var extendStatics = function(d, b) {
+    extendStatics = Object.setPrototypeOf || { __proto__: [] } instanceof Array && function(d2, b2) {
+      d2.__proto__ = b2;
+    } || function(d2, b2) {
+      for (var p in b2)
+        if (Object.prototype.hasOwnProperty.call(b2, p))
+          d2[p] = b2[p];
+    };
+    return extendStatics(d, b);
+  };
+  return function(d, b) {
+    if (typeof b !== "function" && b !== null)
+      throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
+    extendStatics(d, b);
+    function __() {
+      this.constructor = d;
+    }
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+  };
+}();
+var __awaiter4 = function(thisArg, _arguments, P, generator) {
+  function adopt(value) {
+    return value instanceof P ? value : new P(function(resolve) {
+      resolve(value);
+    });
   }
-  isRawStringDocumentLinkNode(node) {
-    return super.isRawStringDocumentLinkNode(node) || node.type === NodeType.Use || node.type === NodeType.Forward;
-  }
-  async mapReference(target, isRawLink) {
-    if (this.fileSystemProvider && target && isRawLink) {
-      const pathVariations = toPathVariations(target);
-      for (const variation of pathVariations) {
-        if (await this.fileExists(variation)) {
-          return variation;
-        }
+  return new (P || (P = Promise))(function(resolve, reject) {
+    function fulfilled(value) {
+      try {
+        step(generator.next(value));
+      } catch (e) {
+        reject(e);
       }
     }
-    return target;
-  }
-  async resolveReference(target, documentUri, documentContext, isRawLink = false) {
-    if (startsWith(target, "sass:")) {
-      return void 0;
+    function rejected(value) {
+      try {
+        step(generator["throw"](value));
+      } catch (e) {
+        reject(e);
+      }
     }
-    return super.resolveReference(target, documentUri, documentContext, isRawLink);
+    function step(result) {
+      result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected);
+    }
+    step((generator = generator.apply(thisArg, _arguments || [])).next());
+  });
+};
+var __generator4 = function(thisArg, body) {
+  var _ = { label: 0, sent: function() {
+    if (t[0] & 1)
+      throw t[1];
+    return t[1];
+  }, trys: [], ops: [] }, f2, y, t, g;
+  return g = { next: verb(0), "throw": verb(1), "return": verb(2) }, typeof Symbol === "function" && (g[Symbol.iterator] = function() {
+    return this;
+  }), g;
+  function verb(n) {
+    return function(v) {
+      return step([n, v]);
+    };
+  }
+  function step(op) {
+    if (f2)
+      throw new TypeError("Generator is already executing.");
+    while (_)
+      try {
+        if (f2 = 1, y && (t = op[0] & 2 ? y["return"] : op[0] ? y["throw"] || ((t = y["return"]) && t.call(y), 0) : y.next) && !(t = t.call(y, op[1])).done)
+          return t;
+        if (y = 0, t)
+          op = [op[0] & 2, t.value];
+        switch (op[0]) {
+          case 0:
+          case 1:
+            t = op;
+            break;
+          case 4:
+            _.label++;
+            return { value: op[1], done: false };
+          case 5:
+            _.label++;
+            y = op[1];
+            op = [0];
+            continue;
+          case 7:
+            op = _.ops.pop();
+            _.trys.pop();
+            continue;
+          default:
+            if (!(t = _.trys, t = t.length > 0 && t[t.length - 1]) && (op[0] === 6 || op[0] === 2)) {
+              _ = 0;
+              continue;
+            }
+            if (op[0] === 3 && (!t || op[1] > t[0] && op[1] < t[3])) {
+              _.label = op[1];
+              break;
+            }
+            if (op[0] === 6 && _.label < t[1]) {
+              _.label = t[1];
+              t = op;
+              break;
+            }
+            if (t && _.label < t[2]) {
+              _.label = t[2];
+              _.ops.push(op);
+              break;
+            }
+            if (t[2])
+              _.ops.pop();
+            _.trys.pop();
+            continue;
+        }
+        op = body.call(thisArg, _);
+      } catch (e) {
+        op = [6, e];
+        y = 0;
+      } finally {
+        f2 = t = 0;
+      }
+    if (op[0] & 5)
+      throw op[1];
+    return { value: op[0] ? op[1] : void 0, done: true };
   }
 };
-function toPathVariations(target) {
-  if (target.endsWith(".css")) {
-    return [target];
+var SCSSNavigation = function(_super) {
+  __extends10(SCSSNavigation2, _super);
+  function SCSSNavigation2(fileSystemProvider) {
+    return _super.call(this, fileSystemProvider, true) || this;
   }
-  if (target.endsWith("/")) {
-    return [target + "index.scss", target + "_index.scss"];
-  }
-  const targetUri = URI2.parse(target.replace(/\.scss$/, ""));
-  const basename = Utils.basename(targetUri);
-  const dirname2 = Utils.dirname(targetUri);
-  if (basename.startsWith("_")) {
-    return [Utils.joinPath(dirname2, basename + ".scss").toString(true)];
-  }
-  return [
-    Utils.joinPath(dirname2, basename + ".scss").toString(true),
-    Utils.joinPath(dirname2, "_" + basename + ".scss").toString(true),
-    target + "/index.scss",
-    target + "/_index.scss",
-    Utils.joinPath(dirname2, basename + ".css").toString(true)
-  ];
-}
+  SCSSNavigation2.prototype.isRawStringDocumentLinkNode = function(node) {
+    return _super.prototype.isRawStringDocumentLinkNode.call(this, node) || node.type === NodeType.Use || node.type === NodeType.Forward;
+  };
+  SCSSNavigation2.prototype.resolveRelativeReference = function(ref, documentUri, documentContext, isRawLink) {
+    return __awaiter4(this, void 0, void 0, function() {
+      function toPathVariations(uri) {
+        if (uri.path === "") {
+          return void 0;
+        }
+        if (uri.path.endsWith(".scss") || uri.path.endsWith(".css")) {
+          return void 0;
+        }
+        if (uri.path.endsWith("/")) {
+          return [
+            uri.with({ path: uri.path + "index.scss" }).toString(),
+            uri.with({ path: uri.path + "_index.scss" }).toString()
+          ];
+        }
+        var pathFragments = uri.path.split("/");
+        var basename = pathFragments[pathFragments.length - 1];
+        var pathWithoutBasename = uri.path.slice(0, -basename.length);
+        if (basename.startsWith("_")) {
+          if (uri.path.endsWith(".scss")) {
+            return void 0;
+          } else {
+            return [uri.with({ path: uri.path + ".scss" }).toString()];
+          }
+        }
+        var normalizedBasename = basename + ".scss";
+        var documentUriWithBasename = function(newBasename) {
+          return uri.with({ path: pathWithoutBasename + newBasename }).toString();
+        };
+        var normalizedPath = documentUriWithBasename(normalizedBasename);
+        var underScorePath = documentUriWithBasename("_" + normalizedBasename);
+        var indexPath = documentUriWithBasename(normalizedBasename.slice(0, -5) + "/index.scss");
+        var indexUnderscoreUri = documentUriWithBasename(normalizedBasename.slice(0, -5) + "/_index.scss");
+        var cssPath = documentUriWithBasename(normalizedBasename.slice(0, -5) + ".css");
+        return [normalizedPath, underScorePath, indexPath, indexUnderscoreUri, cssPath];
+      }
+      var target, parsedUri, pathVariations, j, e_1;
+      return __generator4(this, function(_a2) {
+        switch (_a2.label) {
+          case 0:
+            if (startsWith(ref, "sass:")) {
+              return [2, void 0];
+            }
+            return [4, _super.prototype.resolveRelativeReference.call(this, ref, documentUri, documentContext, isRawLink)];
+          case 1:
+            target = _a2.sent();
+            if (!(this.fileSystemProvider && target && isRawLink))
+              return [3, 8];
+            parsedUri = URI.parse(target);
+            _a2.label = 2;
+          case 2:
+            _a2.trys.push([2, 7, , 8]);
+            pathVariations = toPathVariations(parsedUri);
+            if (!pathVariations)
+              return [3, 6];
+            j = 0;
+            _a2.label = 3;
+          case 3:
+            if (!(j < pathVariations.length))
+              return [3, 6];
+            return [4, this.fileExists(pathVariations[j])];
+          case 4:
+            if (_a2.sent()) {
+              return [2, pathVariations[j]];
+            }
+            _a2.label = 5;
+          case 5:
+            j++;
+            return [3, 3];
+          case 6:
+            return [3, 8];
+          case 7:
+            e_1 = _a2.sent();
+            return [3, 8];
+          case 8:
+            return [2, target];
+        }
+      });
+    });
+  };
+  return SCSSNavigation2;
+}(CSSNavigation);
 
 // node_modules/vscode-css-languageservice/lib/esm/cssLanguageService.js
 function newCSSDataProvider(data) {
@@ -39768,11 +35317,10 @@ function newCSSDataProvider(data) {
 }
 function createFacade(parser, completion, hover, navigation, codeActions, validation, cssDataManager) {
   return {
-    configure: (settings) => {
+    configure: function(settings) {
       validation.configure(settings);
-      completion.configure(settings?.completion);
-      hover.configure(settings?.hover);
-      navigation.configure(settings?.importAliases);
+      completion.configure(settings === null || settings === void 0 ? void 0 : settings.completion);
+      hover.configure(settings === null || settings === void 0 ? void 0 : settings.hover);
     },
     setDataProviders: cssDataManager.setDataProviders.bind(cssDataManager),
     doValidation: validation.doValidation.bind(validation),
@@ -39781,40 +35329,50 @@ function createFacade(parser, completion, hover, navigation, codeActions, valida
     doComplete2: completion.doComplete2.bind(completion),
     setCompletionParticipants: completion.setCompletionParticipants.bind(completion),
     doHover: hover.doHover.bind(hover),
-    format: format2,
     findDefinition: navigation.findDefinition.bind(navigation),
     findReferences: navigation.findReferences.bind(navigation),
     findDocumentHighlights: navigation.findDocumentHighlights.bind(navigation),
     findDocumentLinks: navigation.findDocumentLinks.bind(navigation),
     findDocumentLinks2: navigation.findDocumentLinks2.bind(navigation),
-    findDocumentSymbols: navigation.findSymbolInformations.bind(navigation),
-    findDocumentSymbols2: navigation.findDocumentSymbols.bind(navigation),
+    findDocumentSymbols: navigation.findDocumentSymbols.bind(navigation),
     doCodeActions: codeActions.doCodeActions.bind(codeActions),
     doCodeActions2: codeActions.doCodeActions2.bind(codeActions),
     findDocumentColors: navigation.findDocumentColors.bind(navigation),
     getColorPresentations: navigation.getColorPresentations.bind(navigation),
-    prepareRename: navigation.prepareRename.bind(navigation),
     doRename: navigation.doRename.bind(navigation),
     getFoldingRanges,
     getSelectionRanges
   };
 }
 var defaultLanguageServiceOptions = {};
-function getCSSLanguageService(options = defaultLanguageServiceOptions) {
-  const cssDataManager = new CSSDataManager(options);
+function getCSSLanguageService(options) {
+  if (options === void 0) {
+    options = defaultLanguageServiceOptions;
+  }
+  var cssDataManager = new CSSDataManager(options);
   return createFacade(new Parser(), new CSSCompletion(null, options, cssDataManager), new CSSHover(options && options.clientCapabilities, cssDataManager), new CSSNavigation(options && options.fileSystemProvider, false), new CSSCodeActions(cssDataManager), new CSSValidation(cssDataManager), cssDataManager);
 }
-function getSCSSLanguageService(options = defaultLanguageServiceOptions) {
-  const cssDataManager = new CSSDataManager(options);
+function getSCSSLanguageService(options) {
+  if (options === void 0) {
+    options = defaultLanguageServiceOptions;
+  }
+  var cssDataManager = new CSSDataManager(options);
   return createFacade(new SCSSParser(), new SCSSCompletion(options, cssDataManager), new CSSHover(options && options.clientCapabilities, cssDataManager), new SCSSNavigation(options && options.fileSystemProvider), new CSSCodeActions(cssDataManager), new CSSValidation(cssDataManager), cssDataManager);
 }
-function getLESSLanguageService(options = defaultLanguageServiceOptions) {
-  const cssDataManager = new CSSDataManager(options);
+function getLESSLanguageService(options) {
+  if (options === void 0) {
+    options = defaultLanguageServiceOptions;
+  }
+  var cssDataManager = new CSSDataManager(options);
   return createFacade(new LESSParser(), new LESSCompletion(options, cssDataManager), new CSSHover(options && options.clientCapabilities, cssDataManager), new CSSNavigation(options && options.fileSystemProvider, true), new CSSCodeActions(cssDataManager), new CSSValidation(cssDataManager), cssDataManager);
 }
 
 // src/language/css/cssWorker.ts
 var CSSWorker = class {
+  _ctx;
+  _languageService;
+  _languageSettings;
+  _languageId;
   constructor(ctx, createData) {
     this._ctx = ctx;
     this._languageSettings = createData.options;
@@ -39846,147 +35404,127 @@ var CSSWorker = class {
     }
     this._languageService.configure(this._languageSettings);
   }
-  // --- language service host ---------------
   async doValidation(uri) {
-    const document = this._getTextDocument(uri);
+    let document = this._getTextDocument(uri);
     if (document) {
-      const stylesheet = this._languageService.parseStylesheet(document);
-      const diagnostics = this._languageService.doValidation(document, stylesheet);
+      let stylesheet = this._languageService.parseStylesheet(document);
+      let diagnostics = this._languageService.doValidation(document, stylesheet);
       return Promise.resolve(diagnostics);
     }
     return Promise.resolve([]);
   }
   async doComplete(uri, position) {
-    const document = this._getTextDocument(uri);
+    let document = this._getTextDocument(uri);
     if (!document) {
       return null;
     }
-    const stylesheet = this._languageService.parseStylesheet(document);
-    const completions = this._languageService.doComplete(document, position, stylesheet);
+    let stylesheet = this._languageService.parseStylesheet(document);
+    let completions = this._languageService.doComplete(document, position, stylesheet);
     return Promise.resolve(completions);
   }
   async doHover(uri, position) {
-    const document = this._getTextDocument(uri);
+    let document = this._getTextDocument(uri);
     if (!document) {
       return null;
     }
-    const stylesheet = this._languageService.parseStylesheet(document);
-    const hover = this._languageService.doHover(document, position, stylesheet);
+    let stylesheet = this._languageService.parseStylesheet(document);
+    let hover = this._languageService.doHover(document, position, stylesheet);
     return Promise.resolve(hover);
   }
   async findDefinition(uri, position) {
-    const document = this._getTextDocument(uri);
+    let document = this._getTextDocument(uri);
     if (!document) {
       return null;
     }
-    const stylesheet = this._languageService.parseStylesheet(document);
-    const definition = this._languageService.findDefinition(document, position, stylesheet);
+    let stylesheet = this._languageService.parseStylesheet(document);
+    let definition = this._languageService.findDefinition(document, position, stylesheet);
     return Promise.resolve(definition);
   }
   async findReferences(uri, position) {
-    const document = this._getTextDocument(uri);
+    let document = this._getTextDocument(uri);
     if (!document) {
       return [];
     }
-    const stylesheet = this._languageService.parseStylesheet(document);
-    const references = this._languageService.findReferences(document, position, stylesheet);
+    let stylesheet = this._languageService.parseStylesheet(document);
+    let references = this._languageService.findReferences(document, position, stylesheet);
     return Promise.resolve(references);
   }
   async findDocumentHighlights(uri, position) {
-    const document = this._getTextDocument(uri);
+    let document = this._getTextDocument(uri);
     if (!document) {
       return [];
     }
-    const stylesheet = this._languageService.parseStylesheet(document);
-    const highlights = this._languageService.findDocumentHighlights(document, position, stylesheet);
+    let stylesheet = this._languageService.parseStylesheet(document);
+    let highlights = this._languageService.findDocumentHighlights(document, position, stylesheet);
     return Promise.resolve(highlights);
   }
   async findDocumentSymbols(uri) {
-    const document = this._getTextDocument(uri);
+    let document = this._getTextDocument(uri);
     if (!document) {
       return [];
     }
-    const stylesheet = this._languageService.parseStylesheet(document);
-    const symbols = this._languageService.findDocumentSymbols(document, stylesheet);
+    let stylesheet = this._languageService.parseStylesheet(document);
+    let symbols = this._languageService.findDocumentSymbols(document, stylesheet);
     return Promise.resolve(symbols);
   }
   async doCodeActions(uri, range, context) {
-    const document = this._getTextDocument(uri);
+    let document = this._getTextDocument(uri);
     if (!document) {
       return [];
     }
-    const stylesheet = this._languageService.parseStylesheet(document);
-    const actions = this._languageService.doCodeActions(document, range, context, stylesheet);
+    let stylesheet = this._languageService.parseStylesheet(document);
+    let actions = this._languageService.doCodeActions(document, range, context, stylesheet);
     return Promise.resolve(actions);
   }
   async findDocumentColors(uri) {
-    const document = this._getTextDocument(uri);
+    let document = this._getTextDocument(uri);
     if (!document) {
       return [];
     }
-    const stylesheet = this._languageService.parseStylesheet(document);
-    const colorSymbols = this._languageService.findDocumentColors(document, stylesheet);
+    let stylesheet = this._languageService.parseStylesheet(document);
+    let colorSymbols = this._languageService.findDocumentColors(document, stylesheet);
     return Promise.resolve(colorSymbols);
   }
   async getColorPresentations(uri, color, range) {
-    const document = this._getTextDocument(uri);
+    let document = this._getTextDocument(uri);
     if (!document) {
       return [];
     }
-    const stylesheet = this._languageService.parseStylesheet(document);
-    const colorPresentations = this._languageService.getColorPresentations(
-      document,
-      stylesheet,
-      color,
-      range
-    );
+    let stylesheet = this._languageService.parseStylesheet(document);
+    let colorPresentations = this._languageService.getColorPresentations(document, stylesheet, color, range);
     return Promise.resolve(colorPresentations);
   }
   async getFoldingRanges(uri, context) {
-    const document = this._getTextDocument(uri);
+    let document = this._getTextDocument(uri);
     if (!document) {
       return [];
     }
-    const ranges = this._languageService.getFoldingRanges(document, context);
+    let ranges = this._languageService.getFoldingRanges(document, context);
     return Promise.resolve(ranges);
   }
   async getSelectionRanges(uri, positions) {
-    const document = this._getTextDocument(uri);
+    let document = this._getTextDocument(uri);
     if (!document) {
       return [];
     }
-    const stylesheet = this._languageService.parseStylesheet(document);
-    const ranges = this._languageService.getSelectionRanges(document, positions, stylesheet);
+    let stylesheet = this._languageService.parseStylesheet(document);
+    let ranges = this._languageService.getSelectionRanges(document, positions, stylesheet);
     return Promise.resolve(ranges);
   }
   async doRename(uri, position, newName) {
-    const document = this._getTextDocument(uri);
+    let document = this._getTextDocument(uri);
     if (!document) {
       return null;
     }
-    const stylesheet = this._languageService.parseStylesheet(document);
-    const renames = this._languageService.doRename(document, position, newName, stylesheet);
+    let stylesheet = this._languageService.parseStylesheet(document);
+    let renames = this._languageService.doRename(document, position, newName, stylesheet);
     return Promise.resolve(renames);
   }
-  async format(uri, range, options) {
-    const document = this._getTextDocument(uri);
-    if (!document) {
-      return [];
-    }
-    const settings = { ...this._languageSettings.format, ...options };
-    const textEdits = this._languageService.format(document, range, settings);
-    return Promise.resolve(textEdits);
-  }
   _getTextDocument(uri) {
-    const models = this._ctx.getMirrorModels();
-    for (const model of models) {
+    let models = this._ctx.getMirrorModels();
+    for (let model of models) {
       if (model.uri.toString() === uri) {
-        return TextDocument2.create(
-          uri,
-          this._languageId,
-          model.version,
-          model.getValue()
-        );
+        return TextDocument2.create(uri, this._languageId, model.version, model.getValue());
       }
     }
     return null;
@@ -39995,7 +35533,7 @@ var CSSWorker = class {
 
 // src/language/css/css.worker.ts
 self.onmessage = () => {
-  initialize((ctx, createData) => {
+  worker.initialize((ctx, createData) => {
     return new CSSWorker(ctx, createData);
   });
 };

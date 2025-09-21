@@ -31,27 +31,13 @@
 }
 
 .monaco-editor .monaco-editor-overlaymessage .message {
-	padding: 2px 4px;
-	color: var(--vscode-editorHoverWidget-foreground);
-	background-color: var(--vscode-editorHoverWidget-background);
+	padding: 1px 4px;
+	color: var(--vscode-inputValidation-infoForeground);
+	background-color: var(--vscode-inputValidation-infoBackground);
 	border: 1px solid var(--vscode-inputValidation-infoBorder);
-	border-radius: 3px;
 }
 
-.monaco-editor .monaco-editor-overlaymessage .message p {
-	margin-block: 0px;
-}
-
-.monaco-editor .monaco-editor-overlaymessage .message a {
-	color: var(--vscode-textLink-foreground);
-}
-
-.monaco-editor .monaco-editor-overlaymessage .message a:hover {
-	color: var(--vscode-textLink-activeForeground);
-}
-
-.monaco-editor.hc-black .monaco-editor-overlaymessage .message,
-.monaco-editor.hc-light .monaco-editor-overlaymessage .message {
+.monaco-editor.hc-black .monaco-editor-overlaymessage .message {
 	border-width: 2px;
 }
 
@@ -63,7 +49,6 @@
 	z-index: 1000;
 	border-width: 8px;
 	position: absolute;
-	left: 2px;
 }
 
 .monaco-editor .monaco-editor-overlaymessage .anchor.top {

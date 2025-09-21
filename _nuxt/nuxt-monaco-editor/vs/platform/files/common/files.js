@@ -1,10 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-import { createDecorator } from '../../instantiation/common/instantiation.js';
-//#region file service & providers
-export const IFileService = createDecorator('fileService');
 //#endregion
 //#region Utilities
 export var FileKind;
@@ -14,4 +7,3 @@ export var FileKind;
     FileKind[FileKind["ROOT_FOLDER"] = 2] = "ROOT_FOLDER";
 })(FileKind || (FileKind = {}));
 //#endregion
-//# sourceMappingURL=files.js.map

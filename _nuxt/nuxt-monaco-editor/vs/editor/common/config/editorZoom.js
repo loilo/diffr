@@ -21,4 +21,3 @@ export const EditorZoom = new class {
         this._onDidChangeZoomLevel.fire(this._zoomLevel);
     }
 };
-//# sourceMappingURL=editorZoom.js.map

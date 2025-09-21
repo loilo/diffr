@@ -12,4 +12,3 @@ export class IdGenerator {
     }
 }
 export const defaultGenerator = new IdGenerator('id#');
-//# sourceMappingURL=idGenerator.js.map

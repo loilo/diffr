@@ -1,7 +1,7 @@
 import '../../editor/editor.api.js';
 /*!-----------------------------------------------------------------------------
  * Copyright (c) Microsoft Corporation. All rights reserved.
- * Version: 0.53.0(4e45ba0c5ff45fc61c0ccac61c0987369df04a6e)
+ * Version: 0.32.1(29a273516805a852aa8edc5e05059f119b13eff0)
  * Released under the MIT license
  * https://github.com/microsoft/monaco-editor/blob/main/LICENSE.txt
  *-----------------------------------------------------------------------------*/
@@ -10,15 +10,14 @@ var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
 var __getOwnPropNames = Object.getOwnPropertyNames;
 var __hasOwnProp = Object.prototype.hasOwnProperty;
-var __copyProps = (to, from, except, desc) => {
-  if (from && typeof from === "object" || typeof from === "function") {
-    for (let key of __getOwnPropNames(from))
-      if (!__hasOwnProp.call(to, key) && key !== except)
-        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+var __reExport = (target, module, copyDefault, desc) => {
+  if (module && typeof module === "object" || typeof module === "function") {
+    for (let key of __getOwnPropNames(module))
+      if (!__hasOwnProp.call(target, key) && (copyDefault || key !== "default"))
+        __defProp(target, key, { get: () => module[key], enumerable: !(desc = __getOwnPropDesc(module, key)) || desc.enumerable });
   }
-  return to;
+  return target;
 };
-var __reExport = (target, mod, secondTarget) => (__copyProps(target, mod, "default"), secondTarget && __copyProps(secondTarget, mod, "default"));
 
 // src/fillers/monaco-editor-core.ts
 var monaco_editor_core_exports = {};
@@ -27,8 +26,11 @@ import * as monaco_editor_core_star from "../../editor/editor.api.js";
 
 // src/language/html/monaco.contribution.ts
 var LanguageServiceDefaultsImpl = class {
+  _onDidChange = new monaco_editor_core_exports.Emitter();
+  _options;
+  _modeConfiguration;
+  _languageId;
   constructor(languageId, options, modeConfiguration) {
-    this._onDidChange = new monaco_editor_core_exports.Emitter();
     this._languageId = languageId;
     this.setOptions(options);
     this.setModeConfiguration(modeConfiguration);
@@ -85,33 +87,18 @@ function getConfigurationDefault(languageId) {
     foldingRanges: true,
     selectionRanges: true,
     diagnostics: languageId === htmlLanguageId,
-    // turned off for Razor and Handlebar
     documentFormattingEdits: languageId === htmlLanguageId,
-    // turned off for Razor and Handlebar
     documentRangeFormattingEdits: languageId === htmlLanguageId
-    // turned off for Razor and Handlebar
   };
 }
 var htmlLanguageId = "html";
 var handlebarsLanguageId = "handlebars";
 var razorLanguageId = "razor";
-var htmlLanguageService = registerHTMLLanguageService(
-  htmlLanguageId,
-  optionsDefault,
-  getConfigurationDefault(htmlLanguageId)
-);
+var htmlLanguageService = registerHTMLLanguageService(htmlLanguageId, optionsDefault, getConfigurationDefault(htmlLanguageId));
 var htmlDefaults = htmlLanguageService.defaults;
-var handlebarLanguageService = registerHTMLLanguageService(
-  handlebarsLanguageId,
-  optionsDefault,
-  getConfigurationDefault(handlebarsLanguageId)
-);
+var handlebarLanguageService = registerHTMLLanguageService(handlebarsLanguageId, optionsDefault, getConfigurationDefault(handlebarsLanguageId));
 var handlebarDefaults = handlebarLanguageService.defaults;
-var razorLanguageService = registerHTMLLanguageService(
-  razorLanguageId,
-  optionsDefault,
-  getConfigurationDefault(razorLanguageId)
-);
+var razorLanguageService = registerHTMLLanguageService(razorLanguageId, optionsDefault, getConfigurationDefault(razorLanguageId));
 var razorDefaults = razorLanguageService.defaults;
 monaco_editor_core_exports.languages.html = {
   htmlDefaults,

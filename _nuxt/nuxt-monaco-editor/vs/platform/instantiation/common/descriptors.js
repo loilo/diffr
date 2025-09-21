@@ -9,4 +9,3 @@ export class SyncDescriptor {
         this.supportsDelayedInstantiation = supportsDelayedInstantiation;
     }
 }
-//# sourceMappingURL=descriptors.js.map

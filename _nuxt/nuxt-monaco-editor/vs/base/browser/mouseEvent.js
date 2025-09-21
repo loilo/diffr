@@ -6,14 +6,13 @@ import * as browser from './browser.js';
 import { IframeUtils } from './iframe.js';
 import * as platform from '../common/platform.js';
 export class StandardMouseEvent {
-    constructor(targetWindow, e) {
+    constructor(e) {
         this.timestamp = Date.now();
         this.browserEvent = e;
         this.leftButton = e.button === 0;
         this.middleButton = e.button === 1;
         this.rightButton = e.button === 2;
         this.buttons = e.buttons;
-        this.defaultPrevented = e.defaultPrevented;
         this.target = e.target;
         this.detail = e.detail || 1;
         if (e.type === 'dblclick') {
@@ -29,11 +28,11 @@ export class StandardMouseEvent {
         }
         else {
             // Probably hit by MSGestureEvent
-            this.posx = e.clientX + this.target.ownerDocument.body.scrollLeft + this.target.ownerDocument.documentElement.scrollLeft;
-            this.posy = e.clientY + this.target.ownerDocument.body.scrollTop + this.target.ownerDocument.documentElement.scrollTop;
+            this.posx = e.clientX + document.body.scrollLeft + document.documentElement.scrollLeft;
+            this.posy = e.clientY + document.body.scrollTop + document.documentElement.scrollTop;
         }
         // Find the position of the iframe this code is executing in relative to the iframe where the event was captured.
-        const iframeOffsets = IframeUtils.getPositionOfChildWindowRelativeToAncestorWindow(targetWindow, e.view);
+        let iframeOffsets = IframeUtils.getPositionOfChildWindowRelativeToAncestorWindow(self, e.view);
         this.posx -= iframeOffsets.left;
         this.posy -= iframeOffsets.top;
     }
@@ -50,28 +49,13 @@ export class StandardWheelEvent {
         this.target = e ? (e.target || e.targetNode || e.srcElement) : null;
         this.deltaY = deltaY;
         this.deltaX = deltaX;
-        let shouldFactorDPR = false;
-        if (browser.isChrome) {
-            // Chrome version >= 123 contains the fix to factor devicePixelRatio into the wheel event.
-            // See https://chromium.googlesource.com/chromium/src.git/+/be51b448441ff0c9d1f17e0f25c4bf1ab3f11f61
-            const chromeVersionMatch = navigator.userAgent.match(/Chrome\/(\d+)/);
-            const chromeMajorVersion = chromeVersionMatch ? parseInt(chromeVersionMatch[1]) : 123;
-            shouldFactorDPR = chromeMajorVersion <= 122;
-        }
         if (e) {
             // Old (deprecated) wheel events
-            const e1 = e;
-            const e2 = e;
-            const devicePixelRatio = e.view?.devicePixelRatio || 1;
+            let e1 = e;
+            let e2 = e;
             // vertical delta scroll
             if (typeof e1.wheelDeltaY !== 'undefined') {
-                if (shouldFactorDPR) {
-                    // Refs https://github.com/microsoft/vscode/issues/146403#issuecomment-1854538928
-                    this.deltaY = e1.wheelDeltaY / (120 * devicePixelRatio);
-                }
-                else {
-                    this.deltaY = e1.wheelDeltaY / 120;
-                }
+                this.deltaY = e1.wheelDeltaY / 120;
             }
             else if (typeof e2.VERTICAL_AXIS !== 'undefined' && e2.axis === e2.VERTICAL_AXIS) {
                 this.deltaY = -e2.detail / 3;
@@ -97,10 +81,6 @@ export class StandardWheelEvent {
             if (typeof e1.wheelDeltaX !== 'undefined') {
                 if (browser.isSafari && platform.isWindows) {
                     this.deltaX = -(e1.wheelDeltaX / 120);
-                }
-                else if (shouldFactorDPR) {
-                    // Refs https://github.com/microsoft/vscode/issues/146403#issuecomment-1854538928
-                    this.deltaX = e1.wheelDeltaX / (120 * devicePixelRatio);
                 }
                 else {
                     this.deltaX = e1.wheelDeltaX / 120;
@@ -128,21 +108,18 @@ export class StandardWheelEvent {
             }
             // Assume a vertical scroll if nothing else worked
             if (this.deltaY === 0 && this.deltaX === 0 && e.wheelDelta) {
-                if (shouldFactorDPR) {
-                    // Refs https://github.com/microsoft/vscode/issues/146403#issuecomment-1854538928
-                    this.deltaY = e.wheelDelta / (120 * devicePixelRatio);
-                }
-                else {
-                    this.deltaY = e.wheelDelta / 120;
-                }
+                this.deltaY = e.wheelDelta / 120;
             }
         }
     }
     preventDefault() {
-        this.browserEvent?.preventDefault();
+        if (this.browserEvent) {
+            this.browserEvent.preventDefault();
+        }
     }
     stopPropagation() {
-        this.browserEvent?.stopPropagation();
+        if (this.browserEvent) {
+            this.browserEvent.stopPropagation();
+        }
     }
 }
-//# sourceMappingURL=mouseEvent.js.map

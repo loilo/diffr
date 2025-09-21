@@ -85,22 +85,6 @@ const _regexp = /^(([^:/?#]+?):)?(\/\/([^/?#]*))?([^?#]*)(\?([^#]*))?(#(.*))?/;
  * ```
  */
 export class URI {
-    static isUri(thing) {
-        if (thing instanceof URI) {
-            return true;
-        }
-        if (!thing || typeof thing !== 'object') {
-            return false;
-        }
-        return typeof thing.authority === 'string'
-            && typeof thing.fragment === 'string'
-            && typeof thing.path === 'string'
-            && typeof thing.query === 'string'
-            && typeof thing.scheme === 'string'
-            && typeof thing.fsPath === 'string'
-            && typeof thing.with === 'function'
-            && typeof thing.toString === 'function';
-    }
     /**
      * @internal
      */
@@ -123,6 +107,22 @@ export class URI {
             this.fragment = fragment || _empty;
             _validateUri(this, _strict);
         }
+    }
+    static isUri(thing) {
+        if (thing instanceof URI) {
+            return true;
+        }
+        if (!thing) {
+            return false;
+        }
+        return typeof thing.authority === 'string'
+            && typeof thing.fragment === 'string'
+            && typeof thing.path === 'string'
+            && typeof thing.query === 'string'
+            && typeof thing.scheme === 'string'
+            && typeof thing.fsPath === 'string'
+            && typeof thing.with === 'function'
+            && typeof thing.toString === 'function';
     }
     // ---- filesystem path -----------------------
     /**
@@ -258,15 +258,9 @@ export class URI {
         }
         return new Uri('file', authority, path, _empty, _empty);
     }
-    /**
-     * Creates new URI from uri components.
-     *
-     * Unless `strict` is `true` the scheme is defaults to be `file`. This function performs
-     * validation and should be used for untrusted uri components retrieved from storage,
-     * user input, command arguments etc
-     */
-    static from(components, strict) {
-        const result = new Uri(components.scheme, components.authority, components.path, components.query, components.fragment, strict);
+    static from(components) {
+        const result = new Uri(components.scheme, components.authority, components.path, components.query, components.fragment);
+        _validateUri(result, true);
         return result;
     }
     /**
@@ -316,8 +310,8 @@ export class URI {
         }
         else {
             const result = new Uri(data);
-            result._formatted = data.external ?? null;
-            result._fsPath = data._sep === _pathSepMarker ? data.fsPath ?? null : null;
+            result._formatted = data.external;
+            result._fsPath = data._sep === _pathSepMarker ? data.fsPath : null;
             return result;
         }
     }
@@ -349,9 +343,8 @@ class Uri extends URI {
         }
     }
     toJSON() {
-        // eslint-disable-next-line local/code-no-dangerous-type-assertions
         const res = {
-            $mid: 1 /* MarshalledId.Uri */
+            $mid: 1 /* Uri */
         };
         // cached state
         if (this._fsPath) {
@@ -361,14 +354,10 @@ class Uri extends URI {
         if (this._formatted) {
             res.external = this._formatted;
         }
-        //--- uri components
+        // uri components
         if (this.path) {
             res.path = this.path;
         }
-        // TODO
-        // this isn't correct and can violate the UriComponents contract but
-        // this is part of the vscode.Uri API and we shouldn't change how that
-        // works anymore
         if (this.scheme) {
             res.scheme = this.scheme;
         }
@@ -386,43 +375,40 @@ class Uri extends URI {
 }
 // reserved characters: https://tools.ietf.org/html/rfc3986#section-2.2
 const encodeTable = {
-    [58 /* CharCode.Colon */]: '%3A', // gen-delims
-    [47 /* CharCode.Slash */]: '%2F',
-    [63 /* CharCode.QuestionMark */]: '%3F',
-    [35 /* CharCode.Hash */]: '%23',
-    [91 /* CharCode.OpenSquareBracket */]: '%5B',
-    [93 /* CharCode.CloseSquareBracket */]: '%5D',
-    [64 /* CharCode.AtSign */]: '%40',
-    [33 /* CharCode.ExclamationMark */]: '%21', // sub-delims
-    [36 /* CharCode.DollarSign */]: '%24',
-    [38 /* CharCode.Ampersand */]: '%26',
-    [39 /* CharCode.SingleQuote */]: '%27',
-    [40 /* CharCode.OpenParen */]: '%28',
-    [41 /* CharCode.CloseParen */]: '%29',
-    [42 /* CharCode.Asterisk */]: '%2A',
-    [43 /* CharCode.Plus */]: '%2B',
-    [44 /* CharCode.Comma */]: '%2C',
-    [59 /* CharCode.Semicolon */]: '%3B',
-    [61 /* CharCode.Equals */]: '%3D',
-    [32 /* CharCode.Space */]: '%20',
+    [58 /* Colon */]: '%3A',
+    [47 /* Slash */]: '%2F',
+    [63 /* QuestionMark */]: '%3F',
+    [35 /* Hash */]: '%23',
+    [91 /* OpenSquareBracket */]: '%5B',
+    [93 /* CloseSquareBracket */]: '%5D',
+    [64 /* AtSign */]: '%40',
+    [33 /* ExclamationMark */]: '%21',
+    [36 /* DollarSign */]: '%24',
+    [38 /* Ampersand */]: '%26',
+    [39 /* SingleQuote */]: '%27',
+    [40 /* OpenParen */]: '%28',
+    [41 /* CloseParen */]: '%29',
+    [42 /* Asterisk */]: '%2A',
+    [43 /* Plus */]: '%2B',
+    [44 /* Comma */]: '%2C',
+    [59 /* Semicolon */]: '%3B',
+    [61 /* Equals */]: '%3D',
+    [32 /* Space */]: '%20',
 };
-function encodeURIComponentFast(uriComponent, isPath, isAuthority) {
+function encodeURIComponentFast(uriComponent, allowSlash) {
     let res = undefined;
     let nativeEncodePos = -1;
     for (let pos = 0; pos < uriComponent.length; pos++) {
         const code = uriComponent.charCodeAt(pos);
         // unreserved characters: https://tools.ietf.org/html/rfc3986#section-2.3
-        if ((code >= 97 /* CharCode.a */ && code <= 122 /* CharCode.z */)
-            || (code >= 65 /* CharCode.A */ && code <= 90 /* CharCode.Z */)
-            || (code >= 48 /* CharCode.Digit0 */ && code <= 57 /* CharCode.Digit9 */)
-            || code === 45 /* CharCode.Dash */
-            || code === 46 /* CharCode.Period */
-            || code === 95 /* CharCode.Underline */
-            || code === 126 /* CharCode.Tilde */
-            || (isPath && code === 47 /* CharCode.Slash */)
-            || (isAuthority && code === 91 /* CharCode.OpenSquareBracket */)
-            || (isAuthority && code === 93 /* CharCode.CloseSquareBracket */)
-            || (isAuthority && code === 58 /* CharCode.Colon */)) {
+        if ((code >= 97 /* a */ && code <= 122 /* z */)
+            || (code >= 65 /* A */ && code <= 90 /* Z */)
+            || (code >= 48 /* Digit0 */ && code <= 57 /* Digit9 */)
+            || code === 45 /* Dash */
+            || code === 46 /* Period */
+            || code === 95 /* Underline */
+            || code === 126 /* Tilde */
+            || (allowSlash && code === 47 /* Slash */)) {
             // check if we are delaying native encode
             if (nativeEncodePos !== -1) {
                 res += encodeURIComponent(uriComponent.substring(nativeEncodePos, pos));
@@ -464,7 +450,7 @@ function encodeURIComponentMinimal(path) {
     let res = undefined;
     for (let pos = 0; pos < path.length; pos++) {
         const code = path.charCodeAt(pos);
-        if (code === 35 /* CharCode.Hash */ || code === 63 /* CharCode.QuestionMark */) {
+        if (code === 35 /* Hash */ || code === 63 /* QuestionMark */) {
             if (res === undefined) {
                 res = path.substr(0, pos);
             }
@@ -487,9 +473,9 @@ export function uriToFsPath(uri, keepDriveLetterCasing) {
         // unc path: file://shares/c$/far/boo
         value = `//${uri.authority}${uri.path}`;
     }
-    else if (uri.path.charCodeAt(0) === 47 /* CharCode.Slash */
-        && (uri.path.charCodeAt(1) >= 65 /* CharCode.A */ && uri.path.charCodeAt(1) <= 90 /* CharCode.Z */ || uri.path.charCodeAt(1) >= 97 /* CharCode.a */ && uri.path.charCodeAt(1) <= 122 /* CharCode.z */)
-        && uri.path.charCodeAt(2) === 58 /* CharCode.Colon */) {
+    else if (uri.path.charCodeAt(0) === 47 /* Slash */
+        && (uri.path.charCodeAt(1) >= 65 /* A */ && uri.path.charCodeAt(1) <= 90 /* Z */ || uri.path.charCodeAt(1) >= 97 /* a */ && uri.path.charCodeAt(1) <= 122 /* z */)
+        && uri.path.charCodeAt(2) === 58 /* Colon */) {
         if (!keepDriveLetterCasing) {
             // windows drive letter: file:///c:/far/boo
             value = uri.path[1].toLowerCase() + uri.path.substr(2);
@@ -530,53 +516,53 @@ function _asFormatted(uri, skipEncoding) {
             // <user>@<auth>
             const userinfo = authority.substr(0, idx);
             authority = authority.substr(idx + 1);
-            idx = userinfo.lastIndexOf(':');
+            idx = userinfo.indexOf(':');
             if (idx === -1) {
-                res += encoder(userinfo, false, false);
+                res += encoder(userinfo, false);
             }
             else {
                 // <user>:<pass>@<auth>
-                res += encoder(userinfo.substr(0, idx), false, false);
+                res += encoder(userinfo.substr(0, idx), false);
                 res += ':';
-                res += encoder(userinfo.substr(idx + 1), false, true);
+                res += encoder(userinfo.substr(idx + 1), false);
             }
             res += '@';
         }
         authority = authority.toLowerCase();
-        idx = authority.lastIndexOf(':');
+        idx = authority.indexOf(':');
         if (idx === -1) {
-            res += encoder(authority, false, true);
+            res += encoder(authority, false);
         }
         else {
             // <auth>:<port>
-            res += encoder(authority.substr(0, idx), false, true);
+            res += encoder(authority.substr(0, idx), false);
             res += authority.substr(idx);
         }
     }
     if (path) {
         // lower-case windows drive letters in /C:/fff or C:/fff
-        if (path.length >= 3 && path.charCodeAt(0) === 47 /* CharCode.Slash */ && path.charCodeAt(2) === 58 /* CharCode.Colon */) {
+        if (path.length >= 3 && path.charCodeAt(0) === 47 /* Slash */ && path.charCodeAt(2) === 58 /* Colon */) {
             const code = path.charCodeAt(1);
-            if (code >= 65 /* CharCode.A */ && code <= 90 /* CharCode.Z */) {
+            if (code >= 65 /* A */ && code <= 90 /* Z */) {
                 path = `/${String.fromCharCode(code + 32)}:${path.substr(3)}`; // "/c:".length === 3
             }
         }
-        else if (path.length >= 2 && path.charCodeAt(1) === 58 /* CharCode.Colon */) {
+        else if (path.length >= 2 && path.charCodeAt(1) === 58 /* Colon */) {
             const code = path.charCodeAt(0);
-            if (code >= 65 /* CharCode.A */ && code <= 90 /* CharCode.Z */) {
+            if (code >= 65 /* A */ && code <= 90 /* Z */) {
                 path = `${String.fromCharCode(code + 32)}:${path.substr(2)}`; // "/c:".length === 3
             }
         }
         // encode the rest of the path
-        res += encoder(path, true, false);
+        res += encoder(path, true);
     }
     if (query) {
         res += '?';
-        res += encoder(query, false, false);
+        res += encoder(query, false);
     }
     if (fragment) {
         res += '#';
-        res += !skipEncoding ? encodeURIComponentFast(fragment, false, false) : fragment;
+        res += !skipEncoding ? encodeURIComponentFast(fragment, false) : fragment;
     }
     return res;
 }
@@ -585,7 +571,7 @@ function decodeURIComponentGraceful(str) {
     try {
         return decodeURIComponent(str);
     }
-    catch {
+    catch (_a) {
         if (str.length > 3) {
             return str.substr(0, 3) + decodeURIComponentGraceful(str.substr(3));
         }
@@ -601,4 +587,3 @@ function percentDecode(str) {
     }
     return str.replace(_rEncodedAsHex, (match) => decodeURIComponentGraceful(match));
 }
-//# sourceMappingURL=uri.js.map

@@ -2,46 +2,43 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+var __asyncValues = (this && this.__asyncValues) || function (o) {
+    if (!Symbol.asyncIterator) throw new TypeError("Symbol.asyncIterator is not defined.");
+    var m = o[Symbol.asyncIterator], i;
+    return m ? m.call(o) : (o = typeof __values === "function" ? __values(o) : o[Symbol.iterator](), i = {}, verb("next"), verb("throw"), verb("return"), i[Symbol.asyncIterator] = function () { return this; }, i);
+    function verb(n) { i[n] = o[n] && function (v) { return new Promise(function (resolve, reject) { v = o[n](v), settle(resolve, reject, v.done, v.value); }); }; }
+    function settle(resolve, reject, d, v) { Promise.resolve(v).then(function(v) { resolve({ value: v, done: d }); }, reject); }
+};
 import { CancellationTokenSource } from './cancellation.js';
-import { BugIndicatingError, CancellationError } from './errors.js';
+import { CancellationError } from './errors.js';
 import { Emitter, Event } from './event.js';
-import { isDisposable, toDisposable } from './lifecycle.js';
+import { toDisposable } from './lifecycle.js';
 import { setTimeout0 } from './platform.js';
-import { MicrotaskDelay } from './symbols.js';
 export function isThenable(obj) {
     return !!obj && typeof obj.then === 'function';
 }
-/**
- * Returns a promise that can be cancelled using the provided cancellation token.
- *
- * @remarks When cancellation is requested, the promise will be rejected with a {@link CancellationError}.
- * If the promise resolves to a disposable object, it will be automatically disposed when cancellation
- * is requested.
- *
- * @param callback A function that accepts a cancellation token and returns a promise
- * @returns A promise that can be cancelled
- */
 export function createCancelablePromise(callback) {
     const source = new CancellationTokenSource();
     const thenable = callback(source.token);
-    let isCancelled = false;
     const promise = new Promise((resolve, reject) => {
         const subscription = source.token.onCancellationRequested(() => {
-            isCancelled = true;
             subscription.dispose();
+            source.dispose();
             reject(new CancellationError());
         });
         Promise.resolve(thenable).then(value => {
             subscription.dispose();
             source.dispose();
-            if (!isCancelled) {
-                resolve(value);
-            }
-            else if (isDisposable(value)) {
-                // promise has been cancelled, result is disposable and will
-                // be cleaned up
-                value.dispose();
-            }
+            resolve(value);
         }, err => {
             subscription.dispose();
             source.dispose();
@@ -51,7 +48,6 @@ export function createCancelablePromise(callback) {
     return new class {
         cancel() {
             source.cancel();
-            source.dispose();
         }
         then(resolve, reject) {
             return promise.then(resolve, reject);
@@ -69,19 +65,6 @@ export function raceCancellation(promise, token, defaultValue) {
         const ref = token.onCancellationRequested(() => {
             ref.dispose();
             resolve(defaultValue);
-        });
-        promise.then(resolve, reject).finally(() => ref.dispose());
-    });
-}
-/**
- * Returns a promise that rejects with an {@CancellationError} as soon as the passed token is cancelled.
- * @see {@link raceCancellation}
- */
-export function raceCancellationError(promise, token) {
-    return new Promise((resolve, reject) => {
-        const ref = token.onCancellationRequested(() => {
-            ref.dispose();
-            reject(new CancellationError());
         });
         promise.then(resolve, reject).finally(() => ref.dispose());
     });
@@ -114,23 +97,16 @@ export function raceCancellationError(promise, token) {
  */
 export class Throttler {
     constructor() {
-        this.isDisposed = false;
         this.activePromise = null;
         this.queuedPromise = null;
         this.queuedPromiseFactory = null;
     }
     queue(promiseFactory) {
-        if (this.isDisposed) {
-            return Promise.reject(new Error('Throttler is disposed'));
-        }
         if (this.activePromise) {
             this.queuedPromiseFactory = promiseFactory;
             if (!this.queuedPromise) {
                 const onComplete = () => {
                     this.queuedPromise = null;
-                    if (this.isDisposed) {
-                        return;
-                    }
                     const result = this.queue(this.queuedPromiseFactory);
                     this.queuedPromiseFactory = null;
                     return result;
@@ -153,9 +129,6 @@ export class Throttler {
                 reject(err);
             });
         });
-    }
-    dispose() {
-        this.isDisposed = true;
     }
 }
 const timeoutDeferred = (timeout, fn) => {
@@ -185,6 +158,8 @@ const microtaskDeferred = (fn) => {
         dispose: () => { scheduled = false; },
     };
 };
+/** Can be passed into the Delayed to defer using a microtask */
+export const MicrotaskDelay = Symbol('MicrotaskDelay');
 /**
  * A helper to delay (debounce) execution of a task that is being requested often.
  *
@@ -236,24 +211,29 @@ export class Delayer {
             });
         }
         const fn = () => {
+            var _a;
             this.deferred = null;
-            this.doResolve?.(null);
+            (_a = this.doResolve) === null || _a === void 0 ? void 0 : _a.call(this, null);
         };
         this.deferred = delay === MicrotaskDelay ? microtaskDeferred(fn) : timeoutDeferred(delay, fn);
         return this.completionPromise;
     }
     isTriggered() {
-        return !!this.deferred?.isTriggered();
+        var _a;
+        return !!((_a = this.deferred) === null || _a === void 0 ? void 0 : _a.isTriggered());
     }
     cancel() {
         this.cancelTimeout();
         if (this.completionPromise) {
-            this.doReject?.(new CancellationError());
+            if (this.doReject) {
+                this.doReject(new CancellationError());
+            }
             this.completionPromise = null;
         }
     }
     cancelTimeout() {
-        this.deferred?.dispose();
+        var _a;
+        (_a = this.deferred) === null || _a === void 0 ? void 0 : _a.dispose();
         this.deferred = null;
     }
     dispose() {
@@ -277,12 +257,8 @@ export class ThrottledDelayer {
     trigger(promiseFactory, delay) {
         return this.delayer.trigger(() => this.throttler.queue(promiseFactory), delay);
     }
-    cancel() {
-        this.delayer.cancel();
-    }
     dispose() {
         this.delayer.dispose();
-        this.throttler.dispose();
     }
 }
 export function timeout(millis, token) {
@@ -301,36 +277,9 @@ export function timeout(millis, token) {
         });
     });
 }
-/**
- * Creates a timeout that can be disposed using its returned value.
- * @param handler The timeout handler.
- * @param timeout An optional timeout in milliseconds.
- * @param store An optional {@link DisposableStore} that will have the timeout disposable managed automatically.
- *
- * @example
- * const store = new DisposableStore;
- * // Call the timeout after 1000ms at which point it will be automatically
- * // evicted from the store.
- * const timeoutDisposable = disposableTimeout(() => {}, 1000, store);
- *
- * if (foo) {
- *   // Cancel the timeout and evict it from store.
- *   timeoutDisposable.dispose();
- * }
- */
-export function disposableTimeout(handler, timeout = 0, store) {
-    const timer = setTimeout(() => {
-        handler();
-        if (store) {
-            disposable.dispose();
-        }
-    }, timeout);
-    const disposable = toDisposable(() => {
-        clearTimeout(timer);
-        store?.delete(disposable);
-    });
-    store?.add(disposable);
-    return disposable;
+export function disposableTimeout(handler, timeout = 0) {
+    const timer = setTimeout(handler, timeout);
+    return toDisposable(() => clearTimeout(timer));
 }
 export function first(promiseFactories, shouldStop = t => !!t, defaultValue = null) {
     let index = 0;
@@ -350,141 +299,63 @@ export function first(promiseFactories, shouldStop = t => !!t, defaultValue = nu
     };
     return loop();
 }
-/**
- * Processes tasks in the order they were scheduled.
-*/
-export class TaskQueue {
-    constructor() {
-        this._runningTask = undefined;
-        this._pendingTasks = [];
-    }
-    /**
-     * Waits for the current and pending tasks to finish, then runs and awaits the given task.
-     * If the task is skipped because of clearPending, the promise is rejected with a CancellationError.
-    */
-    schedule(task) {
-        const deferred = new DeferredPromise();
-        this._pendingTasks.push({ task, deferred, setUndefinedWhenCleared: false });
-        this._runIfNotRunning();
-        return deferred.p;
-    }
-    _runIfNotRunning() {
-        if (this._runningTask === undefined) {
-            this._processQueue();
-        }
-    }
-    async _processQueue() {
-        if (this._pendingTasks.length === 0) {
-            return;
-        }
-        const next = this._pendingTasks.shift();
-        if (!next) {
-            return;
-        }
-        if (this._runningTask) {
-            throw new BugIndicatingError();
-        }
-        this._runningTask = next.task;
-        try {
-            const result = await next.task();
-            next.deferred.complete(result);
-        }
-        catch (e) {
-            next.deferred.error(e);
-        }
-        finally {
-            this._runningTask = undefined;
-            this._processQueue();
-        }
-    }
-    /**
-     * Clears all pending tasks. Does not cancel the currently running task.
-    */
-    clearPending() {
-        const tasks = this._pendingTasks;
-        this._pendingTasks = [];
-        for (const task of tasks) {
-            if (task.setUndefinedWhenCleared) {
-                task.deferred.complete(undefined);
-            }
-            else {
-                task.deferred.error(new CancellationError());
-            }
-        }
-    }
-}
 export class TimeoutTimer {
     constructor(runner, timeout) {
-        this._isDisposed = false;
-        this._token = undefined;
+        this._token = -1;
         if (typeof runner === 'function' && typeof timeout === 'number') {
             this.setIfNotSet(runner, timeout);
         }
     }
     dispose() {
         this.cancel();
-        this._isDisposed = true;
     }
     cancel() {
-        if (this._token !== undefined) {
+        if (this._token !== -1) {
             clearTimeout(this._token);
-            this._token = undefined;
+            this._token = -1;
         }
     }
     cancelAndSet(runner, timeout) {
-        if (this._isDisposed) {
-            throw new BugIndicatingError(`Calling 'cancelAndSet' on a disposed TimeoutTimer`);
-        }
         this.cancel();
         this._token = setTimeout(() => {
-            this._token = undefined;
+            this._token = -1;
             runner();
         }, timeout);
     }
     setIfNotSet(runner, timeout) {
-        if (this._isDisposed) {
-            throw new BugIndicatingError(`Calling 'setIfNotSet' on a disposed TimeoutTimer`);
-        }
-        if (this._token !== undefined) {
+        if (this._token !== -1) {
             // timer is already set
             return;
         }
         this._token = setTimeout(() => {
-            this._token = undefined;
+            this._token = -1;
             runner();
         }, timeout);
     }
 }
 export class IntervalTimer {
     constructor() {
-        this.disposable = undefined;
-        this.isDisposed = false;
-    }
-    cancel() {
-        this.disposable?.dispose();
-        this.disposable = undefined;
-    }
-    cancelAndSet(runner, interval, context = globalThis) {
-        if (this.isDisposed) {
-            throw new BugIndicatingError(`Calling 'cancelAndSet' on a disposed IntervalTimer`);
-        }
-        this.cancel();
-        const handle = context.setInterval(() => {
-            runner();
-        }, interval);
-        this.disposable = toDisposable(() => {
-            context.clearInterval(handle);
-            this.disposable = undefined;
-        });
+        this._token = -1;
     }
     dispose() {
         this.cancel();
-        this.isDisposed = true;
+    }
+    cancel() {
+        if (this._token !== -1) {
+            clearInterval(this._token);
+            this._token = -1;
+        }
+    }
+    cancelAndSet(runner, interval) {
+        this.cancel();
+        this._token = setInterval(() => {
+            runner();
+        }, interval);
     }
 }
 export class RunOnceScheduler {
     constructor(runner, delay) {
-        this.timeoutToken = undefined;
+        this.timeoutToken = -1;
         this.runner = runner;
         this.timeout = delay;
         this.timeoutHandler = this.onTimeout.bind(this);
@@ -502,7 +373,7 @@ export class RunOnceScheduler {
     cancel() {
         if (this.isScheduled()) {
             clearTimeout(this.timeoutToken);
-            this.timeoutToken = undefined;
+            this.timeoutToken = -1;
         }
     }
     /**
@@ -522,57 +393,38 @@ export class RunOnceScheduler {
      * Returns true if scheduled.
      */
     isScheduled() {
-        return this.timeoutToken !== undefined;
+        return this.timeoutToken !== -1;
     }
     onTimeout() {
-        this.timeoutToken = undefined;
+        this.timeoutToken = -1;
         if (this.runner) {
             this.doRun();
         }
     }
     doRun() {
-        this.runner?.();
+        if (this.runner) {
+            this.runner();
+        }
     }
 }
 /**
- * Execute the callback the next time the browser is idle, returning an
- * {@link IDisposable} that will cancel the callback when disposed. This wraps
- * [requestIdleCallback] so it will fallback to [setTimeout] if the environment
- * doesn't support it.
- *
- * @param callback The callback to run when idle, this includes an
- * [IdleDeadline] that provides the time alloted for the idle callback by the
- * browser. Not respecting this deadline will result in a degraded user
- * experience.
- * @param timeout A timeout at which point to queue no longer wait for an idle
- * callback but queue it on the regular event loop (like setTimeout). Typically
- * this should not be used.
- *
- * [IdleDeadline]: https://developer.mozilla.org/en-US/docs/Web/API/IdleDeadline
- * [requestIdleCallback]: https://developer.mozilla.org/en-US/docs/Web/API/Window/requestIdleCallback
- * [setTimeout]: https://developer.mozilla.org/en-US/docs/Web/API/Window/setTimeout
- *
- * **Note** that there is `dom.ts#runWhenWindowIdle` which is better suited when running inside a browser
- * context
+ * Execute the callback the next time the browser is idle
  */
-export let runWhenGlobalIdle;
-export let _runWhenIdle;
+export let runWhenIdle;
 (function () {
-    const safeGlobal = globalThis;
-    if (typeof safeGlobal.requestIdleCallback !== 'function' || typeof safeGlobal.cancelIdleCallback !== 'function') {
-        _runWhenIdle = (_targetWindow, runner, timeout) => {
+    if (typeof requestIdleCallback !== 'function' || typeof cancelIdleCallback !== 'function') {
+        runWhenIdle = (runner) => {
             setTimeout0(() => {
                 if (disposed) {
                     return;
                 }
                 const end = Date.now() + 15; // one frame at 64fps
-                const deadline = {
+                runner(Object.freeze({
                     didTimeout: true,
                     timeRemaining() {
                         return Math.max(0, end - Date.now());
                     }
-                };
-                runner(Object.freeze(deadline));
+                }));
             });
             let disposed = false;
             return {
@@ -586,8 +438,8 @@ export let _runWhenIdle;
         };
     }
     else {
-        _runWhenIdle = (targetWindow, runner, timeout) => {
-            const handle = targetWindow.requestIdleCallback(runner, typeof timeout === 'number' ? { timeout } : undefined);
+        runWhenIdle = (runner, timeout) => {
+            const handle = requestIdleCallback(runner, typeof timeout === 'number' ? { timeout } : undefined);
             let disposed = false;
             return {
                 dispose() {
@@ -595,15 +447,18 @@ export let _runWhenIdle;
                         return;
                     }
                     disposed = true;
-                    targetWindow.cancelIdleCallback(handle);
+                    cancelIdleCallback(handle);
                 }
             };
         };
     }
-    runWhenGlobalIdle = (runner, timeout) => _runWhenIdle(globalThis, runner, timeout);
 })();
-export class AbstractIdleValue {
-    constructor(targetWindow, executor) {
+/**
+ * An implementation of the "idle-until-urgent"-strategy as introduced
+ * here: https://philipwalton.com/articles/idle-until-urgent/
+ */
+export class IdleValue {
+    constructor(executor) {
         this._didRun = false;
         this._executor = () => {
             try {
@@ -616,7 +471,7 @@ export class AbstractIdleValue {
                 this._didRun = true;
             }
         };
-        this._handle = _runWhenIdle(targetWindow, () => this._executor());
+        this._handle = runWhenIdle(() => this._executor());
     }
     dispose() {
         this._handle.dispose();
@@ -636,48 +491,36 @@ export class AbstractIdleValue {
     }
 }
 /**
- * An `IdleValue` that always uses the current window (which might be throttled or inactive)
- *
- * **Note** that there is `dom.ts#WindowIdleValue` which is better suited when running inside a browser
- * context
- */
-export class GlobalIdleValue extends AbstractIdleValue {
-    constructor(executor) {
-        super(globalThis, executor);
-    }
-}
-/**
  * Creates a promise whose resolution or rejection can be controlled imperatively.
  */
 export class DeferredPromise {
-    get isRejected() {
-        return this.outcome?.outcome === 1 /* DeferredOutcome.Rejected */;
-    }
-    get isSettled() {
-        return !!this.outcome;
-    }
     constructor() {
+        this.rejected = false;
+        this.resolved = false;
         this.p = new Promise((c, e) => {
             this.completeCallback = c;
             this.errorCallback = e;
         });
     }
+    get isRejected() {
+        return this.rejected;
+    }
+    get isSettled() {
+        return this.rejected || this.resolved;
+    }
     complete(value) {
         return new Promise(resolve => {
             this.completeCallback(value);
-            this.outcome = { outcome: 0 /* DeferredOutcome.Resolved */, value };
-            resolve();
-        });
-    }
-    error(err) {
-        return new Promise(resolve => {
-            this.errorCallback(err);
-            this.outcome = { outcome: 1 /* DeferredOutcome.Rejected */, value: err };
+            this.resolved = true;
             resolve();
         });
     }
     cancel() {
-        return this.error(new CancellationError());
+        new Promise(resolve => {
+            this.errorCallback(new CancellationError());
+            this.rejected = true;
+            resolve();
+        });
     }
 }
 //#endregion
@@ -691,18 +534,20 @@ export var Promises;
      * Similar to `Promise.all`, only the first error will be returned
      * if any.
      */
-    async function settled(promises) {
-        let firstError = undefined;
-        const result = await Promise.all(promises.map(promise => promise.then(value => value, error => {
-            if (!firstError) {
-                firstError = error;
+    function settled(promises) {
+        return __awaiter(this, void 0, void 0, function* () {
+            let firstError = undefined;
+            const result = yield Promise.all(promises.map(promise => promise.then(value => value, error => {
+                if (!firstError) {
+                    firstError = error;
+                }
+                return undefined; // do not rethrow so that other promises can settle
+            })));
+            if (typeof firstError !== 'undefined') {
+                throw firstError;
             }
-            return undefined; // do not rethrow so that other promises can settle
-        })));
-        if (typeof firstError !== 'undefined') {
-            throw firstError;
-        }
-        return result; // cast is needed and protected by the `throw` above
+            return result; // cast is needed and protected by the `throw` above
+        });
     }
     Promises.settled = settled;
     /**
@@ -717,14 +562,14 @@ export var Promises;
      */
     function withAsyncBody(bodyFn) {
         // eslint-disable-next-line no-async-promise-executor
-        return new Promise(async (resolve, reject) => {
+        return new Promise((resolve, reject) => __awaiter(this, void 0, void 0, function* () {
             try {
-                await bodyFn(resolve, reject);
+                yield bodyFn(resolve, reject);
             }
             catch (error) {
                 reject(error);
             }
-        });
+        }));
     }
     Promises.withAsyncBody = withAsyncBody;
 })(Promises || (Promises = {}));
@@ -732,45 +577,19 @@ export var Promises;
  * A rich implementation for an `AsyncIterable<T>`.
  */
 export class AsyncIterableObject {
-    static fromArray(items) {
-        return new AsyncIterableObject((writer) => {
-            writer.emitMany(items);
-        });
-    }
-    static fromPromise(promise) {
-        return new AsyncIterableObject(async (emitter) => {
-            emitter.emitMany(await promise);
-        });
-    }
-    static fromPromisesResolveOrder(promises) {
-        return new AsyncIterableObject(async (emitter) => {
-            await Promise.all(promises.map(async (p) => emitter.emitOne(await p)));
-        });
-    }
-    static merge(iterables) {
-        return new AsyncIterableObject(async (emitter) => {
-            await Promise.all(iterables.map(async (iterable) => {
-                for await (const item of iterable) {
-                    emitter.emitOne(item);
-                }
-            }));
-        });
-    }
-    static { this.EMPTY = AsyncIterableObject.fromArray([]); }
-    constructor(executor, onReturn) {
-        this._state = 0 /* AsyncIterableSourceState.Initial */;
+    constructor(executor) {
+        this._state = 0 /* Initial */;
         this._results = [];
         this._error = null;
-        this._onReturn = onReturn;
         this._onStateChanged = new Emitter();
-        queueMicrotask(async () => {
+        queueMicrotask(() => __awaiter(this, void 0, void 0, function* () {
             const writer = {
                 emitOne: (item) => this.emitOne(item),
                 emitMany: (items) => this.emitMany(items),
                 reject: (error) => this.reject(error)
             };
             try {
-                await Promise.resolve(executor(writer));
+                yield Promise.resolve(executor(writer));
                 this.resolve();
             }
             catch (err) {
@@ -781,49 +600,102 @@ export class AsyncIterableObject {
                 writer.emitMany = undefined;
                 writer.reject = undefined;
             }
+        }));
+    }
+    static fromArray(items) {
+        return new AsyncIterableObject((writer) => {
+            writer.emitMany(items);
         });
+    }
+    static fromPromise(promise) {
+        return new AsyncIterableObject((emitter) => __awaiter(this, void 0, void 0, function* () {
+            emitter.emitMany(yield promise);
+        }));
+    }
+    static fromPromises(promises) {
+        return new AsyncIterableObject((emitter) => __awaiter(this, void 0, void 0, function* () {
+            yield Promise.all(promises.map((p) => __awaiter(this, void 0, void 0, function* () { return emitter.emitOne(yield p); })));
+        }));
+    }
+    static merge(iterables) {
+        return new AsyncIterableObject((emitter) => __awaiter(this, void 0, void 0, function* () {
+            yield Promise.all(iterables.map((iterable) => { var iterable_1, iterable_1_1; return __awaiter(this, void 0, void 0, function* () {
+                var e_1, _a;
+                try {
+                    for (iterable_1 = __asyncValues(iterable); iterable_1_1 = yield iterable_1.next(), !iterable_1_1.done;) {
+                        const item = iterable_1_1.value;
+                        emitter.emitOne(item);
+                    }
+                }
+                catch (e_1_1) { e_1 = { error: e_1_1 }; }
+                finally {
+                    try {
+                        if (iterable_1_1 && !iterable_1_1.done && (_a = iterable_1.return)) yield _a.call(iterable_1);
+                    }
+                    finally { if (e_1) throw e_1.error; }
+                }
+            }); }));
+        }));
     }
     [Symbol.asyncIterator]() {
         let i = 0;
         return {
-            next: async () => {
+            next: () => __awaiter(this, void 0, void 0, function* () {
                 do {
-                    if (this._state === 2 /* AsyncIterableSourceState.DoneError */) {
+                    if (this._state === 2 /* DoneError */) {
                         throw this._error;
                     }
                     if (i < this._results.length) {
                         return { done: false, value: this._results[i++] };
                     }
-                    if (this._state === 1 /* AsyncIterableSourceState.DoneOK */) {
+                    if (this._state === 1 /* DoneOK */) {
                         return { done: true, value: undefined };
                     }
-                    await Event.toPromise(this._onStateChanged.event);
+                    yield Event.toPromise(this._onStateChanged.event);
                 } while (true);
-            },
-            return: async () => {
-                this._onReturn?.();
-                return { done: true, value: undefined };
-            }
+            })
         };
     }
     static map(iterable, mapFn) {
-        return new AsyncIterableObject(async (emitter) => {
-            for await (const item of iterable) {
-                emitter.emitOne(mapFn(item));
+        return new AsyncIterableObject((emitter) => __awaiter(this, void 0, void 0, function* () {
+            var e_2, _a;
+            try {
+                for (var iterable_2 = __asyncValues(iterable), iterable_2_1; iterable_2_1 = yield iterable_2.next(), !iterable_2_1.done;) {
+                    const item = iterable_2_1.value;
+                    emitter.emitOne(mapFn(item));
+                }
             }
-        });
+            catch (e_2_1) { e_2 = { error: e_2_1 }; }
+            finally {
+                try {
+                    if (iterable_2_1 && !iterable_2_1.done && (_a = iterable_2.return)) yield _a.call(iterable_2);
+                }
+                finally { if (e_2) throw e_2.error; }
+            }
+        }));
     }
     map(mapFn) {
         return AsyncIterableObject.map(this, mapFn);
     }
     static filter(iterable, filterFn) {
-        return new AsyncIterableObject(async (emitter) => {
-            for await (const item of iterable) {
-                if (filterFn(item)) {
-                    emitter.emitOne(item);
+        return new AsyncIterableObject((emitter) => __awaiter(this, void 0, void 0, function* () {
+            var e_3, _a;
+            try {
+                for (var iterable_3 = __asyncValues(iterable), iterable_3_1; iterable_3_1 = yield iterable_3.next(), !iterable_3_1.done;) {
+                    const item = iterable_3_1.value;
+                    if (filterFn(item)) {
+                        emitter.emitOne(item);
+                    }
                 }
             }
-        });
+            catch (e_3_1) { e_3 = { error: e_3_1 }; }
+            finally {
+                try {
+                    if (iterable_3_1 && !iterable_3_1.done && (_a = iterable_3.return)) yield _a.call(iterable_3);
+                }
+                finally { if (e_3) throw e_3.error; }
+            }
+        }));
     }
     filter(filterFn) {
         return AsyncIterableObject.filter(this, filterFn);
@@ -834,12 +706,26 @@ export class AsyncIterableObject {
     coalesce() {
         return AsyncIterableObject.coalesce(this);
     }
-    static async toPromise(iterable) {
-        const result = [];
-        for await (const item of iterable) {
-            result.push(item);
-        }
-        return result;
+    static toPromise(iterable) {
+        var iterable_4, iterable_4_1;
+        var e_4, _a;
+        return __awaiter(this, void 0, void 0, function* () {
+            const result = [];
+            try {
+                for (iterable_4 = __asyncValues(iterable); iterable_4_1 = yield iterable_4.next(), !iterable_4_1.done;) {
+                    const item = iterable_4_1.value;
+                    result.push(item);
+                }
+            }
+            catch (e_4_1) { e_4 = { error: e_4_1 }; }
+            finally {
+                try {
+                    if (iterable_4_1 && !iterable_4_1.done && (_a = iterable_4.return)) yield _a.call(iterable_4);
+                }
+                finally { if (e_4) throw e_4.error; }
+            }
+            return result;
+        });
     }
     toPromise() {
         return AsyncIterableObject.toPromise(this);
@@ -850,7 +736,7 @@ export class AsyncIterableObject {
      * **NOTE** If `resolve()` or `reject()` have already been called, this method has no effect.
      */
     emitOne(value) {
-        if (this._state !== 0 /* AsyncIterableSourceState.Initial */) {
+        if (this._state !== 0 /* Initial */) {
             return;
         }
         // it is important to add new values at the end,
@@ -864,7 +750,7 @@ export class AsyncIterableObject {
      * **NOTE** If `resolve()` or `reject()` have already been called, this method has no effect.
      */
     emitMany(values) {
-        if (this._state !== 0 /* AsyncIterableSourceState.Initial */) {
+        if (this._state !== 0 /* Initial */) {
             return;
         }
         // it is important to add new values at the end,
@@ -879,10 +765,10 @@ export class AsyncIterableObject {
      * **NOTE** If `resolve()` or `reject()` have already been called, this method has no effect.
      */
     resolve() {
-        if (this._state !== 0 /* AsyncIterableSourceState.Initial */) {
+        if (this._state !== 0 /* Initial */) {
             return;
         }
-        this._state = 1 /* AsyncIterableSourceState.DoneOK */;
+        this._state = 1 /* DoneOK */;
         this._onStateChanged.fire();
     }
     /**
@@ -892,30 +778,51 @@ export class AsyncIterableObject {
      * **NOTE** If `resolve()` or `reject()` have already been called, this method has no effect.
      */
     reject(error) {
-        if (this._state !== 0 /* AsyncIterableSourceState.Initial */) {
+        if (this._state !== 0 /* Initial */) {
             return;
         }
-        this._state = 2 /* AsyncIterableSourceState.DoneError */;
+        this._state = 2 /* DoneError */;
         this._error = error;
         this._onStateChanged.fire();
     }
 }
-export function createCancelableAsyncIterableProducer(callback) {
+AsyncIterableObject.EMPTY = AsyncIterableObject.fromArray([]);
+export class CancelableAsyncIterableObject extends AsyncIterableObject {
+    constructor(_source, executor) {
+        super(executor);
+        this._source = _source;
+    }
+    cancel() {
+        this._source.cancel();
+    }
+}
+export function createCancelableAsyncIterable(callback) {
     const source = new CancellationTokenSource();
     const innerIterable = callback(source.token);
-    return new CancelableAsyncIterableProducer(source, async (emitter) => {
+    return new CancelableAsyncIterableObject(source, (emitter) => __awaiter(this, void 0, void 0, function* () {
+        var e_5, _a;
         const subscription = source.token.onCancellationRequested(() => {
             subscription.dispose();
             source.dispose();
             emitter.reject(new CancellationError());
         });
         try {
-            for await (const item of innerIterable) {
-                if (source.token.isCancellationRequested) {
-                    // canceled in the meantime
-                    return;
+            try {
+                for (var innerIterable_1 = __asyncValues(innerIterable), innerIterable_1_1; innerIterable_1_1 = yield innerIterable_1.next(), !innerIterable_1_1.done;) {
+                    const item = innerIterable_1_1.value;
+                    if (source.token.isCancellationRequested) {
+                        // canceled in the meantime
+                        return;
+                    }
+                    emitter.emitOne(item);
                 }
-                emitter.emitOne(item);
+            }
+            catch (e_5_1) { e_5 = { error: e_5_1 }; }
+            finally {
+                try {
+                    if (innerIterable_1_1 && !innerIterable_1_1.done && (_a = innerIterable_1.return)) yield _a.call(innerIterable_1);
+                }
+                finally { if (e_5) throw e_5.error; }
             }
             subscription.dispose();
             source.dispose();
@@ -925,181 +832,6 @@ export function createCancelableAsyncIterableProducer(callback) {
             source.dispose();
             emitter.reject(err);
         }
-    });
-}
-class ProducerConsumer {
-    constructor() {
-        this._unsatisfiedConsumers = [];
-        this._unconsumedValues = [];
-    }
-    get hasFinalValue() {
-        return !!this._finalValue;
-    }
-    produce(value) {
-        this._ensureNoFinalValue();
-        if (this._unsatisfiedConsumers.length > 0) {
-            const deferred = this._unsatisfiedConsumers.shift();
-            this._resolveOrRejectDeferred(deferred, value);
-        }
-        else {
-            this._unconsumedValues.push(value);
-        }
-    }
-    produceFinal(value) {
-        this._ensureNoFinalValue();
-        this._finalValue = value;
-        for (const deferred of this._unsatisfiedConsumers) {
-            this._resolveOrRejectDeferred(deferred, value);
-        }
-        this._unsatisfiedConsumers.length = 0;
-    }
-    _ensureNoFinalValue() {
-        if (this._finalValue) {
-            throw new BugIndicatingError('ProducerConsumer: cannot produce after final value has been set');
-        }
-    }
-    _resolveOrRejectDeferred(deferred, value) {
-        if (value.ok) {
-            deferred.complete(value.value);
-        }
-        else {
-            deferred.error(value.error);
-        }
-    }
-    consume() {
-        if (this._unconsumedValues.length > 0 || this._finalValue) {
-            const value = this._unconsumedValues.length > 0 ? this._unconsumedValues.shift() : this._finalValue;
-            if (value.ok) {
-                return Promise.resolve(value.value);
-            }
-            else {
-                return Promise.reject(value.error);
-            }
-        }
-        else {
-            const deferred = new DeferredPromise();
-            this._unsatisfiedConsumers.push(deferred);
-            return deferred.p;
-        }
-    }
-}
-/**
- * Important difference to AsyncIterableObject:
- * If it is iterated two times, the second iterator will not see the values emitted by the first iterator.
- */
-export class AsyncIterableProducer {
-    constructor(executor, _onReturn) {
-        this._onReturn = _onReturn;
-        this._producerConsumer = new ProducerConsumer();
-        this._iterator = {
-            next: () => this._producerConsumer.consume(),
-            return: () => {
-                this._onReturn?.();
-                return Promise.resolve({ done: true, value: undefined });
-            },
-            throw: async (e) => {
-                this._finishError(e);
-                return { done: true, value: undefined };
-            },
-        };
-        queueMicrotask(async () => {
-            const p = executor({
-                emitOne: value => this._producerConsumer.produce({ ok: true, value: { done: false, value: value } }),
-                emitMany: values => {
-                    for (const value of values) {
-                        this._producerConsumer.produce({ ok: true, value: { done: false, value: value } });
-                    }
-                },
-                reject: error => this._finishError(error),
-            });
-            if (!this._producerConsumer.hasFinalValue) {
-                try {
-                    await p;
-                    this._finishOk();
-                }
-                catch (error) {
-                    this._finishError(error);
-                }
-            }
-        });
-    }
-    static fromArray(items) {
-        return new AsyncIterableProducer((writer) => {
-            writer.emitMany(items);
-        });
-    }
-    static fromPromise(promise) {
-        return new AsyncIterableProducer(async (emitter) => {
-            emitter.emitMany(await promise);
-        });
-    }
-    static fromPromisesResolveOrder(promises) {
-        return new AsyncIterableProducer(async (emitter) => {
-            await Promise.all(promises.map(async (p) => emitter.emitOne(await p)));
-        });
-    }
-    static merge(iterables) {
-        return new AsyncIterableProducer(async (emitter) => {
-            await Promise.all(iterables.map(async (iterable) => {
-                for await (const item of iterable) {
-                    emitter.emitOne(item);
-                }
-            }));
-        });
-    }
-    static { this.EMPTY = AsyncIterableProducer.fromArray([]); }
-    static map(iterable, mapFn) {
-        return new AsyncIterableProducer(async (emitter) => {
-            for await (const item of iterable) {
-                emitter.emitOne(mapFn(item));
-            }
-        });
-    }
-    map(mapFn) {
-        return AsyncIterableProducer.map(this, mapFn);
-    }
-    static coalesce(iterable) {
-        return AsyncIterableProducer.filter(iterable, item => !!item);
-    }
-    coalesce() {
-        return AsyncIterableProducer.coalesce(this);
-    }
-    static filter(iterable, filterFn) {
-        return new AsyncIterableProducer(async (emitter) => {
-            for await (const item of iterable) {
-                if (filterFn(item)) {
-                    emitter.emitOne(item);
-                }
-            }
-        });
-    }
-    filter(filterFn) {
-        return AsyncIterableProducer.filter(this, filterFn);
-    }
-    _finishOk() {
-        if (!this._producerConsumer.hasFinalValue) {
-            this._producerConsumer.produceFinal({ ok: true, value: { done: true, value: undefined } });
-        }
-    }
-    _finishError(error) {
-        if (!this._producerConsumer.hasFinalValue) {
-            this._producerConsumer.produceFinal({ ok: false, error: error });
-        }
-        // Warning: this can cause to dropped errors.
-    }
-    [Symbol.asyncIterator]() {
-        return this._iterator;
-    }
-}
-export class CancelableAsyncIterableProducer extends AsyncIterableProducer {
-    constructor(_source, executor) {
-        super(executor);
-        this._source = _source;
-    }
-    cancel() {
-        this._source.cancel();
-    }
+    }));
 }
 //#endregion
-export const AsyncReaderEndOfStream = Symbol('AsyncReaderEndOfStream');
-//# sourceMappingURL=async.js.map

@@ -4,32 +4,24 @@
  *--------------------------------------------------------------------------------------------*/
 import './viewCursors.css';
 import { createFastDomNode } from '../../../../base/browser/fastDomNode.js';
-import { TimeoutTimer } from '../../../../base/common/async.js';
+import { IntervalTimer, TimeoutTimer } from '../../../../base/common/async.js';
 import { ViewPart } from '../../view/viewPart.js';
-import { ViewCursor, CursorPlurality } from './viewCursor.js';
+import { ViewCursor } from './viewCursor.js';
 import { TextEditorCursorStyle } from '../../../common/config/editorOptions.js';
-import { editorCursorBackground, editorCursorForeground, editorMultiCursorPrimaryForeground, editorMultiCursorPrimaryBackground, editorMultiCursorSecondaryForeground, editorMultiCursorSecondaryBackground } from '../../../common/core/editorColorRegistry.js';
+import { editorCursorBackground, editorCursorForeground } from '../../../common/core/editorColorRegistry.js';
 import { registerThemingParticipant } from '../../../../platform/theme/common/themeService.js';
-import { isHighContrast } from '../../../../platform/theme/common/theme.js';
-import { WindowIntervalTimer, getWindow } from '../../../../base/browser/dom.js';
-/**
- * View cursors is a view part responsible for rendering the primary cursor and
- * any secondary cursors that are currently active.
- */
 export class ViewCursors extends ViewPart {
-    static { this.BLINK_INTERVAL = 500; }
     constructor(context) {
         super(context);
         const options = this._context.configuration.options;
-        this._readOnly = options.get(103 /* EditorOption.readOnly */);
-        this._cursorBlinking = options.get(32 /* EditorOption.cursorBlinking */);
-        this._cursorStyle = options.get(160 /* EditorOption.effectiveCursorStyle */);
-        this._cursorSmoothCaretAnimation = options.get(33 /* EditorOption.cursorSmoothCaretAnimation */);
-        this._editContextEnabled = options.get(169 /* EditorOption.effectiveEditContext */);
+        this._readOnly = options.get(81 /* readOnly */);
+        this._cursorBlinking = options.get(22 /* cursorBlinking */);
+        this._cursorStyle = options.get(24 /* cursorStyle */);
+        this._cursorSmoothCaretAnimation = options.get(23 /* cursorSmoothCaretAnimation */);
         this._selectionIsEmpty = true;
         this._isComposingInput = false;
         this._isVisible = false;
-        this._primaryCursor = new ViewCursor(this._context, CursorPlurality.Single);
+        this._primaryCursor = new ViewCursor(this._context);
         this._secondaryCursors = [];
         this._renderData = [];
         this._domNode = createFastDomNode(document.createElement('div'));
@@ -38,7 +30,7 @@ export class ViewCursors extends ViewPart {
         this._updateDomClassName();
         this._domNode.appendChild(this._primaryCursor.getDomNode());
         this._startCursorBlinkAnimation = new TimeoutTimer();
-        this._cursorFlatBlinkInterval = new WindowIntervalTimer();
+        this._cursorFlatBlinkInterval = new IntervalTimer();
         this._blinkingEnabled = false;
         this._editorHasFocus = false;
         this._updateBlinking();
@@ -64,11 +56,10 @@ export class ViewCursors extends ViewPart {
     }
     onConfigurationChanged(e) {
         const options = this._context.configuration.options;
-        this._readOnly = options.get(103 /* EditorOption.readOnly */);
-        this._cursorBlinking = options.get(32 /* EditorOption.cursorBlinking */);
-        this._cursorStyle = options.get(160 /* EditorOption.effectiveCursorStyle */);
-        this._cursorSmoothCaretAnimation = options.get(33 /* EditorOption.cursorSmoothCaretAnimation */);
-        this._editContextEnabled = options.get(169 /* EditorOption.effectiveEditContext */);
+        this._readOnly = options.get(81 /* readOnly */);
+        this._cursorBlinking = options.get(22 /* cursorBlinking */);
+        this._cursorStyle = options.get(24 /* cursorStyle */);
+        this._cursorSmoothCaretAnimation = options.get(23 /* cursorSmoothCaretAnimation */);
         this._updateBlinking();
         this._updateDomClassName();
         this._primaryCursor.onConfigurationChanged(e);
@@ -77,17 +68,14 @@ export class ViewCursors extends ViewPart {
         }
         return true;
     }
-    _onCursorPositionChanged(position, secondaryPositions, reason) {
-        const pauseAnimation = (this._secondaryCursors.length !== secondaryPositions.length
-            || (this._cursorSmoothCaretAnimation === 'explicit' && reason !== 3 /* CursorChangeReason.Explicit */));
-        this._primaryCursor.setPlurality(secondaryPositions.length ? CursorPlurality.MultiPrimary : CursorPlurality.Single);
-        this._primaryCursor.onCursorPositionChanged(position, pauseAnimation);
+    _onCursorPositionChanged(position, secondaryPositions) {
+        this._primaryCursor.onCursorPositionChanged(position);
         this._updateBlinking();
         if (this._secondaryCursors.length < secondaryPositions.length) {
             // Create new cursors
             const addCnt = secondaryPositions.length - this._secondaryCursors.length;
             for (let i = 0; i < addCnt; i++) {
-                const newCursor = new ViewCursor(this._context, CursorPlurality.MultiSecondary);
+                const newCursor = new ViewCursor(this._context);
                 this._domNode.domNode.insertBefore(newCursor.getDomNode().domNode, this._primaryCursor.getDomNode().domNode.nextSibling);
                 this._secondaryCursors.push(newCursor);
             }
@@ -101,7 +89,7 @@ export class ViewCursors extends ViewPart {
             }
         }
         for (let i = 0; i < secondaryPositions.length; i++) {
-            this._secondaryCursors[i].onCursorPositionChanged(secondaryPositions[i], pauseAnimation);
+            this._secondaryCursors[i].onCursorPositionChanged(secondaryPositions[i]);
         }
     }
     onCursorStateChanged(e) {
@@ -109,7 +97,7 @@ export class ViewCursors extends ViewPart {
         for (let i = 0, len = e.selections.length; i < len; i++) {
             positions[i] = e.selections[i].getPosition();
         }
-        this._onCursorPositionChanged(positions[0], positions.slice(1), e.reason);
+        this._onCursorPositionChanged(positions[0], positions.slice(1));
         const selectionIsEmpty = e.selections[0].isEmpty();
         if (this._selectionIsEmpty !== selectionIsEmpty) {
             this._selectionIsEmpty = selectionIsEmpty;
@@ -166,16 +154,15 @@ export class ViewCursors extends ViewPart {
     // --- end event handlers
     // ---- blinking logic
     _getCursorBlinking() {
-        // TODO: Remove the following if statement when experimental edit context is made default sole implementation
-        if (this._isComposingInput && !this._editContextEnabled) {
+        if (this._isComposingInput) {
             // avoid double cursors
-            return 0 /* TextEditorCursorBlinkingStyle.Hidden */;
+            return 0 /* Hidden */;
         }
         if (!this._editorHasFocus) {
-            return 0 /* TextEditorCursorBlinkingStyle.Hidden */;
+            return 0 /* Hidden */;
         }
         if (this._readOnly) {
-            return 5 /* TextEditorCursorBlinkingStyle.Solid */;
+            return 5 /* Solid */;
         }
         return this._cursorBlinking;
     }
@@ -184,8 +171,8 @@ export class ViewCursors extends ViewPart {
         this._cursorFlatBlinkInterval.cancel();
         const blinkingStyle = this._getCursorBlinking();
         // hidden and solid are special as they involve no animations
-        const isHidden = (blinkingStyle === 0 /* TextEditorCursorBlinkingStyle.Hidden */);
-        const isSolid = (blinkingStyle === 5 /* TextEditorCursorBlinkingStyle.Solid */);
+        const isHidden = (blinkingStyle === 0 /* Hidden */);
+        const isSolid = (blinkingStyle === 5 /* Solid */);
         if (isHidden) {
             this._hide();
         }
@@ -195,7 +182,7 @@ export class ViewCursors extends ViewPart {
         this._blinkingEnabled = false;
         this._updateDomClassName();
         if (!isHidden && !isSolid) {
-            if (blinkingStyle === 1 /* TextEditorCursorBlinkingStyle.Blink */) {
+            if (blinkingStyle === 1 /* Blink */) {
                 // flat blinking is handled by JavaScript to save battery life due to Chromium step timing issue https://bugs.chromium.org/p/chromium/issues/detail?id=361587
                 this._cursorFlatBlinkInterval.cancelAndSet(() => {
                     if (this._isVisible) {
@@ -204,7 +191,7 @@ export class ViewCursors extends ViewPart {
                     else {
                         this._show();
                     }
-                }, ViewCursors.BLINK_INTERVAL, getWindow(this._domNode.domNode));
+                }, ViewCursors.BLINK_INTERVAL);
             }
             else {
                 this._startCursorBlinkAnimation.setIfNotSet(() => {
@@ -247,19 +234,19 @@ export class ViewCursors extends ViewPart {
         }
         if (this._blinkingEnabled) {
             switch (this._getCursorBlinking()) {
-                case 1 /* TextEditorCursorBlinkingStyle.Blink */:
+                case 1 /* Blink */:
                     result += ' cursor-blink';
                     break;
-                case 2 /* TextEditorCursorBlinkingStyle.Smooth */:
+                case 2 /* Smooth */:
                     result += ' cursor-smooth';
                     break;
-                case 3 /* TextEditorCursorBlinkingStyle.Phase */:
+                case 3 /* Phase */:
                     result += ' cursor-phase';
                     break;
-                case 4 /* TextEditorCursorBlinkingStyle.Expand */:
+                case 4 /* Expand */:
                     result += ' cursor-expand';
                     break;
-                case 5 /* TextEditorCursorBlinkingStyle.Solid */:
+                case 5 /* Solid */:
                     result += ' cursor-solid';
                     break;
                 default:
@@ -269,7 +256,7 @@ export class ViewCursors extends ViewPart {
         else {
             result += ' cursor-solid';
         }
-        if (this._cursorSmoothCaretAnimation === 'on' || this._cursorSmoothCaretAnimation === 'explicit') {
+        if (this._cursorSmoothCaretAnimation) {
             result += ' cursor-smooth-caret-animation';
         }
         return result;
@@ -314,24 +301,17 @@ export class ViewCursors extends ViewPart {
         return this._renderData;
     }
 }
+ViewCursors.BLINK_INTERVAL = 500;
 registerThemingParticipant((theme, collector) => {
-    const cursorThemes = [
-        { class: '.cursor', foreground: editorCursorForeground, background: editorCursorBackground },
-        { class: '.cursor-primary', foreground: editorMultiCursorPrimaryForeground, background: editorMultiCursorPrimaryBackground },
-        { class: '.cursor-secondary', foreground: editorMultiCursorSecondaryForeground, background: editorMultiCursorSecondaryBackground },
-    ];
-    for (const cursorTheme of cursorThemes) {
-        const caret = theme.getColor(cursorTheme.foreground);
-        if (caret) {
-            let caretBackground = theme.getColor(cursorTheme.background);
-            if (!caretBackground) {
-                caretBackground = caret.opposite();
-            }
-            collector.addRule(`.monaco-editor .cursors-layer ${cursorTheme.class} { background-color: ${caret}; border-color: ${caret}; color: ${caretBackground}; }`);
-            if (isHighContrast(theme.type)) {
-                collector.addRule(`.monaco-editor .cursors-layer.has-selection ${cursorTheme.class} { border-left: 1px solid ${caretBackground}; border-right: 1px solid ${caretBackground}; }`);
-            }
+    const caret = theme.getColor(editorCursorForeground);
+    if (caret) {
+        let caretBackground = theme.getColor(editorCursorBackground);
+        if (!caretBackground) {
+            caretBackground = caret.opposite();
+        }
+        collector.addRule(`.monaco-editor .cursors-layer .cursor { background-color: ${caret}; border-color: ${caret}; color: ${caretBackground}; }`);
+        if (theme.type === 'hc') {
+            collector.addRule(`.monaco-editor .cursors-layer.has-selection .cursor { border-left: 1px solid ${caretBackground}; border-right: 1px solid ${caretBackground}; }`);
         }
     }
 });
-//# sourceMappingURL=viewCursors.js.map

@@ -9,20 +9,5 @@ export var ColorScheme;
 (function (ColorScheme) {
     ColorScheme["DARK"] = "dark";
     ColorScheme["LIGHT"] = "light";
-    ColorScheme["HIGH_CONTRAST_DARK"] = "hcDark";
-    ColorScheme["HIGH_CONTRAST_LIGHT"] = "hcLight";
+    ColorScheme["HIGH_CONTRAST"] = "hc";
 })(ColorScheme || (ColorScheme = {}));
-export var ThemeTypeSelector;
-(function (ThemeTypeSelector) {
-    ThemeTypeSelector["VS"] = "vs";
-    ThemeTypeSelector["VS_DARK"] = "vs-dark";
-    ThemeTypeSelector["HC_BLACK"] = "hc-black";
-    ThemeTypeSelector["HC_LIGHT"] = "hc-light";
-})(ThemeTypeSelector || (ThemeTypeSelector = {}));
-export function isHighContrast(scheme) {
-    return scheme === ColorScheme.HIGH_CONTRAST_DARK || scheme === ColorScheme.HIGH_CONTRAST_LIGHT;
-}
-export function isDark(scheme) {
-    return scheme === ColorScheme.DARK || scheme === ColorScheme.HIGH_CONTRAST_DARK;
-}
-//# sourceMappingURL=theme.js.map

@@ -21,7 +21,7 @@ import * as strings from '../../../base/common/strings.js';
  */
 export class CursorColumns {
     static _nextVisibleColumn(codePoint, visibleColumn, tabSize) {
-        if (codePoint === 9 /* CharCode.Tab */) {
+        if (codePoint === 9 /* Tab */) {
             return CursorColumns.nextRenderTabStop(visibleColumn, tabSize);
         }
         if (strings.isFullWidthCharacter(codePoint) || strings.isEmojiImprecise(codePoint)) {
@@ -79,18 +79,18 @@ export class CursorColumns {
         return lineContentLength + 1;
     }
     /**
-     * ATTENTION: This works with 0-based columns (as opposed to the regular 1-based columns)
+     * ATTENTION: This works with 0-based columns (as oposed to the regular 1-based columns)
      * @see {@link CursorColumns}
      */
     static nextRenderTabStop(visibleColumn, tabSize) {
         return visibleColumn + tabSize - visibleColumn % tabSize;
     }
     /**
-     * ATTENTION: This works with 0-based columns (as opposed to the regular 1-based columns)
+     * ATTENTION: This works with 0-based columns (as oposed to the regular 1-based columns)
      * @see {@link CursorColumns}
      */
     static nextIndentTabStop(visibleColumn, indentSize) {
-        return CursorColumns.nextRenderTabStop(visibleColumn, indentSize);
+        return visibleColumn + indentSize - visibleColumn % indentSize;
     }
     /**
      * ATTENTION: This works with 0-based columns (as opposed to the regular 1-based columns)
@@ -104,7 +104,6 @@ export class CursorColumns {
      * @see {@link CursorColumns}
      */
     static prevIndentTabStop(column, indentSize) {
-        return CursorColumns.prevRenderTabStop(column, indentSize);
+        return Math.max(0, column - 1 - (column - 1) % indentSize);
     }
 }
-//# sourceMappingURL=cursorColumns.js.map

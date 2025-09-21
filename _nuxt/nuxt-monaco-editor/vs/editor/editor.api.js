@@ -2,15 +2,17 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
+var _a;
 import { EditorOptions } from './common/config/editorOptions.js';
 import { createMonacoBaseAPI } from './common/services/editorBaseApi.js';
 import { createMonacoEditorAPI } from './standalone/browser/standaloneEditor.js';
 import { createMonacoLanguagesAPI } from './standalone/browser/standaloneLanguages.js';
+import { globals } from '../base/common/platform.js';
 import { FormattingConflicts } from './contrib/format/browser/format.js';
 // Set defaults for standalone editor
-EditorOptions.wrappingIndent.defaultValue = 0 /* WrappingIndent.None */;
+EditorOptions.wrappingIndent.defaultValue = 0 /* None */;
 EditorOptions.glyphMargin.defaultValue = false;
-EditorOptions.autoIndent.defaultValue = 3 /* EditorAutoIndentStrategy.Advanced */;
+EditorOptions.autoIndent.defaultValue = 3 /* Advanced */;
 EditorOptions.overviewRulerLanes.defaultValue = 2;
 // We need to register a formatter selector which simply picks the first available formatter.
 // See https://github.com/microsoft/monaco-editor/issues/2327
@@ -32,12 +34,11 @@ export const Uri = api.Uri;
 export const Token = api.Token;
 export const editor = api.editor;
 export const languages = api.languages;
-const monacoEnvironment = globalThis.MonacoEnvironment;
-if (monacoEnvironment?.globalAPI || (typeof globalThis.define === 'function' && (globalThis.define).amd)) {
-    globalThis.monaco = api;
+if (((_a = globals.MonacoEnvironment) === null || _a === void 0 ? void 0 : _a.globalAPI) || (typeof define === 'function' && define.amd)) {
+    self.monaco = api;
 }
-if (typeof globalThis.require !== 'undefined' && typeof globalThis.require.config === 'function') {
-    globalThis.require.config({
+if (typeof self.require !== 'undefined' && typeof self.require.config === 'function') {
+    self.require.config({
         ignoreDuplicateModules: [
             'vscode-languageserver-types',
             'vscode-languageserver-types/main',
@@ -53,4 +54,3 @@ if (typeof globalThis.require !== 'undefined' && typeof globalThis.require.confi
         ]
     });
 }
-//# sourceMappingURL=editor.api.js.map

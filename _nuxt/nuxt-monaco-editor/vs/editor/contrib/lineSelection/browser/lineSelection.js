@@ -10,12 +10,13 @@ export class ExpandLineSelectionAction extends EditorAction {
     constructor() {
         super({
             id: 'expandLineSelection',
-            label: nls.localize2(1230, "Expand Line Selection"),
+            label: nls.localize('expandLineSelection', "Expand Line Selection"),
+            alias: 'Expand Line Selection',
             precondition: undefined,
             kbOpts: {
-                weight: 0 /* KeybindingWeight.EditorCore */,
+                weight: 0 /* EditorCore */,
                 kbExpr: EditorContextKeys.textInputFocus,
-                primary: 2048 /* KeyMod.CtrlCmd */ | 42 /* KeyCode.KeyL */
+                primary: 2048 /* CtrlCmd */ | 42 /* KeyL */
             },
         });
     }
@@ -26,9 +27,8 @@ export class ExpandLineSelectionAction extends EditorAction {
         }
         const viewModel = editor._getViewModel();
         viewModel.model.pushStackElement();
-        viewModel.setCursorStates(args.source, 3 /* CursorChangeReason.Explicit */, CursorMoveCommands.expandLineSelection(viewModel, viewModel.getCursorStates()));
-        viewModel.revealAllCursors(args.source, true);
+        viewModel.setCursorStates(args.source, 3 /* Explicit */, CursorMoveCommands.expandLineSelection(viewModel, viewModel.getCursorStates()));
+        viewModel.revealPrimaryCursor(args.source, true);
     }
 }
 registerEditorAction(ExpandLineSelectionAction);
-//# sourceMappingURL=lineSelection.js.map

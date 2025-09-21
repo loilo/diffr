@@ -9,7 +9,8 @@ class ForceRetokenizeAction extends EditorAction {
     constructor() {
         super({
             id: 'editor.action.forceRetokenize',
-            label: nls.localize2(1514, "Developer: Force Retokenize"),
+            label: nls.localize('forceRetokenize', "Developer: Force Retokenize"),
+            alias: 'Developer: Force Retokenize',
             precondition: undefined
         });
     }
@@ -18,12 +19,11 @@ class ForceRetokenizeAction extends EditorAction {
             return;
         }
         const model = editor.getModel();
-        model.tokenization.resetTokenization();
-        const sw = new StopWatch();
-        model.tokenization.forceTokenization(model.getLineCount());
+        model.resetTokenization();
+        const sw = new StopWatch(true);
+        model.forceTokenization(model.getLineCount());
         sw.stop();
         console.log(`tokenization took ${sw.elapsed()}`);
     }
 }
 registerEditorAction(ForceRetokenizeAction);
-//# sourceMappingURL=tokenization.js.map

@@ -3,51 +3,64 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 import * as dom from '../../dom.js';
-import { Toggle } from '../toggle/toggle.js';
+import { Checkbox } from '../checkbox/checkbox.js';
 import { HistoryInputBox } from '../inputbox/inputBox.js';
 import { Widget } from '../widget.js';
 import { Codicon } from '../../../common/codicons.js';
 import { Emitter } from '../../../common/event.js';
 import './findInput.css';
 import * as nls from '../../../../nls.js';
-import { getDefaultHoverDelegate } from '../hover/hoverDelegateFactory.js';
-const NLS_DEFAULT_LABEL = nls.localize(5, "input");
-const NLS_PRESERVE_CASE_LABEL = nls.localize(6, "Preserve Case");
-class PreserveCaseToggle extends Toggle {
+const NLS_DEFAULT_LABEL = nls.localize('defaultLabel', "input");
+const NLS_PRESERVE_CASE_LABEL = nls.localize('label.preserveCaseCheckbox', "Preserve Case");
+export class PreserveCaseCheckbox extends Checkbox {
     constructor(opts) {
         super({
             // TODO: does this need its own icon?
             icon: Codicon.preserveCase,
             title: NLS_PRESERVE_CASE_LABEL + opts.appendTitle,
             isChecked: opts.isChecked,
-            hoverDelegate: opts.hoverDelegate ?? getDefaultHoverDelegate('element'),
             inputActiveOptionBorder: opts.inputActiveOptionBorder,
             inputActiveOptionForeground: opts.inputActiveOptionForeground,
-            inputActiveOptionBackground: opts.inputActiveOptionBackground,
+            inputActiveOptionBackground: opts.inputActiveOptionBackground
         });
     }
 }
 export class ReplaceInput extends Widget {
-    get onDidOptionChange() { return this._onDidOptionChange.event; }
-    get onKeyDown() { return this._onKeyDown.event; }
-    get onPreserveCaseKeyDown() { return this._onPreserveCaseKeyDown.event; }
     constructor(parent, contextViewProvider, _showOptionButtons, options) {
         super();
         this._showOptionButtons = _showOptionButtons;
         this.fixFocusOnOptionClickEnabled = true;
         this.cachedOptionsWidth = 0;
         this._onDidOptionChange = this._register(new Emitter());
+        this.onDidOptionChange = this._onDidOptionChange.event;
         this._onKeyDown = this._register(new Emitter());
+        this.onKeyDown = this._onKeyDown.event;
         this._onMouseDown = this._register(new Emitter());
         this._onInput = this._register(new Emitter());
         this._onKeyUp = this._register(new Emitter());
         this._onPreserveCaseKeyDown = this._register(new Emitter());
+        this.onPreserveCaseKeyDown = this._onPreserveCaseKeyDown.event;
         this.contextViewProvider = contextViewProvider;
         this.placeholder = options.placeholder || '';
         this.validation = options.validation;
         this.label = options.label || NLS_DEFAULT_LABEL;
+        this.inputActiveOptionBorder = options.inputActiveOptionBorder;
+        this.inputActiveOptionForeground = options.inputActiveOptionForeground;
+        this.inputActiveOptionBackground = options.inputActiveOptionBackground;
+        this.inputBackground = options.inputBackground;
+        this.inputForeground = options.inputForeground;
+        this.inputBorder = options.inputBorder;
+        this.inputValidationInfoBorder = options.inputValidationInfoBorder;
+        this.inputValidationInfoBackground = options.inputValidationInfoBackground;
+        this.inputValidationInfoForeground = options.inputValidationInfoForeground;
+        this.inputValidationWarningBorder = options.inputValidationWarningBorder;
+        this.inputValidationWarningBackground = options.inputValidationWarningBackground;
+        this.inputValidationWarningForeground = options.inputValidationWarningForeground;
+        this.inputValidationErrorBorder = options.inputValidationErrorBorder;
+        this.inputValidationErrorBackground = options.inputValidationErrorBackground;
+        this.inputValidationErrorForeground = options.inputValidationErrorForeground;
         const appendPreserveCaseLabel = options.appendPreserveCaseLabel || '';
-        const history = options.history || new Set([]);
+        const history = options.history || [];
         const flexibleHeight = !!options.flexibleHeight;
         const flexibleWidth = !!options.flexibleWidth;
         const flexibleMaxHeight = options.flexibleMaxHeight;
@@ -59,17 +72,30 @@ export class ReplaceInput extends Widget {
             validationOptions: {
                 validation: this.validation
             },
+            inputBackground: this.inputBackground,
+            inputForeground: this.inputForeground,
+            inputBorder: this.inputBorder,
+            inputValidationInfoBackground: this.inputValidationInfoBackground,
+            inputValidationInfoForeground: this.inputValidationInfoForeground,
+            inputValidationInfoBorder: this.inputValidationInfoBorder,
+            inputValidationWarningBackground: this.inputValidationWarningBackground,
+            inputValidationWarningForeground: this.inputValidationWarningForeground,
+            inputValidationWarningBorder: this.inputValidationWarningBorder,
+            inputValidationErrorBackground: this.inputValidationErrorBackground,
+            inputValidationErrorForeground: this.inputValidationErrorForeground,
+            inputValidationErrorBorder: this.inputValidationErrorBorder,
             history,
             showHistoryHint: options.showHistoryHint,
             flexibleHeight,
             flexibleWidth,
-            flexibleMaxHeight,
-            inputBoxStyles: options.inputBoxStyles
+            flexibleMaxHeight
         }));
-        this.preserveCase = this._register(new PreserveCaseToggle({
+        this.preserveCase = this._register(new PreserveCaseCheckbox({
             appendTitle: appendPreserveCaseLabel,
             isChecked: false,
-            ...options.toggleStyles
+            inputActiveOptionBorder: this.inputActiveOptionBorder,
+            inputActiveOptionForeground: this.inputActiveOptionForeground,
+            inputActiveOptionBackground: this.inputActiveOptionBackground,
         }));
         this._register(this.preserveCase.onChange(viaKeyboard => {
             this._onDidOptionChange.fire(viaKeyboard);
@@ -88,16 +114,16 @@ export class ReplaceInput extends Widget {
             this.cachedOptionsWidth = 0;
         }
         // Arrow-Key support to navigate between options
-        const indexes = [this.preserveCase.domNode];
+        let indexes = [this.preserveCase.domNode];
         this.onkeydown(this.domNode, (event) => {
-            if (event.equals(15 /* KeyCode.LeftArrow */) || event.equals(17 /* KeyCode.RightArrow */) || event.equals(9 /* KeyCode.Escape */)) {
-                const index = indexes.indexOf(this.domNode.ownerDocument.activeElement);
+            if (event.equals(15 /* LeftArrow */) || event.equals(17 /* RightArrow */) || event.equals(9 /* Escape */)) {
+                let index = indexes.indexOf(document.activeElement);
                 if (index >= 0) {
                     let newIndex = -1;
-                    if (event.equals(17 /* KeyCode.RightArrow */)) {
+                    if (event.equals(17 /* RightArrow */)) {
                         newIndex = (index + 1) % indexes.length;
                     }
-                    else if (event.equals(15 /* KeyCode.LeftArrow */)) {
+                    else if (event.equals(15 /* LeftArrow */)) {
                         if (index === 0) {
                             newIndex = indexes.length - 1;
                         }
@@ -105,7 +131,7 @@ export class ReplaceInput extends Widget {
                             newIndex = index - 1;
                         }
                     }
-                    if (event.equals(9 /* KeyCode.Escape */)) {
+                    if (event.equals(9 /* Escape */)) {
                         indexes[index].blur();
                         this.inputBox.focus();
                     }
@@ -116,12 +142,14 @@ export class ReplaceInput extends Widget {
                 }
             }
         });
-        const controls = document.createElement('div');
+        let controls = document.createElement('div');
         controls.className = 'controls';
         controls.style.display = this._showOptionButtons ? 'block' : 'none';
         controls.appendChild(this.preserveCase.domNode);
         this.domNode.appendChild(controls);
-        parent?.appendChild(this.domNode);
+        if (parent) {
+            parent.appendChild(this.domNode);
+        }
         this.onkeydown(this.inputBox.inputElement, (e) => this._onKeyDown.fire(e));
         this.onkeyup(this.inputBox.inputElement, (e) => this._onKeyUp.fire(e));
         this.oninput(this.inputBox.inputElement, (e) => this._onInput.fire());
@@ -145,6 +173,49 @@ export class ReplaceInput extends Widget {
             this.disable();
         }
     }
+    style(styles) {
+        this.inputActiveOptionBorder = styles.inputActiveOptionBorder;
+        this.inputActiveOptionForeground = styles.inputActiveOptionForeground;
+        this.inputActiveOptionBackground = styles.inputActiveOptionBackground;
+        this.inputBackground = styles.inputBackground;
+        this.inputForeground = styles.inputForeground;
+        this.inputBorder = styles.inputBorder;
+        this.inputValidationInfoBackground = styles.inputValidationInfoBackground;
+        this.inputValidationInfoForeground = styles.inputValidationInfoForeground;
+        this.inputValidationInfoBorder = styles.inputValidationInfoBorder;
+        this.inputValidationWarningBackground = styles.inputValidationWarningBackground;
+        this.inputValidationWarningForeground = styles.inputValidationWarningForeground;
+        this.inputValidationWarningBorder = styles.inputValidationWarningBorder;
+        this.inputValidationErrorBackground = styles.inputValidationErrorBackground;
+        this.inputValidationErrorForeground = styles.inputValidationErrorForeground;
+        this.inputValidationErrorBorder = styles.inputValidationErrorBorder;
+        this.applyStyles();
+    }
+    applyStyles() {
+        if (this.domNode) {
+            const checkBoxStyles = {
+                inputActiveOptionBorder: this.inputActiveOptionBorder,
+                inputActiveOptionForeground: this.inputActiveOptionForeground,
+                inputActiveOptionBackground: this.inputActiveOptionBackground,
+            };
+            this.preserveCase.style(checkBoxStyles);
+            const inputBoxStyles = {
+                inputBackground: this.inputBackground,
+                inputForeground: this.inputForeground,
+                inputBorder: this.inputBorder,
+                inputValidationInfoBackground: this.inputValidationInfoBackground,
+                inputValidationInfoForeground: this.inputValidationInfoForeground,
+                inputValidationInfoBorder: this.inputValidationInfoBorder,
+                inputValidationWarningBackground: this.inputValidationWarningBackground,
+                inputValidationWarningForeground: this.inputValidationWarningForeground,
+                inputValidationWarningBorder: this.inputValidationWarningBorder,
+                inputValidationErrorBackground: this.inputValidationErrorBackground,
+                inputValidationErrorForeground: this.inputValidationErrorForeground,
+                inputValidationErrorBorder: this.inputValidationErrorBorder
+            };
+            this.inputBox.style(inputBoxStyles);
+        }
+    }
     select() {
         this.inputBox.select();
     }
@@ -161,14 +232,16 @@ export class ReplaceInput extends Widget {
         this.preserveCase.focus();
     }
     validate() {
-        this.inputBox?.validate();
+        if (this.inputBox) {
+            this.inputBox.validate();
+        }
     }
     set width(newWidth) {
         this.inputBox.paddingRight = this.cachedOptionsWidth;
+        this.inputBox.width = newWidth;
         this.domNode.style.width = newWidth + 'px';
     }
     dispose() {
         super.dispose();
     }
 }
-//# sourceMappingURL=replaceInput.js.map

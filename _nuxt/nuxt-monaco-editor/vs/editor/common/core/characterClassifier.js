@@ -15,7 +15,9 @@ export class CharacterClassifier {
     }
     static _createAsciiMap(defaultValue) {
         const asciiMap = new Uint8Array(256);
-        asciiMap.fill(defaultValue);
+        for (let i = 0; i < 256; i++) {
+            asciiMap[i] = defaultValue;
+        }
         return asciiMap;
     }
     set(charCode, _value) {
@@ -35,23 +37,15 @@ export class CharacterClassifier {
             return (this._map.get(charCode) || this._defaultValue);
         }
     }
-    clear() {
-        this._asciiMap.fill(this._defaultValue);
-        this._map.clear();
-    }
 }
 export class CharacterSet {
     constructor() {
-        this._actual = new CharacterClassifier(0 /* Boolean.False */);
+        this._actual = new CharacterClassifier(0 /* False */);
     }
     add(charCode) {
-        this._actual.set(charCode, 1 /* Boolean.True */);
+        this._actual.set(charCode, 1 /* True */);
     }
     has(charCode) {
-        return (this._actual.get(charCode) === 1 /* Boolean.True */);
-    }
-    clear() {
-        return this._actual.clear();
+        return (this._actual.get(charCode) === 1 /* True */);
     }
 }
-//# sourceMappingURL=characterClassifier.js.map

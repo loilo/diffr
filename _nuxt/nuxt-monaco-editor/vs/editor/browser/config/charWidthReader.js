@@ -20,15 +20,15 @@ class DomCharWidthReader {
         this._container = null;
         this._testElements = null;
     }
-    read(targetWindow) {
+    read() {
         // Create a test container with all these test elements
         this._createDomElements();
         // Add the container to the DOM
-        targetWindow.document.body.appendChild(this._container);
+        document.body.appendChild(this._container);
         // Read character widths
         this._readFromDomElements();
         // Remove the container from the DOM
-        this._container?.remove();
+        document.body.removeChild(this._container);
         this._container = null;
         this._testElements = null;
     }
@@ -51,13 +51,13 @@ class DomCharWidthReader {
         const testElements = [];
         for (const request of this._requests) {
             let parent;
-            if (request.type === 0 /* CharWidthRequestType.Regular */) {
+            if (request.type === 0 /* Regular */) {
                 parent = regularDomNode;
             }
-            if (request.type === 2 /* CharWidthRequestType.Bold */) {
+            if (request.type === 2 /* Bold */) {
                 parent = boldDomNode;
             }
-            if (request.type === 1 /* CharWidthRequestType.Italic */) {
+            if (request.type === 1 /* Italic */) {
                 parent = italicDomNode;
             }
             parent.appendChild(document.createElement('br'));
@@ -95,8 +95,7 @@ class DomCharWidthReader {
         }
     }
 }
-export function readCharWidths(targetWindow, bareFontInfo, requests) {
+export function readCharWidths(bareFontInfo, requests) {
     const reader = new DomCharWidthReader(bareFontInfo, requests);
-    reader.read(targetWindow);
+    reader.read();
 }
-//# sourceMappingURL=charWidthReader.js.map

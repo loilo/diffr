@@ -1,10 +1,9 @@
 /*!-----------------------------------------------------------------------------
  * Copyright (c) Microsoft Corporation. All rights reserved.
- * Version: 0.53.0(4e45ba0c5ff45fc61c0ccac61c0987369df04a6e)
+ * Version: 0.32.1(29a273516805a852aa8edc5e05059f119b13eff0)
  * Released under the MIT license
  * https://github.com/microsoft/monaco-editor/blob/main/LICENSE.txt
  *-----------------------------------------------------------------------------*/
-
 
 // src/basic-languages/mysql/mysql.ts
 var conf = {
@@ -41,7 +40,6 @@ var language = {
     { open: "(", close: ")", token: "delimiter.parenthesis" }
   ],
   keywords: [
-    // This list is generated using `keywords.js`
     "ACCESSIBLE",
     "ADD",
     "ALL",
@@ -810,9 +808,7 @@ var language = {
     "YEAR",
     "YEARWEEK"
   ],
-  builtinVariables: [
-    // NOT SUPPORTED
-  ],
+  builtinVariables: [],
   tokenizer: {
     root: [
       { include: "@comments" },
@@ -845,9 +841,6 @@ var language = {
     ],
     comment: [
       [/[^*/]+/, "comment"],
-      // Not supporting nested comments, as nested comments seem to not be standard?
-      // i.e. http://stackoverflow.com/questions/728172/are-there-multiline-comment-delimiters-in-sql-that-are-vendor-agnostic
-      // [/\/\*/, { token: 'comment.quote', next: '@push' }],    // nested comment not allowed :-(
       [/\*\//, { token: "comment.quote", next: "@pop" }],
       [/./, "comment"]
     ],
@@ -861,7 +854,6 @@ var language = {
       [/"/, { token: "string.double", next: "@stringDouble" }]
     ],
     string: [
-      [/\\'/, "string"],
       [/[^']+/, "string"],
       [/''/, "string"],
       [/'/, { token: "string", next: "@pop" }]
@@ -877,9 +869,7 @@ var language = {
       [/``/, "identifier"],
       [/`/, { token: "identifier.quote", next: "@pop" }]
     ],
-    scopes: [
-      // NOT SUPPORTED
-    ]
+    scopes: []
   }
 };
 export {

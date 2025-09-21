@@ -1,6 +1,6 @@
 /*!-----------------------------------------------------------------------------
  * Copyright (c) Microsoft Corporation. All rights reserved.
- * Version: 0.53.0(4e45ba0c5ff45fc61c0ccac61c0987369df04a6e)
+ * Version: 0.32.1(29a273516805a852aa8edc5e05059f119b13eff0)
  * Released under the MIT license
  * https://github.com/microsoft/monaco-editor/blob/main/LICENSE.txt
  *-----------------------------------------------------------------------------*/
@@ -9,15 +9,14 @@ var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
 var __getOwnPropNames = Object.getOwnPropertyNames;
 var __hasOwnProp = Object.prototype.hasOwnProperty;
-var __copyProps = (to, from, except, desc) => {
-  if (from && typeof from === "object" || typeof from === "function") {
-    for (let key of __getOwnPropNames(from))
-      if (!__hasOwnProp.call(to, key) && key !== except)
-        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+var __reExport = (target, module, copyDefault, desc) => {
+  if (module && typeof module === "object" || typeof module === "function") {
+    for (let key of __getOwnPropNames(module))
+      if (!__hasOwnProp.call(target, key) && (copyDefault || key !== "default"))
+        __defProp(target, key, { get: () => module[key], enumerable: !(desc = __getOwnPropDesc(module, key)) || desc.enumerable });
   }
-  return to;
+  return target;
 };
-var __reExport = (target, mod, secondTarget) => (__copyProps(target, mod, "default"), secondTarget && __copyProps(secondTarget, mod, "default"));
 
 // src/fillers/monaco-editor-core.ts
 var monaco_editor_core_exports = {};
@@ -38,7 +37,6 @@ var conf = {
   ],
   onEnterRules: [
     {
-      // e.g. /** | */
       beforeText: /^\s*\/\*\*(?!\/)([^\*]|\*(?!\/))*$/,
       afterText: /^\s*\*\/$/,
       action: {
@@ -47,7 +45,6 @@ var conf = {
       }
     },
     {
-      // e.g. /** ...|
       beforeText: /^\s*\/\*\*(?!\/)([^\*]|\*(?!\/))*$/,
       action: {
         indentAction: monaco_editor_core_exports.languages.IndentAction.None,
@@ -55,7 +52,6 @@ var conf = {
       }
     },
     {
-      // e.g.  * ...|
       beforeText: /^(\t|(\ \ ))*\ \*(\ ([^\*]|\*(?!\/))*)?$/,
       action: {
         indentAction: monaco_editor_core_exports.languages.IndentAction.None,
@@ -63,7 +59,6 @@ var conf = {
       }
     },
     {
-      // e.g.  */|
       beforeText: /^(\t|(\ \ ))*\ \*\/\s*$/,
       action: {
         indentAction: monaco_editor_core_exports.languages.IndentAction.None,
@@ -88,12 +83,9 @@ var conf = {
   }
 };
 var language = {
-  // Set defaultToken to invalid to see what you do not tokenize yet
   defaultToken: "invalid",
   tokenPostfix: ".ts",
   keywords: [
-    // Should match the keys of textToKeywordObj in
-    // https://github.com/microsoft/TypeScript/blob/master/src/compiler/scanner.ts
     "abstract",
     "any",
     "as",
@@ -139,7 +131,6 @@ var language = {
     "null",
     "number",
     "object",
-    "out",
     "package",
     "private",
     "protected",
@@ -149,7 +140,6 @@ var language = {
     "require",
     "global",
     "return",
-    "satisfies",
     "set",
     "static",
     "string",
@@ -219,7 +209,6 @@ var language = {
     "^=",
     "@"
   ],
-  // we include these common regular expressions
   symbols: /[=><!~?:&|+\-*\/\^%]+/,
   escapes: /\\(?:[abfnrtv\\"']|x[0-9A-Fa-f]{1,4}|u[0-9A-Fa-f]{4}|U[0-9A-Fa-f]{8})/,
   digits: /\d+(_+\d+)*/,
@@ -228,13 +217,11 @@ var language = {
   hexdigits: /[[0-9a-fA-F]+(_+[0-9a-fA-F]+)*/,
   regexpctl: /[(){}\[\]\$\^|\-*+?\.]/,
   regexpesc: /\\(?:[bBdDfnrstvwWn0\\\/]|@regexpctl|c[A-Z]|x[0-9a-fA-F]{2}|u[0-9a-fA-F]{4})/,
-  // The main tokenizer for our languages
   tokenizer: {
     root: [[/[{}]/, "delimiter.bracket"], { include: "common" }],
     common: [
-      // identifiers and keywords
       [
-        /#?[a-z_$][\w$]*/,
+        /[a-z_$][\w$]*/,
         {
           cases: {
             "@keywords": "keyword",
@@ -243,16 +230,11 @@ var language = {
         }
       ],
       [/[A-Z][\w\$]*/, "type.identifier"],
-      // to show class names nicely
-      // [/[A-Z][\w\$]*/, 'identifier'],
-      // whitespace
       { include: "@whitespace" },
-      // regular expression: ensure it is terminated before beginning (otherwise it is an opeator)
       [
         /\/(?=([^\\\/]|\\.)+\/([dgimsuy]*)(\s*)(\.|;|,|\)|\]|\}|$))/,
         { token: "regexp", bracket: "@open", next: "@regexp" }
       ],
-      // delimiters and operators
       [/[()\[\]]/, "@brackets"],
       [/[<>](?!@symbols)/, "@brackets"],
       [/!(?=([^=]|$))/, "delimiter"],
@@ -265,20 +247,15 @@ var language = {
           }
         }
       ],
-      // numbers
       [/(@digits)[eE]([\-+]?(@digits))?/, "number.float"],
       [/(@digits)\.(@digits)([eE][\-+]?(@digits))?/, "number.float"],
       [/0[xX](@hexdigits)n?/, "number.hex"],
       [/0[oO]?(@octaldigits)n?/, "number.octal"],
       [/0[bB](@binarydigits)n?/, "number.binary"],
       [/(@digits)n?/, "number"],
-      // delimiter: after number because of .\d floats
       [/[;,.]/, "delimiter"],
-      // strings
       [/"([^"\\]|\\.)*$/, "string.invalid"],
-      // non-teminated string
       [/'([^'\\]|\\.)*$/, "string.invalid"],
-      // non-teminated string
       [/"/, "string", "@string_double"],
       [/'/, "string", "@string_single"],
       [/`/, "string", "@string_backtick"]
@@ -299,7 +276,6 @@ var language = {
       [/\*\//, "comment.doc", "@pop"],
       [/[\/*]/, "comment.doc"]
     ],
-    // We match regular expression quite precisely
     regexp: [
       [
         /(\{)(\d+(?:,\d*)?)(\})/,

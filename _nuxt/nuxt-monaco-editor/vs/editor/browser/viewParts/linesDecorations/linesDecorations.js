@@ -9,7 +9,7 @@ export class LinesDecorationsOverlay extends DedupOverlay {
         super();
         this._context = context;
         const options = this._context.configuration.options;
-        const layoutInfo = options.get(164 /* EditorOption.layoutInfo */);
+        const layoutInfo = options.get(131 /* layoutInfo */);
         this._decorationsLeft = layoutInfo.decorationsLeft;
         this._decorationsWidth = layoutInfo.decorationsWidth;
         this._renderResult = null;
@@ -23,7 +23,7 @@ export class LinesDecorationsOverlay extends DedupOverlay {
     // --- begin event handlers
     onConfigurationChanged(e) {
         const options = this._context.configuration.options;
-        const layoutInfo = options.get(164 /* EditorOption.layoutInfo */);
+        const layoutInfo = options.get(131 /* layoutInfo */);
         this._decorationsLeft = layoutInfo.decorationsLeft;
         this._decorationsWidth = layoutInfo.decorationsWidth;
         return true;
@@ -57,13 +57,12 @@ export class LinesDecorationsOverlay extends DedupOverlay {
         for (let i = 0, len = decorations.length; i < len; i++) {
             const d = decorations[i];
             const linesDecorationsClassName = d.options.linesDecorationsClassName;
-            const zIndex = d.options.zIndex;
             if (linesDecorationsClassName) {
-                r[rLen++] = new DecorationToRender(d.range.startLineNumber, d.range.endLineNumber, linesDecorationsClassName, d.options.linesDecorationsTooltip ?? null, zIndex);
+                r[rLen++] = new DecorationToRender(d.range.startLineNumber, d.range.endLineNumber, linesDecorationsClassName);
             }
             const firstLineDecorationClassName = d.options.firstLineDecorationClassName;
             if (firstLineDecorationClassName) {
-                r[rLen++] = new DecorationToRender(d.range.startLineNumber, d.range.startLineNumber, firstLineDecorationClassName, d.options.linesDecorationsTooltip ?? null, zIndex);
+                r[rLen++] = new DecorationToRender(d.range.startLineNumber, d.range.startLineNumber, firstLineDecorationClassName);
             }
         }
         return r;
@@ -78,15 +77,10 @@ export class LinesDecorationsOverlay extends DedupOverlay {
         const output = [];
         for (let lineNumber = visibleStartLineNumber; lineNumber <= visibleEndLineNumber; lineNumber++) {
             const lineIndex = lineNumber - visibleStartLineNumber;
-            const decorations = toRender[lineIndex].getDecorations();
+            const classNames = toRender[lineIndex];
             let lineOutput = '';
-            for (const decoration of decorations) {
-                let addition = '<div class="cldr ' + decoration.className;
-                if (decoration.tooltip !== null) {
-                    addition += '" title="' + decoration.tooltip; // The tooltip is already escaped.
-                }
-                addition += common;
-                lineOutput += addition;
+            for (let i = 0, len = classNames.length; i < len; i++) {
+                lineOutput += '<div class="cldr ' + classNames[i] + common;
             }
             output[lineIndex] = lineOutput;
         }
@@ -99,4 +93,3 @@ export class LinesDecorationsOverlay extends DedupOverlay {
         return this._renderResult[lineNumber - startLineNumber];
     }
 }
-//# sourceMappingURL=linesDecorations.js.map

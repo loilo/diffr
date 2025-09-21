@@ -98,7 +98,7 @@ function concat(node1, node2) {
 function append(list, nodeToAppend) {
     list = list.toMutable();
     let curNode = list;
-    const parents = [];
+    const parents = new Array();
     let nodeToAppendOfCorrectHeight;
     while (true) {
         // assert nodeToInsert.listHeight <= curNode.listHeight
@@ -107,7 +107,7 @@ function append(list, nodeToAppend) {
             break;
         }
         // assert 0 <= nodeToInsert.listHeight < curNode.listHeight
-        if (curNode.kind !== 4 /* AstNodeKind.List */) {
+        if (curNode.kind !== 4 /* List */) {
             throw new Error('unexpected');
         }
         parents.push(curNode);
@@ -148,11 +148,11 @@ function append(list, nodeToAppend) {
 function prepend(list, nodeToAppend) {
     list = list.toMutable();
     let curNode = list;
-    const parents = [];
+    const parents = new Array();
     // assert nodeToInsert.listHeight <= curNode.listHeight
     while (nodeToAppend.listHeight !== curNode.listHeight) {
         // assert 0 <= nodeToInsert.listHeight < curNode.listHeight
-        if (curNode.kind !== 4 /* AstNodeKind.List */) {
+        if (curNode.kind !== 4 /* List */) {
             throw new Error('unexpected');
         }
         parents.push(curNode);
@@ -187,4 +187,3 @@ function prepend(list, nodeToAppend) {
         return list;
     }
 }
-//# sourceMappingURL=concat23Trees.js.map

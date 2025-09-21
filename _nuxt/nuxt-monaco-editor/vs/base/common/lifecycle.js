@@ -1,6 +1,9 @@
-import { createSingleCallFunction } from './functional.js';
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+import { once } from './functional.js';
 import { Iterable } from './iterator.js';
-// #region Disposable Tracking
 /**
  * Enables logging of potentially leaked disposables.
  *
@@ -29,7 +32,7 @@ if (TRACK_DISPOSABLES) {
                 try {
                     child[__is_disposable_tracked__] = true;
                 }
-                catch {
+                catch (_a) {
                     // noop
                 }
             }
@@ -39,7 +42,7 @@ if (TRACK_DISPOSABLES) {
                 try {
                     disposable[__is_disposable_tracked__] = true;
                 }
-                catch {
+                catch (_a) {
                     // noop
                 }
             }
@@ -47,15 +50,15 @@ if (TRACK_DISPOSABLES) {
         markAsSingleton(disposable) { }
     });
 }
-export function trackDisposable(x) {
-    disposableTracker?.trackDisposable(x);
+function trackDisposable(x) {
+    disposableTracker === null || disposableTracker === void 0 ? void 0 : disposableTracker.trackDisposable(x);
     return x;
 }
-export function markAsDisposed(disposable) {
-    disposableTracker?.markAsDisposed(disposable);
+function markAsDisposed(disposable) {
+    disposableTracker === null || disposableTracker === void 0 ? void 0 : disposableTracker.markAsDisposed(disposable);
 }
 function setParentOfDisposable(child, parent) {
-    disposableTracker?.setParent(child, parent);
+    disposableTracker === null || disposableTracker === void 0 ? void 0 : disposableTracker.setParent(child, parent);
 }
 function setParentOfDisposables(children, parent) {
     if (!disposableTracker) {
@@ -69,18 +72,21 @@ function setParentOfDisposables(children, parent) {
  * Indicates that the given object is a singleton which does not need to be disposed.
 */
 export function markAsSingleton(singleton) {
-    disposableTracker?.markAsSingleton(singleton);
+    disposableTracker === null || disposableTracker === void 0 ? void 0 : disposableTracker.markAsSingleton(singleton);
     return singleton;
 }
-/**
- * Check if `thing` is {@link IDisposable disposable}.
- */
+export class MultiDisposeError extends Error {
+    constructor(errors) {
+        super(`Encountered errors while disposing of store. Errors: [${errors.join(', ')}]`);
+        this.errors = errors;
+    }
+}
 export function isDisposable(thing) {
-    return typeof thing === 'object' && thing !== null && typeof thing.dispose === 'function' && thing.dispose.length === 0;
+    return typeof thing.dispose === 'function' && thing.dispose.length === 0;
 }
 export function dispose(arg) {
     if (Iterable.is(arg)) {
-        const errors = [];
+        let errors = [];
         for (const d of arg) {
             if (d) {
                 try {
@@ -95,7 +101,7 @@ export function dispose(arg) {
             throw errors[0];
         }
         else if (errors.length > 1) {
-            throw new AggregateError(errors, 'Encountered errors while disposing of store');
+            throw new MultiDisposeError(errors);
         }
         return Array.isArray(arg) ? [] : arg;
     }
@@ -104,37 +110,21 @@ export function dispose(arg) {
         return arg;
     }
 }
-/**
- * Combine multiple disposable values into a single {@link IDisposable}.
- */
 export function combinedDisposable(...disposables) {
     const parent = toDisposable(() => dispose(disposables));
     setParentOfDisposables(disposables, parent);
     return parent;
 }
-/**
- * Turn a function that implements dispose into an {@link IDisposable}.
- *
- * @param fn Clean up function, guaranteed to be called only **once**.
- */
 export function toDisposable(fn) {
     const self = trackDisposable({
-        dispose: createSingleCallFunction(() => {
+        dispose: once(() => {
             markAsDisposed(self);
             fn();
         })
     });
     return self;
 }
-/**
- * Manages a collection of disposable values.
- *
- * This is the preferred way to manage multiple disposables. A `DisposableStore` is safer to work with than an
- * `IDisposable[]` as it considers edge cases, such as registering the same value multiple times or adding an item to a
- * store that has already been disposed of.
- */
 export class DisposableStore {
-    static { this.DISABLE_DISPOSED_WARNING = false; }
     constructor() {
         this._toDispose = new Set();
         this._isDisposed = false;
@@ -154,7 +144,7 @@ export class DisposableStore {
         this.clear();
     }
     /**
-     * @return `true` if this object has been disposed of.
+     * Returns `true` if this object has been disposed
      */
     get isDisposed() {
         return this._isDisposed;
@@ -163,21 +153,15 @@ export class DisposableStore {
      * Dispose of all registered disposables but do not mark this object as disposed.
      */
     clear() {
-        if (this._toDispose.size === 0) {
-            return;
-        }
         try {
-            dispose(this._toDispose);
+            dispose(this._toDispose.values());
         }
         finally {
             this._toDispose.clear();
         }
     }
-    /**
-     * Add a new {@link IDisposable disposable} to the collection.
-     */
     add(o) {
-        if (!o || o === Disposable.None) {
+        if (!o) {
             return o;
         }
         if (o === this) {
@@ -194,33 +178,9 @@ export class DisposableStore {
         }
         return o;
     }
-    /**
-     * Deletes a disposable from store and disposes of it. This will not throw or warn and proceed to dispose the
-     * disposable even when the disposable is not part in the store.
-     */
-    delete(o) {
-        if (!o) {
-            return;
-        }
-        if (o === this) {
-            throw new Error('Cannot dispose a disposable on itself!');
-        }
-        this._toDispose.delete(o);
-        o.dispose();
-    }
 }
-/**
- * Abstract base class for a {@link IDisposable disposable} object.
- *
- * Subclasses can {@linkcode _register} disposables that will be automatically cleaned up when this object is disposed of.
- */
+DisposableStore.DISABLE_DISPOSED_WARNING = false;
 export class Disposable {
-    /**
-     * A disposable that does nothing when it is disposed of.
-     *
-     * TODO: This should not be a static property.
-     */
-    static { this.None = Object.freeze({ dispose() { } }); }
     constructor() {
         this._store = new DisposableStore();
         trackDisposable(this);
@@ -230,9 +190,6 @@ export class Disposable {
         markAsDisposed(this);
         this._store.dispose();
     }
-    /**
-     * Adds `o` to the collection of disposables managed by this object.
-     */
     _register(o) {
         if (o === this) {
             throw new Error('Cannot register a disposable on itself!');
@@ -240,6 +197,7 @@ export class Disposable {
         return this._store.add(o);
     }
 }
+Disposable.None = Object.freeze({ dispose() { } });
 /**
  * Manages the lifecycle of a disposable value that may be changed.
  *
@@ -255,42 +213,37 @@ export class MutableDisposable {
         return this._isDisposed ? undefined : this._value;
     }
     set value(value) {
+        var _a;
         if (this._isDisposed || value === this._value) {
             return;
         }
-        this._value?.dispose();
+        (_a = this._value) === null || _a === void 0 ? void 0 : _a.dispose();
         if (value) {
             setParentOfDisposable(value, this);
         }
         this._value = value;
     }
-    /**
-     * Resets the stored value and disposed of the previously stored value.
-     */
     clear() {
         this.value = undefined;
     }
     dispose() {
+        var _a;
         this._isDisposed = true;
         markAsDisposed(this);
-        this._value?.dispose();
+        (_a = this._value) === null || _a === void 0 ? void 0 : _a.dispose();
         this._value = undefined;
     }
-}
-export class RefCountedDisposable {
-    constructor(_disposable) {
-        this._disposable = _disposable;
-        this._counter = 1;
-    }
-    acquire() {
-        this._counter++;
-        return this;
-    }
-    release() {
-        if (--this._counter === 0) {
-            this._disposable.dispose();
+    /**
+     * Clears the value, but does not dispose it.
+     * The old value is returned.
+    */
+    clearAndLeak() {
+        const oldValue = this._value;
+        this._value = undefined;
+        if (oldValue) {
+            setParentOfDisposable(oldValue, null);
         }
-        return this;
+        return oldValue;
     }
 }
 export class ImmortalReference {
@@ -299,64 +252,3 @@ export class ImmortalReference {
     }
     dispose() { }
 }
-/**
- * A map the manages the lifecycle of the values that it stores.
- */
-export class DisposableMap {
-    constructor() {
-        this._store = new Map();
-        this._isDisposed = false;
-        trackDisposable(this);
-    }
-    /**
-     * Disposes of all stored values and mark this object as disposed.
-     *
-     * Trying to use this object after it has been disposed of is an error.
-     */
-    dispose() {
-        markAsDisposed(this);
-        this._isDisposed = true;
-        this.clearAndDisposeAll();
-    }
-    /**
-     * Disposes of all stored values and clear the map, but DO NOT mark this object as disposed.
-     */
-    clearAndDisposeAll() {
-        if (!this._store.size) {
-            return;
-        }
-        try {
-            dispose(this._store.values());
-        }
-        finally {
-            this._store.clear();
-        }
-    }
-    get(key) {
-        return this._store.get(key);
-    }
-    set(key, value, skipDisposeOnOverwrite = false) {
-        if (this._isDisposed) {
-            console.warn(new Error('Trying to add a disposable to a DisposableMap that has already been disposed of. The added object will be leaked!').stack);
-        }
-        if (!skipDisposeOnOverwrite) {
-            this._store.get(key)?.dispose();
-        }
-        this._store.set(key, value);
-        setParentOfDisposable(value, this);
-    }
-    /**
-     * Delete the value stored for `key` from this map and also dispose of it.
-     */
-    deleteAndDispose(key) {
-        this._store.get(key)?.dispose();
-        this._store.delete(key);
-    }
-    values() {
-        return this._store.values();
-    }
-    [Symbol.iterator]() {
-        return this._store[Symbol.iterator]();
-    }
-}
-//# sourceMappingURL=lifecycle.js.map

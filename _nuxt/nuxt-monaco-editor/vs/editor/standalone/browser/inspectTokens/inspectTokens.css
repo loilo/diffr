@@ -7,19 +7,13 @@
 	z-index: 50;
 	user-select: text;
 	-webkit-user-select: text;
+	-ms-user-select: text;
 	padding: 10px;
-	color: var(--vscode-editorHoverWidget-foreground);
-	background-color: var(--vscode-editorHoverWidget-background);
-	border: 1px solid var(--vscode-editorHoverWidget-border);
-}
-.monaco-editor.hc-black .tokens-inspect-widget, .monaco-editor.hc-light .tokens-inspect-widget {
-	border-width: 2px;
 }
 
-.monaco-editor .tokens-inspect-widget .tokens-inspect-separator {
+.tokens-inspect-separator {
 	height: 1px;
 	border: 0;
-	background-color: var(--vscode-editorHoverWidget-border);
 }
 
 .monaco-editor .tokens-inspect-widget .tm-token {

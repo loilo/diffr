@@ -51,4 +51,3 @@ export class QuickAccessRegistry {
     }
 }
 Registry.add(Extensions.Quickaccess, new QuickAccessRegistry());
-//# sourceMappingURL=quickAccess.js.map

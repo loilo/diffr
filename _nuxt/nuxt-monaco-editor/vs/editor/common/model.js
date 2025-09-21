@@ -14,22 +14,13 @@ export var OverviewRulerLane;
     OverviewRulerLane[OverviewRulerLane["Full"] = 7] = "Full";
 })(OverviewRulerLane || (OverviewRulerLane = {}));
 /**
- * Vertical Lane in the glyph margin of the editor.
+ * Position in the minimap to render the decoration.
  */
-export var GlyphMarginLane;
-(function (GlyphMarginLane) {
-    GlyphMarginLane[GlyphMarginLane["Left"] = 1] = "Left";
-    GlyphMarginLane[GlyphMarginLane["Center"] = 2] = "Center";
-    GlyphMarginLane[GlyphMarginLane["Right"] = 3] = "Right";
-})(GlyphMarginLane || (GlyphMarginLane = {}));
-/**
- * Text Direction for a decoration.
- */
-export var TextDirection;
-(function (TextDirection) {
-    TextDirection[TextDirection["LTR"] = 0] = "LTR";
-    TextDirection[TextDirection["RTL"] = 1] = "RTL";
-})(TextDirection || (TextDirection = {}));
+export var MinimapPosition;
+(function (MinimapPosition) {
+    MinimapPosition[MinimapPosition["Inline"] = 1] = "Inline";
+    MinimapPosition[MinimapPosition["Gutter"] = 2] = "Gutter";
+})(MinimapPosition || (MinimapPosition = {}));
 export var InjectedTextCursorStops;
 (function (InjectedTextCursorStops) {
     InjectedTextCursorStops[InjectedTextCursorStops["Both"] = 0] = "Both";
@@ -38,23 +29,13 @@ export var InjectedTextCursorStops;
     InjectedTextCursorStops[InjectedTextCursorStops["None"] = 3] = "None";
 })(InjectedTextCursorStops || (InjectedTextCursorStops = {}));
 export class TextModelResolvedOptions {
-    get originalIndentSize() {
-        return this._indentSizeIsTabSize ? 'tabSize' : this.indentSize;
-    }
     /**
      * @internal
      */
     constructor(src) {
         this._textModelResolvedOptionsBrand = undefined;
         this.tabSize = Math.max(1, src.tabSize | 0);
-        if (src.indentSize === 'tabSize') {
-            this.indentSize = this.tabSize;
-            this._indentSizeIsTabSize = true;
-        }
-        else {
-            this.indentSize = Math.max(1, src.indentSize | 0);
-            this._indentSizeIsTabSize = false;
-        }
+        this.indentSize = src.tabSize | 0;
         this.insertSpaces = Boolean(src.insertSpaces);
         this.defaultEOL = src.defaultEOL | 0;
         this.trimAutoWhitespace = Boolean(src.trimAutoWhitespace);
@@ -65,7 +46,6 @@ export class TextModelResolvedOptions {
      */
     equals(other) {
         return (this.tabSize === other.tabSize
-            && this._indentSizeIsTabSize === other._indentSizeIsTabSize
             && this.indentSize === other.indentSize
             && this.insertSpaces === other.insertSpaces
             && this.defaultEOL === other.defaultEOL
@@ -93,12 +73,6 @@ export class FindMatch {
         this.range = range;
         this.matches = matches;
     }
-}
-/**
- * @internal
- */
-export function isITextSnapshot(obj) {
-    return (obj && typeof obj.read === 'function');
 }
 /**
  * @internal
@@ -139,4 +113,3 @@ export class ApplyEditsResult {
 export function shouldSynchronizeModel(model) {
     return (!model.isTooLargeForSyncing() && !model.isForSimpleWidget);
 }
-//# sourceMappingURL=model.js.map

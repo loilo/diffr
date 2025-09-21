@@ -13,10 +13,10 @@ export function computeIndentLevel(line, tabSize) {
     const len = line.length;
     while (i < len) {
         const chCode = line.charCodeAt(i);
-        if (chCode === 32 /* CharCode.Space */) {
+        if (chCode === 32 /* Space */) {
             indent++;
         }
-        else if (chCode === 9 /* CharCode.Tab */) {
+        else if (chCode === 9 /* Tab */) {
             indent = indent - indent % tabSize + tabSize;
         }
         else {
@@ -29,4 +29,3 @@ export function computeIndentLevel(line, tabSize) {
     }
     return indent;
 }
-//# sourceMappingURL=utils.js.map

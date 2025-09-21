@@ -11,7 +11,6 @@ export class ResourceEditStackSnapshot {
     }
 }
 export class UndoRedoGroup {
-    static { this._ID = 0; }
     constructor() {
         this.id = UndoRedoGroup._ID++;
         this.order = 1;
@@ -22,10 +21,10 @@ export class UndoRedoGroup {
         }
         return this.order++;
     }
-    static { this.None = new UndoRedoGroup(); }
 }
+UndoRedoGroup._ID = 0;
+UndoRedoGroup.None = new UndoRedoGroup();
 export class UndoRedoSource {
-    static { this._ID = 0; }
     constructor() {
         this.id = UndoRedoSource._ID++;
         this.order = 1;
@@ -36,6 +35,6 @@ export class UndoRedoSource {
         }
         return this.order++;
     }
-    static { this.None = new UndoRedoSource(); }
 }
-//# sourceMappingURL=undoRedo.js.map
+UndoRedoSource._ID = 0;
+UndoRedoSource.None = new UndoRedoSource();

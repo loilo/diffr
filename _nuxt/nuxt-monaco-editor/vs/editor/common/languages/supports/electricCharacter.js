@@ -50,4 +50,3 @@ export class BracketElectricCharacterSupport {
         };
     }
 }
-//# sourceMappingURL=electricCharacter.js.map

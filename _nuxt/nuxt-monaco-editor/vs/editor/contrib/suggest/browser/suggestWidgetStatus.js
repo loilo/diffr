@@ -14,19 +14,35 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 import * as dom from '../../../../base/browser/dom.js';
 import { ActionBar } from '../../../../base/browser/ui/actionbar/actionbar.js';
 import { DisposableStore } from '../../../../base/common/lifecycle.js';
-import { TextOnlyMenuEntryActionViewItem } from '../../../../platform/actions/browser/menuEntryActionViewItem.js';
+import { suggestWidgetStatusbarMenu } from './suggest.js';
+import { localize } from '../../../../nls.js';
+import { MenuEntryActionViewItem } from '../../../../platform/actions/browser/menuEntryActionViewItem.js';
 import { IMenuService, MenuItemAction } from '../../../../platform/actions/common/actions.js';
 import { IContextKeyService } from '../../../../platform/contextkey/common/contextkey.js';
 import { IInstantiationService } from '../../../../platform/instantiation/common/instantiation.js';
+class StatusBarViewItem extends MenuEntryActionViewItem {
+    updateLabel() {
+        const kb = this._keybindingService.lookupKeybinding(this._action.id, this._contextKeyService);
+        if (!kb) {
+            return super.updateLabel();
+        }
+        if (this.label) {
+            this.label.textContent = localize('ddd', '{0} ({1})', this._action.label, StatusBarViewItem.symbolPrintEnter(kb));
+        }
+    }
+    static symbolPrintEnter(kb) {
+        var _a;
+        return (_a = kb.getLabel()) === null || _a === void 0 ? void 0 : _a.replace(/\benter\b/gi, '\u23CE');
+    }
+}
 let SuggestWidgetStatus = class SuggestWidgetStatus {
-    constructor(container, _menuId, instantiationService, _menuService, _contextKeyService) {
-        this._menuId = _menuId;
+    constructor(container, instantiationService, _menuService, _contextKeyService) {
         this._menuService = _menuService;
         this._contextKeyService = _contextKeyService;
         this._menuDisposables = new DisposableStore();
         this.element = dom.append(container, dom.$('.suggest-status-bar'));
         const actionViewItemProvider = (action => {
-            return action instanceof MenuItemAction ? instantiationService.createInstance(TextOnlyMenuEntryActionViewItem, action, { useComma: false }) : undefined;
+            return action instanceof MenuItemAction ? instantiationService.createInstance(StatusBarViewItem, action, undefined) : undefined;
         });
         this._leftActions = new ActionBar(this.element, { actionViewItemProvider });
         this._rightActions = new ActionBar(this.element, { actionViewItemProvider });
@@ -35,16 +51,14 @@ let SuggestWidgetStatus = class SuggestWidgetStatus {
     }
     dispose() {
         this._menuDisposables.dispose();
-        this._leftActions.dispose();
-        this._rightActions.dispose();
         this.element.remove();
     }
     show() {
-        const menu = this._menuService.createMenu(this._menuId, this._contextKeyService);
+        const menu = this._menuService.createMenu(suggestWidgetStatusbarMenu, this._contextKeyService);
         const renderMenu = () => {
             const left = [];
             const right = [];
-            for (const [group, actions] of menu.getActions()) {
+            for (let [group, actions] of menu.getActions()) {
                 if (group === 'left') {
                     left.push(...actions);
                 }
@@ -65,9 +79,8 @@ let SuggestWidgetStatus = class SuggestWidgetStatus {
     }
 };
 SuggestWidgetStatus = __decorate([
-    __param(2, IInstantiationService),
-    __param(3, IMenuService),
-    __param(4, IContextKeyService)
+    __param(1, IInstantiationService),
+    __param(2, IMenuService),
+    __param(3, IContextKeyService)
 ], SuggestWidgetStatus);
 export { SuggestWidgetStatus };
-//# sourceMappingURL=suggestWidgetStatus.js.map

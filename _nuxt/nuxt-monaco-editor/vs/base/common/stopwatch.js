@@ -2,22 +2,19 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-const performanceNow = globalThis.performance.now.bind(globalThis.performance);
+import { globals } from './platform.js';
+const hasPerformanceNow = (globals.performance && typeof globals.performance.now === 'function');
 export class StopWatch {
-    static create(highResolution) {
-        return new StopWatch(highResolution);
-    }
     constructor(highResolution) {
-        this._now = highResolution === false ? Date.now : performanceNow;
+        this._highResolution = hasPerformanceNow && highResolution;
         this._startTime = this._now();
         this._stopTime = -1;
+    }
+    static create(highResolution = true) {
+        return new StopWatch(highResolution);
     }
     stop() {
         this._stopTime = this._now();
-    }
-    reset() {
-        this._startTime = this._now();
-        this._stopTime = -1;
     }
     elapsed() {
         if (this._stopTime !== -1) {
@@ -25,5 +22,7 @@ export class StopWatch {
         }
         return this._now() - this._startTime;
     }
+    _now() {
+        return this._highResolution ? globals.performance.now() : Date.now();
+    }
 }
-//# sourceMappingURL=stopwatch.js.map

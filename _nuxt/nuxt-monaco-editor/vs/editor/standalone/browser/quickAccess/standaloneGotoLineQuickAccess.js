@@ -15,6 +15,7 @@ import { AbstractGotoLineQuickAccessProvider } from '../../../contrib/quickAcces
 import { Registry } from '../../../../platform/registry/common/platform.js';
 import { Extensions } from '../../../../platform/quickinput/common/quickAccess.js';
 import { ICodeEditorService } from '../../../browser/services/codeEditorService.js';
+import { withNullAsUndefined } from '../../../../base/common/types.js';
 import { GoToLineNLS } from '../../../common/standaloneStrings.js';
 import { Event } from '../../../../base/common/event.js';
 import { EditorAction, registerEditorAction } from '../../../browser/editorExtensions.js';
@@ -27,26 +28,30 @@ let StandaloneGotoLineQuickAccessProvider = class StandaloneGotoLineQuickAccessP
         this.onDidActiveTextEditorControlChange = Event.None;
     }
     get activeTextEditorControl() {
-        return this.editorService.getFocusedCodeEditor() ?? undefined;
+        return withNullAsUndefined(this.editorService.getFocusedCodeEditor());
     }
 };
 StandaloneGotoLineQuickAccessProvider = __decorate([
     __param(0, ICodeEditorService)
 ], StandaloneGotoLineQuickAccessProvider);
 export { StandaloneGotoLineQuickAccessProvider };
+Registry.as(Extensions.Quickaccess).registerQuickAccessProvider({
+    ctor: StandaloneGotoLineQuickAccessProvider,
+    prefix: StandaloneGotoLineQuickAccessProvider.PREFIX,
+    helpEntries: [{ description: GoToLineNLS.gotoLineActionLabel, needsEditor: true }]
+});
 export class GotoLineAction extends EditorAction {
-    static { this.ID = 'editor.action.gotoLine'; }
     constructor() {
         super({
-            id: GotoLineAction.ID,
+            id: 'editor.action.gotoLine',
             label: GoToLineNLS.gotoLineActionLabel,
             alias: 'Go to Line/Column...',
             precondition: undefined,
             kbOpts: {
                 kbExpr: EditorContextKeys.focus,
-                primary: 2048 /* KeyMod.CtrlCmd */ | 37 /* KeyCode.KeyG */,
-                mac: { primary: 256 /* KeyMod.WinCtrl */ | 37 /* KeyCode.KeyG */ },
-                weight: 100 /* KeybindingWeight.EditorContrib */
+                primary: 2048 /* CtrlCmd */ | 37 /* KeyG */,
+                mac: { primary: 256 /* WinCtrl */ | 37 /* KeyG */ },
+                weight: 100 /* EditorContrib */
             }
         });
     }
@@ -55,9 +60,3 @@ export class GotoLineAction extends EditorAction {
     }
 }
 registerEditorAction(GotoLineAction);
-Registry.as(Extensions.Quickaccess).registerQuickAccessProvider({
-    ctor: StandaloneGotoLineQuickAccessProvider,
-    prefix: StandaloneGotoLineQuickAccessProvider.PREFIX,
-    helpEntries: [{ description: GoToLineNLS.gotoLineActionLabel, commandId: GotoLineAction.ID }]
-});
-//# sourceMappingURL=standaloneGotoLineQuickAccess.js.map

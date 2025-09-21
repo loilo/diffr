@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 import { Emitter } from '../../../base/common/event.js';
 import { Iterable } from '../../../base/common/iterator.js';
-import { markAsSingleton, toDisposable } from '../../../base/common/lifecycle.js';
+import { Disposable, toDisposable } from '../../../base/common/lifecycle.js';
 import { LinkedList } from '../../../base/common/linkedList.js';
 import { validateConstraints } from '../../../base/common/types.js';
 import { createDecorator } from '../../instantiation/common/instantiation.js';
@@ -26,9 +26,9 @@ export const CommandsRegistry = new class {
             return this.registerCommand({ id: idOrCommand, handler });
         }
         // add argument validation if rich command metadata is provided
-        if (idOrCommand.metadata && Array.isArray(idOrCommand.metadata.args)) {
+        if (idOrCommand.description) {
             const constraints = [];
-            for (const arg of idOrCommand.metadata.args) {
+            for (let arg of idOrCommand.description.args) {
                 constraints.push(arg.constraint);
             }
             const actualHandler = idOrCommand.handler;
@@ -44,17 +44,17 @@ export const CommandsRegistry = new class {
             commands = new LinkedList();
             this._commands.set(id, commands);
         }
-        const removeFn = commands.unshift(idOrCommand);
-        const ret = toDisposable(() => {
+        let removeFn = commands.unshift(idOrCommand);
+        let ret = toDisposable(() => {
             removeFn();
             const command = this._commands.get(id);
-            if (command?.isEmpty()) {
+            if (command === null || command === void 0 ? void 0 : command.isEmpty()) {
                 this._commands.delete(id);
             }
         });
         // tell the world about this command
         this._onDidRegisterCommand.fire(id);
-        return markAsSingleton(ret);
+        return ret;
     }
     registerCommandAlias(oldId, newId) {
         return CommandsRegistry.registerCommand(oldId, (accessor, ...args) => accessor.get(ICommandService).executeCommand(newId, ...args));
@@ -77,5 +77,12 @@ export const CommandsRegistry = new class {
         return result;
     }
 };
+export const NullCommandService = {
+    _serviceBrand: undefined,
+    onWillExecuteCommand: () => Disposable.None,
+    onDidExecuteCommand: () => Disposable.None,
+    executeCommand() {
+        return Promise.resolve(undefined);
+    }
+};
 CommandsRegistry.registerCommand('noop', () => { });
-//# sourceMappingURL=commands.js.map

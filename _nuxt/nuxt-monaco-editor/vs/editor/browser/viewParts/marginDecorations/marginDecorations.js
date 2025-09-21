@@ -49,9 +49,8 @@ export class MarginViewLineDecorationsOverlay extends DedupOverlay {
         for (let i = 0, len = decorations.length; i < len; i++) {
             const d = decorations[i];
             const marginClassName = d.options.marginClassName;
-            const zIndex = d.options.zIndex;
             if (marginClassName) {
-                r[rLen++] = new DecorationToRender(d.range.startLineNumber, d.range.endLineNumber, marginClassName, null, zIndex);
+                r[rLen++] = new DecorationToRender(d.range.startLineNumber, d.range.endLineNumber, marginClassName);
             }
         }
         return r;
@@ -63,10 +62,10 @@ export class MarginViewLineDecorationsOverlay extends DedupOverlay {
         const output = [];
         for (let lineNumber = visibleStartLineNumber; lineNumber <= visibleEndLineNumber; lineNumber++) {
             const lineIndex = lineNumber - visibleStartLineNumber;
-            const decorations = toRender[lineIndex].getDecorations();
+            const classNames = toRender[lineIndex];
             let lineOutput = '';
-            for (const decoration of decorations) {
-                lineOutput += '<div class="cmdr ' + decoration.className + '" style=""></div>';
+            for (let i = 0, len = classNames.length; i < len; i++) {
+                lineOutput += '<div class="cmdr ' + classNames[i] + '" style=""></div>';
             }
             output[lineIndex] = lineOutput;
         }
@@ -79,4 +78,3 @@ export class MarginViewLineDecorationsOverlay extends DedupOverlay {
         return this._renderResult[lineNumber - startLineNumber];
     }
 }
-//# sourceMappingURL=marginDecorations.js.map

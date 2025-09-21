@@ -14,11 +14,9 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 import { doHash } from '../../../base/common/hash.js';
 import { LRUCache } from '../../../base/common/map.js';
 import { clamp, MovingAverage, SlidingWindowAverage } from '../../../base/common/numbers.js';
-import { IEnvironmentService } from '../../../platform/environment/common/environment.js';
 import { registerSingleton } from '../../../platform/instantiation/common/extensions.js';
 import { createDecorator } from '../../../platform/instantiation/common/instantiation.js';
 import { ILogService } from '../../../platform/log/common/log.js';
-import { matchesScheme } from '../../../base/common/network.js';
 export const ILanguageFeatureDebounceService = createDecorator('ILanguageFeatureDebounceService');
 var IdentityHash;
 (function (IdentityHash) {
@@ -34,20 +32,6 @@ var IdentityHash;
     }
     IdentityHash.of = of;
 })(IdentityHash || (IdentityHash = {}));
-class NullDebounceInformation {
-    constructor(_default) {
-        this._default = _default;
-    }
-    get(_model) {
-        return this._default;
-    }
-    update(_model, _value) {
-        return this._default;
-    }
-    default() {
-        return this._default;
-    }
-}
 class FeatureDebounceInformation {
     constructor(_logService, _name, _registry, _default, _min, _max) {
         this._logService = _logService;
@@ -76,9 +60,7 @@ class FeatureDebounceInformation {
             this._cache.set(key, avg);
         }
         const newValue = clamp(avg.update(value), this._min, this._max);
-        if (!matchesScheme(model.uri, 'output')) {
-            this._logService.trace(`[DEBOUNCE: ${this._name}] for ${model.uri.toString()} is ${newValue}ms`);
-        }
+        this._logService.trace(`[DEBOUNCE: ${this._name}] for ${model.uri.toString()} is ${newValue}ms`);
         return newValue;
     }
     _overall() {
@@ -94,43 +76,35 @@ class FeatureDebounceInformation {
     }
 }
 let LanguageFeatureDebounceService = class LanguageFeatureDebounceService {
-    constructor(_logService, envService) {
+    constructor(_logService) {
         this._logService = _logService;
         this._data = new Map();
-        this._isDev = envService.isExtensionDevelopment || !envService.isBuilt;
     }
     for(feature, name, config) {
-        const min = config?.min ?? 50;
-        const max = config?.max ?? min ** 2;
-        const extra = config?.key ?? undefined;
+        var _a, _b, _c;
+        const min = (_a = config === null || config === void 0 ? void 0 : config.min) !== null && _a !== void 0 ? _a : 50;
+        const max = (_b = config === null || config === void 0 ? void 0 : config.max) !== null && _b !== void 0 ? _b : Math.pow(min, 2);
+        const extra = (_c = config === null || config === void 0 ? void 0 : config.key) !== null && _c !== void 0 ? _c : undefined;
         const key = `${IdentityHash.of(feature)},${min}${extra ? ',' + extra : ''}`;
         let info = this._data.get(key);
         if (!info) {
-            if (this._isDev) {
-                this._logService.debug(`[DEBOUNCE: ${name}] is disabled in developed mode`);
-                info = new NullDebounceInformation(min * 1.5);
-            }
-            else {
-                info = new FeatureDebounceInformation(this._logService, name, feature, (this._overallAverage() | 0) || (min * 1.5), // default is overall default or derived from min-value
-                min, max);
-            }
+            info = new FeatureDebounceInformation(this._logService, name, feature, (this._overallAverage() | 0) || (min * 1.5), // default is overall default or derived from min-value
+            min, max);
             this._data.set(key, info);
         }
         return info;
     }
     _overallAverage() {
         // Average of all language features. Not a great value but an approximation
-        const result = new MovingAverage();
-        for (const info of this._data.values()) {
+        let result = new MovingAverage();
+        for (let info of this._data.values()) {
             result.update(info.default());
         }
         return result.value;
     }
 };
 LanguageFeatureDebounceService = __decorate([
-    __param(0, ILogService),
-    __param(1, IEnvironmentService)
+    __param(0, ILogService)
 ], LanguageFeatureDebounceService);
 export { LanguageFeatureDebounceService };
-registerSingleton(ILanguageFeatureDebounceService, LanguageFeatureDebounceService, 1 /* InstantiationType.Delayed */);
-//# sourceMappingURL=languageFeatureDebounce.js.map
+registerSingleton(ILanguageFeatureDebounceService, LanguageFeatureDebounceService, true);

@@ -48,7 +48,7 @@ export class SearchParams {
             // casing might make a difference
             canUseSimpleSearch = this.matchCase;
         }
-        return new SearchData(regex, this.wordSeparators ? getMapForWordSeparators(this.wordSeparators, []) : null, canUseSimpleSearch ? this.searchString : null);
+        return new SearchData(regex, this.wordSeparators ? getMapForWordSeparators(this.wordSeparators) : null, canUseSimpleSearch ? this.searchString : null);
     }
 }
 export function isMultilineRegexSource(searchString) {
@@ -57,10 +57,7 @@ export function isMultilineRegexSource(searchString) {
     }
     for (let i = 0, len = searchString.length; i < len; i++) {
         const chCode = searchString.charCodeAt(i);
-        if (chCode === 10 /* CharCode.LineFeed */) {
-            return true;
-        }
-        if (chCode === 92 /* CharCode.Backslash */) {
+        if (chCode === 92 /* Backslash */) {
             // move to next char
             i++;
             if (i >= len) {
@@ -68,7 +65,7 @@ export function isMultilineRegexSource(searchString) {
                 break;
             }
             const nextChCode = searchString.charCodeAt(i);
-            if (nextChCode === 110 /* CharCode.n */ || nextChCode === 114 /* CharCode.r */ || nextChCode === 87 /* CharCode.W */) {
+            if (nextChCode === 110 /* n */ || nextChCode === 114 /* r */ || nextChCode === 87 /* W */) {
                 return true;
             }
         }
@@ -90,7 +87,7 @@ class LineFeedCounter {
         const lineFeedsOffsets = [];
         let lineFeedsOffsetsLen = 0;
         for (let i = 0, textLen = text.length; i < textLen; i++) {
-            if (text.charCodeAt(i) === 10 /* CharCode.LineFeed */) {
+            if (text.charCodeAt(i) === 10 /* LineFeed */) {
                 lineFeedsOffsets[lineFeedsOffsetsLen++] = i;
             }
         }
@@ -170,7 +167,7 @@ export class TextModelSearch {
         // We always execute multiline search over the lines joined with \n
         // This makes it that \n will match the EOL for both CRLF and LF models
         // We compensate for offset errors in `_getMultilineMatchRange`
-        const text = model.getValueInRange(searchRange, 1 /* EndOfLinePreference.LF */);
+        const text = model.getValueInRange(searchRange, 1 /* LF */);
         const lfCounter = (model.getEOL() === '\r\n' ? new LineFeedCounter(text) : null);
         const result = [];
         let counter = 0;
@@ -257,10 +254,10 @@ export class TextModelSearch {
         // We always execute multiline search over the lines joined with \n
         // This makes it that \n will match the EOL for both CRLF and LF models
         // We compensate for offset errors in `_getMultilineMatchRange`
-        const text = model.getValueInRange(new Range(searchTextStart.lineNumber, searchTextStart.column, lineCount, model.getLineMaxColumn(lineCount)), 1 /* EndOfLinePreference.LF */);
+        const text = model.getValueInRange(new Range(searchTextStart.lineNumber, searchTextStart.column, lineCount, model.getLineMaxColumn(lineCount)), 1 /* LF */);
         const lfCounter = (model.getEOL() === '\r\n' ? new LineFeedCounter(text) : null);
         searcher.reset(searchStart.column - 1);
-        const m = searcher.next(text);
+        let m = searcher.next(text);
         if (m) {
             return createFindMatch(this._getMultilineMatchRange(model, deltaOffset, text, lfCounter, m.index, m[0]), m, captureMatches);
         }
@@ -356,17 +353,17 @@ function leftIsWordBounday(wordSeparators, text, textLength, matchStartIndex, ma
         return true;
     }
     const charBefore = text.charCodeAt(matchStartIndex - 1);
-    if (wordSeparators.get(charBefore) !== 0 /* WordCharacterClass.Regular */) {
+    if (wordSeparators.get(charBefore) !== 0 /* Regular */) {
         // The character before the match is a word separator
         return true;
     }
-    if (charBefore === 13 /* CharCode.CarriageReturn */ || charBefore === 10 /* CharCode.LineFeed */) {
+    if (charBefore === 13 /* CarriageReturn */ || charBefore === 10 /* LineFeed */) {
         // The character before the match is line break or carriage return.
         return true;
     }
     if (matchLength > 0) {
         const firstCharInMatch = text.charCodeAt(matchStartIndex);
-        if (wordSeparators.get(firstCharInMatch) !== 0 /* WordCharacterClass.Regular */) {
+        if (wordSeparators.get(firstCharInMatch) !== 0 /* Regular */) {
             // The first character inside the match is a word separator
             return true;
         }
@@ -379,17 +376,17 @@ function rightIsWordBounday(wordSeparators, text, textLength, matchStartIndex, m
         return true;
     }
     const charAfter = text.charCodeAt(matchStartIndex + matchLength);
-    if (wordSeparators.get(charAfter) !== 0 /* WordCharacterClass.Regular */) {
+    if (wordSeparators.get(charAfter) !== 0 /* Regular */) {
         // The character after the match is a word separator
         return true;
     }
-    if (charAfter === 13 /* CharCode.CarriageReturn */ || charAfter === 10 /* CharCode.LineFeed */) {
+    if (charAfter === 13 /* CarriageReturn */ || charAfter === 10 /* LineFeed */) {
         // The character after the match is line break or carriage return.
         return true;
     }
     if (matchLength > 0) {
         const lastCharInMatch = text.charCodeAt(matchStartIndex + matchLength - 1);
-        if (wordSeparators.get(lastCharInMatch) !== 0 /* WordCharacterClass.Regular */) {
+        if (wordSeparators.get(lastCharInMatch) !== 0 /* Regular */) {
             // The last character in the match is a word separator
             return true;
         }
@@ -450,4 +447,3 @@ export class Searcher {
         return null;
     }
 }
-//# sourceMappingURL=textModelSearch.js.map

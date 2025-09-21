@@ -2,11 +2,8 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-import * as errors from './errors.js';
 import * as platform from './platform.js';
-import { equalsIgnoreCase, startsWithIgnoreCase } from './strings.js';
 import { URI } from './uri.js';
-import * as paths from './path.js';
 export var Schemas;
 (function (Schemas) {
     /**
@@ -39,29 +36,17 @@ export var Schemas;
     Schemas.command = 'command';
     Schemas.vscodeRemote = 'vscode-remote';
     Schemas.vscodeRemoteResource = 'vscode-remote-resource';
-    Schemas.vscodeManagedRemoteResource = 'vscode-managed-remote-resource';
-    Schemas.vscodeUserData = 'vscode-userdata';
+    Schemas.userData = 'vscode-userdata';
     Schemas.vscodeCustomEditor = 'vscode-custom-editor';
+    Schemas.vscodeNotebook = 'vscode-notebook';
     Schemas.vscodeNotebookCell = 'vscode-notebook-cell';
     Schemas.vscodeNotebookCellMetadata = 'vscode-notebook-cell-metadata';
-    Schemas.vscodeNotebookCellMetadataDiff = 'vscode-notebook-cell-metadata-diff';
     Schemas.vscodeNotebookCellOutput = 'vscode-notebook-cell-output';
-    Schemas.vscodeNotebookCellOutputDiff = 'vscode-notebook-cell-output-diff';
-    Schemas.vscodeNotebookMetadata = 'vscode-notebook-metadata';
+    Schemas.vscodeInteractive = 'vscode-interactive';
     Schemas.vscodeInteractiveInput = 'vscode-interactive-input';
     Schemas.vscodeSettings = 'vscode-settings';
     Schemas.vscodeWorkspaceTrust = 'vscode-workspace-trust';
     Schemas.vscodeTerminal = 'vscode-terminal';
-    /** Scheme used for code blocks in chat. */
-    Schemas.vscodeChatCodeBlock = 'vscode-chat-code-block';
-    /** Scheme used for LHS of code compare (aka diff) blocks in chat. */
-    Schemas.vscodeChatCodeCompareBlock = 'vscode-chat-code-compare-block';
-    /** Scheme used for the chat input editor. */
-    Schemas.vscodeChatEditor = 'vscode-chat-editor';
-    /** Scheme used for the chat input part */
-    Schemas.vscodeChatInput = 'chatSessionInput';
-    /** Scheme for chat session content */
-    Schemas.vscodeChatSession = 'vscode-chat-session';
     /**
      * Scheme used internally for webviews that aren't linked to a resource (i.e. not custom editors)
      */
@@ -87,43 +72,7 @@ export var Schemas;
      * Scheme used vs live share
      */
     Schemas.vsls = 'vsls';
-    /**
-     * Scheme used for the Source Control commit input's text document
-     */
-    Schemas.vscodeSourceControl = 'vscode-scm';
-    /**
-     * Scheme used for input box for creating comments.
-     */
-    Schemas.commentsInput = 'comment';
-    /**
-     * Scheme used for special rendering of settings in the release notes
-     */
-    Schemas.codeSetting = 'code-setting';
-    /**
-     * Scheme used for output panel resources
-     */
-    Schemas.outputChannel = 'output';
-    /**
-     * Scheme used for the accessible view
-     */
-    Schemas.accessibleView = 'accessible-view';
-    /**
-     * Used for snapshots of chat edits
-     */
-    Schemas.chatEditingSnapshotScheme = 'chat-editing-snapshot-text-model';
-    Schemas.chatEditingModel = 'chat-editing-text-model';
 })(Schemas || (Schemas = {}));
-export function matchesScheme(target, scheme) {
-    if (URI.isUri(target)) {
-        return equalsIgnoreCase(target.scheme, scheme);
-    }
-    else {
-        return startsWithIgnoreCase(target, scheme + ':');
-    }
-}
-export function matchesSomeScheme(target, ...schemes) {
-    return schemes.some(scheme => matchesScheme(target, scheme));
-}
 export const connectionTokenQueryName = 'tkn';
 class RemoteAuthoritiesImpl {
     constructor() {
@@ -132,27 +81,17 @@ class RemoteAuthoritiesImpl {
         this._connectionTokens = Object.create(null);
         this._preferredWebSchema = 'http';
         this._delegate = null;
-        this._serverRootPath = '/';
     }
     setPreferredWebSchema(schema) {
         this._preferredWebSchema = schema;
     }
-    get _remoteResourcesPath() {
-        return paths.posix.join(this._serverRootPath, Schemas.vscodeRemoteResource);
-    }
     rewrite(uri) {
         if (this._delegate) {
-            try {
-                return this._delegate(uri);
-            }
-            catch (err) {
-                errors.onUnexpectedError(err);
-                return uri;
-            }
+            return this._delegate(uri);
         }
         const authority = uri.authority;
         let host = this._hosts[authority];
-        if (host && host.indexOf(':') !== -1 && host.indexOf('[') === -1) {
+        if (host && host.indexOf(':') !== -1) {
             host = `[${host}]`;
         }
         const port = this._ports[authority];
@@ -164,22 +103,15 @@ class RemoteAuthoritiesImpl {
         return URI.from({
             scheme: platform.isWeb ? this._preferredWebSchema : Schemas.vscodeRemoteResource,
             authority: `${host}:${port}`,
-            path: this._remoteResourcesPath,
+            path: `/vscode-remote-resource`,
             query
         });
     }
 }
 export const RemoteAuthorities = new RemoteAuthoritiesImpl();
-export const VSCODE_AUTHORITY = 'vscode-app';
 class FileAccessImpl {
-    static { this.FALLBACK_AUTHORITY = VSCODE_AUTHORITY; }
-    /**
-     * Returns a URI to use in contexts where the browser is responsible
-     * for loading (e.g. fetch()) or when used within the DOM.
-     *
-     * **Note:** use `dom.ts#asCSSUrl` whenever the URL is to be used in CSS context.
-     */
-    uriToBrowserUri(uri) {
+    asBrowserUri(uriOrModule, moduleIdToUrl) {
+        const uri = this.toUri(uriOrModule, moduleIdToUrl);
         // Handle remote URIs via `RemoteAuthorities`
         if (uri.scheme === Schemas.vscodeRemote) {
             return RemoteAuthorities.rewrite(uri);
@@ -192,7 +124,7 @@ class FileAccessImpl {
             // ...and we run in native environments
             platform.isNative ||
                 // ...or web worker extensions on desktop
-                (platform.webWorkerOrigin === `${Schemas.vscodeFileResource}://${FileAccessImpl.FALLBACK_AUTHORITY}`))) {
+                (typeof platform.globals.importScripts === 'function' && platform.globals.origin === `${Schemas.vscodeFileResource}://${FileAccessImpl.FALLBACK_AUTHORITY}`))) {
             return uri.with({
                 scheme: Schemas.vscodeFileResource,
                 // We need to provide an authority here so that it can serve
@@ -206,61 +138,12 @@ class FileAccessImpl {
         }
         return uri;
     }
+    toUri(uriOrModule, moduleIdToUrl) {
+        if (URI.isUri(uriOrModule)) {
+            return uriOrModule;
+        }
+        return URI.parse(moduleIdToUrl.toUrl(uriOrModule));
+    }
 }
+FileAccessImpl.FALLBACK_AUTHORITY = 'vscode-app';
 export const FileAccess = new FileAccessImpl();
-export const CacheControlheaders = Object.freeze({
-    'Cache-Control': 'no-cache, no-store'
-});
-export const DocumentPolicyheaders = Object.freeze({
-    'Document-Policy': 'include-js-call-stacks-in-crash-reports'
-});
-export var COI;
-(function (COI) {
-    const coiHeaders = new Map([
-        ['1', { 'Cross-Origin-Opener-Policy': 'same-origin' }],
-        ['2', { 'Cross-Origin-Embedder-Policy': 'require-corp' }],
-        ['3', { 'Cross-Origin-Opener-Policy': 'same-origin', 'Cross-Origin-Embedder-Policy': 'require-corp' }],
-    ]);
-    COI.CoopAndCoep = Object.freeze(coiHeaders.get('3'));
-    const coiSearchParamName = 'vscode-coi';
-    /**
-     * Extract desired headers from `vscode-coi` invocation
-     */
-    function getHeadersFromQuery(url) {
-        let params;
-        if (typeof url === 'string') {
-            params = new URL(url).searchParams;
-        }
-        else if (url instanceof URL) {
-            params = url.searchParams;
-        }
-        else if (URI.isUri(url)) {
-            params = new URL(url.toString(true)).searchParams;
-        }
-        const value = params?.get(coiSearchParamName);
-        if (!value) {
-            return undefined;
-        }
-        return coiHeaders.get(value);
-    }
-    COI.getHeadersFromQuery = getHeadersFromQuery;
-    /**
-     * Add the `vscode-coi` query attribute based on wanting `COOP` and `COEP`. Will be a noop when `crossOriginIsolated`
-     * isn't enabled the current context
-     */
-    function addSearchParam(urlOrSearch, coop, coep) {
-        if (!globalThis.crossOriginIsolated) {
-            // depends on the current context being COI
-            return;
-        }
-        const value = coop && coep ? '3' : coep ? '2' : '1';
-        if (urlOrSearch instanceof URLSearchParams) {
-            urlOrSearch.set(coiSearchParamName, value);
-        }
-        else {
-            urlOrSearch[coiSearchParamName] = value;
-        }
-    }
-    COI.addSearchParam = addSearchParam;
-})(COI || (COI = {}));
-//# sourceMappingURL=network.js.map

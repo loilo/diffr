@@ -6,23 +6,15 @@ import { isNonEmptyArray } from '../../../../base/common/arrays.js';
 import { DisposableStore } from '../../../../base/common/lifecycle.js';
 import { CharacterSet } from '../../../common/core/characterClassifier.js';
 export class CommitCharacterController {
-    constructor(editor, widget, model, accept) {
+    constructor(editor, widget, accept) {
         this._disposables = new DisposableStore();
-        this._disposables.add(model.onDidSuggest(e => {
-            if (e.completionModel.items.length === 0) {
-                this.reset();
-            }
-        }));
-        this._disposables.add(model.onDidCancel(e => {
-            this.reset();
-        }));
         this._disposables.add(widget.onDidShow(() => this._onItem(widget.getFocusedItem())));
         this._disposables.add(widget.onDidFocus(this._onItem, this));
         this._disposables.add(widget.onDidHide(this.reset, this));
         this._disposables.add(editor.onWillType(text => {
-            if (this._active && !widget.isFrozen() && model.state !== 0 /* State.Idle */) {
+            if (this._active && !widget.isFrozen()) {
                 const ch = text.charCodeAt(text.length - 1);
-                if (this._active.acceptCharacters.has(ch) && editor.getOption(0 /* EditorOption.acceptSuggestionOnCommitCharacter */)) {
+                if (this._active.acceptCharacters.has(ch) && editor.getOption(0 /* acceptSuggestionOnCommitCharacter */)) {
                     accept(this._active.item);
                 }
             }
@@ -54,4 +46,3 @@ export class CommitCharacterController {
         this._disposables.dispose();
     }
 }
-//# sourceMappingURL=suggestCommitCharacters.js.map

@@ -5,7 +5,7 @@
 export class ServiceCollection {
     constructor(...entries) {
         this._entries = new Map();
-        for (const [id, service] of entries) {
+        for (let [id, service] of entries) {
             this.set(id, service);
         }
     }
@@ -18,4 +18,3 @@ export class ServiceCollection {
         return this._entries.get(id);
     }
 }
-//# sourceMappingURL=serviceCollection.js.map

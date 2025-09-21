@@ -2,42 +2,37 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
 import { ThrottledDelayer } from '../../../common/async.js';
-import { Event, PauseableEmitter } from '../../../common/event.js';
+import { Emitter, Event } from '../../../common/event.js';
 import { Disposable } from '../../../common/lifecycle.js';
-import { stringify } from '../../../common/marshalling.js';
-import { isObject, isUndefinedOrNull } from '../../../common/types.js';
-export var StorageHint;
-(function (StorageHint) {
-    // A hint to the storage that the storage
-    // does not exist on disk yet. This allows
-    // the storage library to improve startup
-    // time by not checking the storage for data.
-    StorageHint[StorageHint["STORAGE_DOES_NOT_EXIST"] = 0] = "STORAGE_DOES_NOT_EXIST";
-    // A hint to the storage that the storage
-    // is backed by an in-memory storage.
-    StorageHint[StorageHint["STORAGE_IN_MEMORY"] = 1] = "STORAGE_IN_MEMORY";
-})(StorageHint || (StorageHint = {}));
-export var StorageState;
+import { isUndefinedOrNull } from '../../../common/types.js';
+var StorageState;
 (function (StorageState) {
     StorageState[StorageState["None"] = 0] = "None";
     StorageState[StorageState["Initialized"] = 1] = "Initialized";
     StorageState[StorageState["Closed"] = 2] = "Closed";
 })(StorageState || (StorageState = {}));
 export class Storage extends Disposable {
-    static { this.DEFAULT_FLUSH_DELAY = 100; }
     constructor(database, options = Object.create(null)) {
         super();
         this.database = database;
         this.options = options;
-        this._onDidChangeStorage = this._register(new PauseableEmitter());
+        this._onDidChangeStorage = this._register(new Emitter());
         this.onDidChangeStorage = this._onDidChangeStorage.event;
         this.state = StorageState.None;
         this.cache = new Map();
-        this.flushDelayer = this._register(new ThrottledDelayer(Storage.DEFAULT_FLUSH_DELAY));
+        this.flushDelayer = new ThrottledDelayer(Storage.DEFAULT_FLUSH_DELAY);
         this.pendingDeletes = new Set();
         this.pendingInserts = new Map();
-        this.pendingClose = undefined;
         this.whenFlushedCallbacks = [];
         this.registerListeners();
     }
@@ -45,19 +40,14 @@ export class Storage extends Disposable {
         this._register(this.database.onDidChangeItemsExternal(e => this.onDidChangeItemsExternal(e)));
     }
     onDidChangeItemsExternal(e) {
-        this._onDidChangeStorage.pause();
-        try {
-            // items that change external require us to update our
-            // caches with the values. we just accept the value and
-            // emit an event if there is a change.
-            e.changed?.forEach((value, key) => this.acceptExternal(key, value));
-            e.deleted?.forEach(key => this.acceptExternal(key, undefined));
-        }
-        finally {
-            this._onDidChangeStorage.resume();
-        }
+        var _a, _b;
+        // items that change external require us to update our
+        // caches with the values. we just accept the value and
+        // emit an event if there is a change.
+        (_a = e.changed) === null || _a === void 0 ? void 0 : _a.forEach((value, key) => this.accept(key, value));
+        (_b = e.deleted) === null || _b === void 0 ? void 0 : _b.forEach(key => this.accept(key, undefined));
     }
-    acceptExternal(key, value) {
+    accept(key, value) {
         if (this.state === StorageState.Closed) {
             return; // Return early if we are already closed
         }
@@ -76,7 +66,7 @@ export class Storage extends Disposable {
         }
         // Signal to outside listeners
         if (changed) {
-            this._onDidChangeStorage.fire({ key, external: true });
+            this._onDidChangeStorage.fire(key);
         }
     }
     get(key, fallbackValue) {
@@ -100,99 +90,101 @@ export class Storage extends Disposable {
         }
         return parseInt(value, 10);
     }
-    async set(key, value, external = false) {
-        if (this.state === StorageState.Closed) {
-            return; // Return early if we are already closed
-        }
-        // We remove the key for undefined/null values
-        if (isUndefinedOrNull(value)) {
-            return this.delete(key, external);
-        }
-        // Otherwise, convert to String and store
-        const valueStr = isObject(value) || Array.isArray(value) ? stringify(value) : String(value);
-        // Return early if value already set
-        const currentValue = this.cache.get(key);
-        if (currentValue === valueStr) {
-            return;
-        }
-        // Update in cache and pending
-        this.cache.set(key, valueStr);
-        this.pendingInserts.set(key, valueStr);
-        this.pendingDeletes.delete(key);
-        // Event
-        this._onDidChangeStorage.fire({ key, external });
-        // Accumulate work by scheduling after timeout
-        return this.doFlush();
+    set(key, value) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (this.state === StorageState.Closed) {
+                return; // Return early if we are already closed
+            }
+            // We remove the key for undefined/null values
+            if (isUndefinedOrNull(value)) {
+                return this.delete(key);
+            }
+            // Otherwise, convert to String and store
+            const valueStr = String(value);
+            // Return early if value already set
+            const currentValue = this.cache.get(key);
+            if (currentValue === valueStr) {
+                return;
+            }
+            // Update in cache and pending
+            this.cache.set(key, valueStr);
+            this.pendingInserts.set(key, valueStr);
+            this.pendingDeletes.delete(key);
+            // Event
+            this._onDidChangeStorage.fire(key);
+            // Accumulate work by scheduling after timeout
+            return this.doFlush();
+        });
     }
-    async delete(key, external = false) {
-        if (this.state === StorageState.Closed) {
-            return; // Return early if we are already closed
-        }
-        // Remove from cache and add to pending
-        const wasDeleted = this.cache.delete(key);
-        if (!wasDeleted) {
-            return; // Return early if value already deleted
-        }
-        if (!this.pendingDeletes.has(key)) {
-            this.pendingDeletes.add(key);
-        }
-        this.pendingInserts.delete(key);
-        // Event
-        this._onDidChangeStorage.fire({ key, external });
-        // Accumulate work by scheduling after timeout
-        return this.doFlush();
+    delete(key) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (this.state === StorageState.Closed) {
+                return; // Return early if we are already closed
+            }
+            // Remove from cache and add to pending
+            const wasDeleted = this.cache.delete(key);
+            if (!wasDeleted) {
+                return; // Return early if value already deleted
+            }
+            if (!this.pendingDeletes.has(key)) {
+                this.pendingDeletes.add(key);
+            }
+            this.pendingInserts.delete(key);
+            // Event
+            this._onDidChangeStorage.fire(key);
+            // Accumulate work by scheduling after timeout
+            return this.doFlush();
+        });
     }
     get hasPending() {
         return this.pendingInserts.size > 0 || this.pendingDeletes.size > 0;
     }
-    async flushPending() {
-        if (!this.hasPending) {
-            return; // return early if nothing to do
-        }
-        // Get pending data
-        const updateRequest = { insert: this.pendingInserts, delete: this.pendingDeletes };
-        // Reset pending data for next run
-        this.pendingDeletes = new Set();
-        this.pendingInserts = new Map();
-        // Update in storage and release any
-        // waiters we have once done
-        return this.database.updateItems(updateRequest).finally(() => {
+    flushPending() {
+        return __awaiter(this, void 0, void 0, function* () {
             if (!this.hasPending) {
-                while (this.whenFlushedCallbacks.length) {
-                    this.whenFlushedCallbacks.pop()?.();
-                }
+                return; // return early if nothing to do
             }
+            // Get pending data
+            const updateRequest = { insert: this.pendingInserts, delete: this.pendingDeletes };
+            // Reset pending data for next run
+            this.pendingDeletes = new Set();
+            this.pendingInserts = new Map();
+            // Update in storage and release any
+            // waiters we have once done
+            return this.database.updateItems(updateRequest).finally(() => {
+                var _a;
+                if (!this.hasPending) {
+                    while (this.whenFlushedCallbacks.length) {
+                        (_a = this.whenFlushedCallbacks.pop()) === null || _a === void 0 ? void 0 : _a();
+                    }
+                }
+            });
         });
     }
-    async flush(delay) {
-        if (this.state === StorageState.Closed || // Return early if we are already closed
-            this.pendingClose // return early if nothing to do
-        ) {
-            return;
-        }
-        return this.doFlush(delay);
+    doFlush(delay) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return this.flushDelayer.trigger(() => this.flushPending(), delay);
+        });
     }
-    async doFlush(delay) {
-        if (this.options.hint === StorageHint.STORAGE_IN_MEMORY) {
-            return this.flushPending(); // return early if in-memory
-        }
-        return this.flushDelayer.trigger(() => this.flushPending(), delay);
-    }
-    async whenFlushed() {
-        if (!this.hasPending) {
-            return; // return early if nothing to do
-        }
-        return new Promise(resolve => this.whenFlushedCallbacks.push(resolve));
+    dispose() {
+        this.flushDelayer.dispose();
+        super.dispose();
     }
 }
+Storage.DEFAULT_FLUSH_DELAY = 100;
 export class InMemoryStorageDatabase {
     constructor() {
         this.onDidChangeItemsExternal = Event.None;
         this.items = new Map();
     }
-    async updateItems(request) {
-        request.insert?.forEach((value, key) => this.items.set(key, value));
-        request.delete?.forEach(key => this.items.delete(key));
+    updateItems(request) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (request.insert) {
+                request.insert.forEach((value, key) => this.items.set(key, value));
+            }
+            if (request.delete) {
+                request.delete.forEach(key => this.items.delete(key));
+            }
+        });
     }
 }
-//# sourceMappingURL=storage.js.map

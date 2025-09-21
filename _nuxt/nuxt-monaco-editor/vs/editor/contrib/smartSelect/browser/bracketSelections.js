@@ -2,23 +2,32 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
 import { LinkedList } from '../../../../base/common/linkedList.js';
 import { Position } from '../../../common/core/position.js';
 import { Range } from '../../../common/core/range.js';
 export class BracketSelectionRangeProvider {
-    async provideSelectionRanges(model, positions) {
-        const result = [];
-        for (const position of positions) {
-            const bucket = [];
-            result.push(bucket);
-            const ranges = new Map();
-            await new Promise(resolve => BracketSelectionRangeProvider._bracketsRightYield(resolve, 0, model, position, ranges));
-            await new Promise(resolve => BracketSelectionRangeProvider._bracketsLeftYield(resolve, 0, model, position, ranges, bucket));
-        }
-        return result;
+    provideSelectionRanges(model, positions) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const result = [];
+            for (const position of positions) {
+                const bucket = [];
+                result.push(bucket);
+                const ranges = new Map();
+                yield new Promise(resolve => BracketSelectionRangeProvider._bracketsRightYield(resolve, 0, model, position, ranges));
+                yield new Promise(resolve => BracketSelectionRangeProvider._bracketsLeftYield(resolve, 0, model, position, ranges, bucket));
+            }
+            return result;
+        });
     }
-    static { this._maxDuration = 30; }
-    static { this._maxRounds = 2; }
     static _bracketsRightYield(resolve, round, model, pos, ranges) {
         const counts = new Map();
         const t1 = Date.now();
@@ -31,24 +40,23 @@ export class BracketSelectionRangeProvider {
                 resolve();
                 break;
             }
-            const bracket = model.bracketPairs.findNextBracket(pos);
+            let bracket = model.bracketPairs.findNextBracket(pos);
             if (!bracket) {
                 resolve();
                 break;
             }
-            const d = Date.now() - t1;
+            let d = Date.now() - t1;
             if (d > BracketSelectionRangeProvider._maxDuration) {
                 setTimeout(() => BracketSelectionRangeProvider._bracketsRightYield(resolve, round + 1, model, pos, ranges));
                 break;
             }
-            if (bracket.bracketInfo.isOpeningBracket) {
-                const key = bracket.bracketInfo.bracketText;
+            const key = bracket.close[0];
+            if (bracket.isOpen) {
                 // wait for closing
-                const val = counts.has(key) ? counts.get(key) : 0;
+                let val = counts.has(key) ? counts.get(key) : 0;
                 counts.set(key, val + 1);
             }
             else {
-                const key = bracket.bracketInfo.getOpeningBrackets()[0].bracketText;
                 // process closing
                 let val = counts.has(key) ? counts.get(key) : 0;
                 val -= 1;
@@ -77,32 +85,31 @@ export class BracketSelectionRangeProvider {
                 resolve();
                 break;
             }
-            const bracket = model.bracketPairs.findPrevBracket(pos);
+            let bracket = model.bracketPairs.findPrevBracket(pos);
             if (!bracket) {
                 resolve();
                 break;
             }
-            const d = Date.now() - t1;
+            let d = Date.now() - t1;
             if (d > BracketSelectionRangeProvider._maxDuration) {
                 setTimeout(() => BracketSelectionRangeProvider._bracketsLeftYield(resolve, round + 1, model, pos, ranges, bucket));
                 break;
             }
-            if (!bracket.bracketInfo.isOpeningBracket) {
-                const key = bracket.bracketInfo.getOpeningBrackets()[0].bracketText;
+            const key = bracket.close[0];
+            if (!bracket.isOpen) {
                 // wait for opening
-                const val = counts.has(key) ? counts.get(key) : 0;
+                let val = counts.has(key) ? counts.get(key) : 0;
                 counts.set(key, val + 1);
             }
             else {
-                const key = bracket.bracketInfo.bracketText;
                 // opening
                 let val = counts.has(key) ? counts.get(key) : 0;
                 val -= 1;
                 counts.set(key, Math.max(0, val));
                 if (val < 0) {
-                    const list = ranges.get(key);
+                    let list = ranges.get(key);
                     if (list) {
-                        const closing = list.shift();
+                        let closing = list.shift();
                         if (list.size === 0) {
                             ranges.delete(key);
                         }
@@ -144,4 +151,5 @@ export class BracketSelectionRangeProvider {
         }
     }
 }
-//# sourceMappingURL=bracketSelections.js.map
+BracketSelectionRangeProvider._maxDuration = 30;
+BracketSelectionRangeProvider._maxRounds = 2;

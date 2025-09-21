@@ -32,10 +32,6 @@ class StackElement {
     }
 }
 export class CursorUndoRedoController extends Disposable {
-    static { this.ID = 'editor.contrib.cursorUndoRedoController'; }
-    static get(editor) {
-        return editor.getContribution(CursorUndoRedoController.ID);
-    }
     constructor(editor) {
         super();
         this._editor = editor;
@@ -72,6 +68,9 @@ export class CursorUndoRedoController extends Disposable {
             }
         }));
     }
+    static get(editor) {
+        return editor.getContribution(CursorUndoRedoController.ID);
+    }
     cursorUndo() {
         if (!this._editor.hasModel() || this._undoStack.length === 0) {
             return;
@@ -96,36 +95,40 @@ export class CursorUndoRedoController extends Disposable {
         this._isCursorUndoRedo = false;
     }
 }
+CursorUndoRedoController.ID = 'editor.contrib.cursorUndoRedoController';
 export class CursorUndo extends EditorAction {
     constructor() {
         super({
             id: 'cursorUndo',
-            label: nls.localize2(903, "Cursor Undo"),
+            label: nls.localize('cursor.undo', "Cursor Undo"),
+            alias: 'Cursor Undo',
             precondition: undefined,
             kbOpts: {
                 kbExpr: EditorContextKeys.textInputFocus,
-                primary: 2048 /* KeyMod.CtrlCmd */ | 51 /* KeyCode.KeyU */,
-                weight: 100 /* KeybindingWeight.EditorContrib */
+                primary: 2048 /* CtrlCmd */ | 51 /* KeyU */,
+                weight: 100 /* EditorContrib */
             }
         });
     }
     run(accessor, editor, args) {
-        CursorUndoRedoController.get(editor)?.cursorUndo();
+        var _a;
+        (_a = CursorUndoRedoController.get(editor)) === null || _a === void 0 ? void 0 : _a.cursorUndo();
     }
 }
 export class CursorRedo extends EditorAction {
     constructor() {
         super({
             id: 'cursorRedo',
-            label: nls.localize2(904, "Cursor Redo"),
+            label: nls.localize('cursor.redo', "Cursor Redo"),
+            alias: 'Cursor Redo',
             precondition: undefined
         });
     }
     run(accessor, editor, args) {
-        CursorUndoRedoController.get(editor)?.cursorRedo();
+        var _a;
+        (_a = CursorUndoRedoController.get(editor)) === null || _a === void 0 ? void 0 : _a.cursorRedo();
     }
 }
-registerEditorContribution(CursorUndoRedoController.ID, CursorUndoRedoController, 0 /* EditorContributionInstantiation.Eager */); // eager because it needs to listen to record cursor state ASAP
+registerEditorContribution(CursorUndoRedoController.ID, CursorUndoRedoController);
 registerEditorAction(CursorUndo);
 registerEditorAction(CursorRedo);
-//# sourceMappingURL=cursorUndo.js.map

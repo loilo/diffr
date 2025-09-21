@@ -4,11 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 import { createFastDomNode } from '../../../../base/browser/fastDomNode.js';
 import { OverviewZoneManager } from '../../../common/viewModel/overviewZoneManager.js';
-import { ViewEventHandler } from '../../../common/viewEventHandler.js';
-/**
- * The overview ruler appears underneath the editor scroll bar and shows things
- * like the cursor, various decorations, etc.
- */
+import { ViewEventHandler } from '../../../common/viewModel/viewEventHandler.js';
 export class OverviewRuler extends ViewEventHandler {
     constructor(context, cssClassName) {
         super();
@@ -23,8 +19,8 @@ export class OverviewRuler extends ViewEventHandler {
         this._zoneManager.setDOMWidth(0);
         this._zoneManager.setDOMHeight(0);
         this._zoneManager.setOuterHeight(this._context.viewLayout.getScrollHeight());
-        this._zoneManager.setLineHeight(options.get(75 /* EditorOption.lineHeight */));
-        this._zoneManager.setPixelRatio(options.get(162 /* EditorOption.pixelRatio */));
+        this._zoneManager.setLineHeight(options.get(59 /* lineHeight */));
+        this._zoneManager.setPixelRatio(options.get(129 /* pixelRatio */));
         this._context.addEventHandler(this);
     }
     dispose() {
@@ -34,12 +30,12 @@ export class OverviewRuler extends ViewEventHandler {
     // ---- begin view event handlers
     onConfigurationChanged(e) {
         const options = this._context.configuration.options;
-        if (e.hasChanged(75 /* EditorOption.lineHeight */)) {
-            this._zoneManager.setLineHeight(options.get(75 /* EditorOption.lineHeight */));
+        if (e.hasChanged(59 /* lineHeight */)) {
+            this._zoneManager.setLineHeight(options.get(59 /* lineHeight */));
             this._render();
         }
-        if (e.hasChanged(162 /* EditorOption.pixelRatio */)) {
-            this._zoneManager.setPixelRatio(options.get(162 /* EditorOption.pixelRatio */));
+        if (e.hasChanged(129 /* pixelRatio */)) {
+            this._zoneManager.setPixelRatio(options.get(129 /* pixelRatio */));
             this._domNode.setWidth(this._zoneManager.getDOMWidth());
             this._domNode.setHeight(this._zoneManager.getDOMHeight());
             this._domNode.domNode.width = this._zoneManager.getCanvasWidth();
@@ -129,4 +125,3 @@ export class OverviewRuler extends ViewEventHandler {
         ctx.fillRect(0, currentFrom, width, currentTo - currentFrom);
     }
 }
-//# sourceMappingURL=overviewRuler.js.map

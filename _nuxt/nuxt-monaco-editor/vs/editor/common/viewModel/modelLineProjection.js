@@ -5,8 +5,7 @@
 import { LineTokens } from '../tokens/lineTokens.js';
 import { Position } from '../core/position.js';
 import { LineInjectedText } from '../textModelEvents.js';
-import { ViewLineData } from '../viewModel.js';
-import { SingleLineInlineDecoration } from './inlineDecorations.js';
+import { SingleLineInlineDecoration, ViewLineData } from './viewModel.js';
 export function createModelLineProjection(lineBreakData, isVisible) {
     if (lineBreakData === null) {
         // No mapping needed
@@ -117,7 +116,7 @@ class ModelLineProjection {
                         if (options.inlineClassName) {
                             const offset = (outputLineIndex > 0 ? lineBreakData.wrappedTextIndentLength : 0);
                             const start = offset + Math.max(injectedTextStartOffsetInInputWithInjections - lineStartOffsetInInputWithInjections, 0);
-                            const end = offset + Math.min(injectedTextEndOffsetInInputWithInjections - lineStartOffsetInInputWithInjections, lineEndOffsetInInputWithInjections - lineStartOffsetInInputWithInjections);
+                            const end = offset + Math.min(injectedTextEndOffsetInInputWithInjections - lineStartOffsetInInputWithInjections, lineEndOffsetInInputWithInjections);
                             if (start !== end) {
                                 inlineDecorations.push(new SingleLineInlineDecoration(start, end, options.inlineClassName, options.inlineClassNameAffectsLetterSpacing));
                             }
@@ -136,31 +135,14 @@ class ModelLineProjection {
         }
         let lineWithInjections;
         if (injectionOffsets) {
-            const tokensToInsert = [];
-            for (let idx = 0; idx < injectionOffsets.length; idx++) {
-                const offset = injectionOffsets[idx];
-                const tokens = injectionOptions[idx].tokens;
-                if (tokens) {
-                    tokens.forEach((range, info) => {
-                        tokensToInsert.push({
-                            offset,
-                            text: range.substring(injectionOptions[idx].content),
-                            tokenMetadata: info.metadata,
-                        });
-                    });
-                }
-                else {
-                    tokensToInsert.push({
-                        offset,
-                        text: injectionOptions[idx].content,
-                        tokenMetadata: LineTokens.defaultTokenMetadata,
-                    });
-                }
-            }
-            lineWithInjections = model.tokenization.getLineTokens(modelLineNumber).withInserted(tokensToInsert);
+            lineWithInjections = model.getLineTokens(modelLineNumber).withInserted(injectionOffsets.map((offset, idx) => ({
+                offset,
+                text: injectionOptions[idx].content,
+                tokenMetadata: LineTokens.defaultTokenMetadata
+            })));
         }
         else {
-            lineWithInjections = model.tokenization.getLineTokens(modelLineNumber);
+            lineWithInjections = model.getLineTokens(modelLineNumber);
         }
         for (let outputLineIndex = outputLineIdx; outputLineIndex < outputLineIdx + lineCount; outputLineIndex++) {
             const globalIndex = globalStartIndex + outputLineIndex - outputLineIdx;
@@ -192,7 +174,7 @@ class ModelLineProjection {
         this._assertVisible();
         return this._projectionData.translateToInputOffset(outputLineIndex, outputColumn - 1) + 1;
     }
-    getViewPositionOfModelPosition(deltaLineNumber, inputColumn, affinity = 2 /* PositionAffinity.None */) {
+    getViewPositionOfModelPosition(deltaLineNumber, inputColumn, affinity = 2 /* None */) {
         this._assertVisible();
         const r = this._projectionData.translateToOutputPosition(inputColumn - 1, affinity);
         return r.toPosition(deltaLineNumber);
@@ -221,7 +203,6 @@ class ModelLineProjection {
  * This projection does not change the model line.
 */
 class IdentityModelLineProjection {
-    static { this.INSTANCE = new IdentityModelLineProjection(); }
     constructor() { }
     isVisible() {
         return true;
@@ -251,7 +232,7 @@ class IdentityModelLineProjection {
         return model.getLineMaxColumn(modelLineNumber);
     }
     getViewLineData(model, modelLineNumber, _outputLineIndex) {
-        const lineTokens = model.tokenization.getLineTokens(modelLineNumber);
+        const lineTokens = model.getLineTokens(modelLineNumber);
         const lineContent = lineTokens.getLineContent();
         return new ViewLineData(lineContent, false, 1, lineContent.length + 1, 0, lineTokens.inflate(), null);
     }
@@ -278,11 +259,11 @@ class IdentityModelLineProjection {
         return null;
     }
 }
+IdentityModelLineProjection.INSTANCE = new IdentityModelLineProjection();
 /**
  * This projection hides the model line.
  */
 class HiddenModelLineProjection {
-    static { this.INSTANCE = new HiddenModelLineProjection(); }
     constructor() { }
     isVisible() {
         return false;
@@ -333,7 +314,8 @@ class HiddenModelLineProjection {
         throw new Error('Not supported');
     }
 }
-const _spaces = [''];
+HiddenModelLineProjection.INSTANCE = new HiddenModelLineProjection();
+let _spaces = [''];
 function spaces(count) {
     if (count >= _spaces.length) {
         for (let i = 1; i <= count; i++) {
@@ -345,4 +327,3 @@ function spaces(count) {
 function _makeSpaces(count) {
     return new Array(count + 1).join(' ');
 }
-//# sourceMappingURL=modelLineProjection.js.map

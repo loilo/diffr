@@ -2,13 +2,16 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-const emptyArr = [];
+const emptyArr = new Array();
 /**
  * Represents an immutable set that works best for a small number of elements (less than 32).
  * It uses bits to encode element membership efficiently.
 */
 export class SmallImmutableSet {
-    static { this.cache = new Array(129); }
+    constructor(items, additionalItems) {
+        this.items = items;
+        this.additionalItems = additionalItems;
+    }
     static create(items, additionalItems) {
         if (items <= 128 && additionalItems.length === 0) {
             // We create a cache of 128=2^7 elements to cover all sets with up to 7 (dense) elements.
@@ -21,13 +24,8 @@ export class SmallImmutableSet {
         }
         return new SmallImmutableSet(items, additionalItems);
     }
-    static { this.empty = SmallImmutableSet.create(0, emptyArr); }
     static getEmpty() {
         return this.empty;
-    }
-    constructor(items, additionalItems) {
-        this.items = items;
-        this.additionalItems = additionalItems;
     }
     add(value, keyProvider) {
         const key = keyProvider.getKey(value);
@@ -61,7 +59,7 @@ export class SmallImmutableSet {
             return SmallImmutableSet.create(merged, emptyArr);
         }
         // This can be optimized, but it's not a common case
-        const newItems = [];
+        const newItems = new Array();
         for (let i = 0; i < Math.max(this.additionalItems.length, other.additionalItems.length); i++) {
             const item1 = this.additionalItems[i] || 0;
             const item2 = other.additionalItems[i] || 0;
@@ -81,6 +79,8 @@ export class SmallImmutableSet {
         return false;
     }
 }
+SmallImmutableSet.cache = new Array(129);
+SmallImmutableSet.empty = SmallImmutableSet.create(0, emptyArr);
 export const identityKeyProvider = {
     getKey(value) {
         return value;
@@ -102,4 +102,3 @@ export class DenseKeyProvider {
         return existing;
     }
 }
-//# sourceMappingURL=smallImmutableSet.js.map

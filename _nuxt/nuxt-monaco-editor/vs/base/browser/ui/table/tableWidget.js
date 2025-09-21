@@ -2,17 +2,13 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-import { $, append, clearNode } from '../../dom.js';
-import { createStyleSheet } from '../../domStylesheets.js';
-import { getBaseLayerHoverDelegate } from '../hover/hoverDelegate2.js';
-import { getDefaultHoverDelegate } from '../hover/hoverDelegateFactory.js';
-import { List, unthemedListStyles } from '../list/listWidget.js';
+import { $, append, clearNode, createStyleSheet } from '../../dom.js';
+import { List } from '../list/listWidget.js';
 import { SplitView } from '../splitview/splitview.js';
 import { Emitter, Event } from '../../../common/event.js';
-import { Disposable, DisposableStore } from '../../../common/lifecycle.js';
+import { DisposableStore } from '../../../common/lifecycle.js';
 import './table.css';
 class TableListRenderer {
-    static { this.TemplateId = 'row'; }
     constructor(columns, renderers, getColumnSize) {
         this.columns = columns;
         this.getColumnSize = getColumnSize;
@@ -43,21 +39,21 @@ class TableListRenderer {
         this.renderedTemplates.add(result);
         return result;
     }
-    renderElement(element, index, templateData, renderDetails) {
+    renderElement(element, index, templateData, height) {
         for (let i = 0; i < this.columns.length; i++) {
             const column = this.columns[i];
             const cell = column.project(element);
             const renderer = this.renderers[i];
-            renderer.renderElement(cell, index, templateData.cellTemplateData[i], renderDetails);
+            renderer.renderElement(cell, index, templateData.cellTemplateData[i], height);
         }
     }
-    disposeElement(element, index, templateData, renderDetails) {
+    disposeElement(element, index, templateData, height) {
         for (let i = 0; i < this.columns.length; i++) {
             const renderer = this.renderers[i];
             if (renderer.disposeElement) {
                 const column = this.columns[i];
                 const cell = column.project(element);
-                renderer.disposeElement(cell, index, templateData.cellTemplateData[i], renderDetails);
+                renderer.disposeElement(cell, index, templateData.cellTemplateData[i], height);
             }
         }
     }
@@ -75,60 +71,44 @@ class TableListRenderer {
         }
     }
 }
+TableListRenderer.TemplateId = 'row';
 function asListVirtualDelegate(delegate) {
     return {
         getHeight(row) { return delegate.getHeight(row); },
         getTemplateId() { return TableListRenderer.TemplateId; },
     };
 }
-class ColumnHeader extends Disposable {
-    get minimumSize() { return this.column.minimumWidth ?? 120; }
-    get maximumSize() { return this.column.maximumWidth ?? Number.POSITIVE_INFINITY; }
-    get onDidChange() { return this.column.onDidChangeWidthConstraints ?? Event.None; }
+class ColumnHeader {
     constructor(column, index) {
-        super();
         this.column = column;
         this.index = index;
         this._onDidLayout = new Emitter();
         this.onDidLayout = this._onDidLayout.event;
-        this.element = $('.monaco-table-th', { 'data-col-index': index }, column.label);
-        if (column.tooltip) {
-            this._register(getBaseLayerHoverDelegate().setupManagedHover(getDefaultHoverDelegate('mouse'), this.element, column.tooltip));
-        }
+        this.element = $('.monaco-table-th', { 'data-col-index': index, title: column.tooltip }, column.label);
     }
+    get minimumSize() { var _a; return (_a = this.column.minimumWidth) !== null && _a !== void 0 ? _a : 120; }
+    get maximumSize() { var _a; return (_a = this.column.maximumWidth) !== null && _a !== void 0 ? _a : Number.POSITIVE_INFINITY; }
+    get onDidChange() { var _a; return (_a = this.column.onDidChangeWidthConstraints) !== null && _a !== void 0 ? _a : Event.None; }
     layout(size) {
         this._onDidLayout.fire([this.index, size]);
     }
 }
 export class Table {
-    static { this.InstanceCount = 0; }
-    get onDidChangeFocus() { return this.list.onDidChangeFocus; }
-    get onDidChangeSelection() { return this.list.onDidChangeSelection; }
-    get onDidScroll() { return this.list.onDidScroll; }
-    get onMouseDblClick() { return this.list.onMouseDblClick; }
-    get onPointer() { return this.list.onPointer; }
-    get onDidFocus() { return this.list.onDidFocus; }
-    get scrollTop() { return this.list.scrollTop; }
-    set scrollTop(scrollTop) { this.list.scrollTop = scrollTop; }
-    get scrollHeight() { return this.list.scrollHeight; }
-    get renderHeight() { return this.list.renderHeight; }
-    get onDidDispose() { return this.list.onDidDispose; }
     constructor(user, container, virtualDelegate, columns, renderers, _options) {
         this.virtualDelegate = virtualDelegate;
-        this.columns = columns;
         this.domId = `table_id_${++Table.InstanceCount}`;
         this.disposables = new DisposableStore();
         this.cachedWidth = 0;
         this.cachedHeight = 0;
         this.domNode = append(container, $(`.monaco-table.${this.domId}`));
-        const headers = columns.map((c, i) => this.disposables.add(new ColumnHeader(c, i)));
+        const headers = columns.map((c, i) => new ColumnHeader(c, i));
         const descriptor = {
             size: headers.reduce((a, b) => a + b.column.weight, 0),
             views: headers.map(view => ({ size: view.column.weight, view }))
         };
         this.splitview = this.disposables.add(new SplitView(this.domNode, {
-            orientation: 1 /* Orientation.HORIZONTAL */,
-            scrollbarVisibility: 2 /* ScrollbarVisibility.Hidden */,
+            orientation: 1 /* HORIZONTAL */,
+            scrollbarVisibility: 2 /* Hidden */,
             getSashOrthogonalSize: () => this.cachedHeight,
             descriptor
         }));
@@ -143,8 +123,14 @@ export class Table {
             this.splitview.resizeView(index, size);
         }, null, this.disposables);
         this.styleElement = createStyleSheet(this.domNode);
-        this.style(unthemedListStyles);
+        this.style({});
     }
+    get onDidChangeFocus() { return this.list.onDidChangeFocus; }
+    get onDidChangeSelection() { return this.list.onDidChangeSelection; }
+    get onMouseDblClick() { return this.list.onMouseDblClick; }
+    get onPointer() { return this.list.onPointer; }
+    get onDidFocus() { return this.list.onDidFocus; }
+    get onDidDispose() { return this.list.onDidDispose; }
     updateOptions(options) {
         this.list.updateOptions(options);
     }
@@ -176,4 +162,4 @@ export class Table {
         this.disposables.dispose();
     }
 }
-//# sourceMappingURL=tableWidget.js.map
+Table.InstanceCount = 0;

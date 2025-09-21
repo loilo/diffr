@@ -4,4 +4,3 @@
  *--------------------------------------------------------------------------------------------*/
 import { createDecorator } from '../../../platform/instantiation/common/instantiation.js';
 export const IStandaloneThemeService = createDecorator('themeService');
-//# sourceMappingURL=standaloneTheme.js.map

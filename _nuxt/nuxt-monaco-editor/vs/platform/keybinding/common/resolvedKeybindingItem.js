@@ -6,12 +6,12 @@ export class ResolvedKeybindingItem {
     constructor(resolvedKeybinding, command, commandArgs, when, isDefault, extensionId, isBuiltinExtension) {
         this._resolvedKeybindingItemBrand = undefined;
         this.resolvedKeybinding = resolvedKeybinding;
-        this.chords = resolvedKeybinding ? toEmptyArrayIfContainsNull(resolvedKeybinding.getDispatchChords()) : [];
-        if (resolvedKeybinding && this.chords.length === 0) {
+        this.keypressParts = resolvedKeybinding ? removeElementsAfterNulls(resolvedKeybinding.getDispatchParts()) : [];
+        if (resolvedKeybinding && this.keypressParts.length === 0) {
             // handle possible single modifier chord keybindings
-            this.chords = toEmptyArrayIfContainsNull(resolvedKeybinding.getSingleModifierDispatchChords());
+            this.keypressParts = removeElementsAfterNulls(resolvedKeybinding.getSingleModifierDispatchParts());
         }
-        this.bubble = (command ? command.charCodeAt(0) === 94 /* CharCode.Caret */ : false);
+        this.bubble = (command ? command.charCodeAt(0) === 94 /* Caret */ : false);
         this.command = this.bubble ? command.substr(1) : command;
         this.commandArgs = commandArgs;
         this.when = when;
@@ -20,15 +20,15 @@ export class ResolvedKeybindingItem {
         this.isBuiltinExtension = isBuiltinExtension;
     }
 }
-export function toEmptyArrayIfContainsNull(arr) {
-    const result = [];
+export function removeElementsAfterNulls(arr) {
+    let result = [];
     for (let i = 0, len = arr.length; i < len; i++) {
         const element = arr[i];
         if (!element) {
-            return [];
+            // stop processing at first encountered null
+            return result;
         }
         result.push(element);
     }
     return result;
 }
-//# sourceMappingURL=resolvedKeybindingItem.js.map

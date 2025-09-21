@@ -2,38 +2,45 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
 import { Emitter } from '../../base/common/event.js';
 import { Disposable, toDisposable } from '../../base/common/lifecycle.js';
 export class TokenizationRegistry {
     constructor() {
-        this._tokenizationSupports = new Map();
+        this._map = new Map();
         this._factories = new Map();
         this._onDidChange = new Emitter();
         this.onDidChange = this._onDidChange.event;
         this._colorMap = null;
     }
-    handleChange(languageIds) {
+    fire(languages) {
         this._onDidChange.fire({
-            changedLanguages: languageIds,
+            changedLanguages: languages,
             changedColorMap: false
         });
     }
-    register(languageId, support) {
-        this._tokenizationSupports.set(languageId, support);
-        this.handleChange([languageId]);
+    register(language, support) {
+        this._map.set(language, support);
+        this.fire([language]);
         return toDisposable(() => {
-            if (this._tokenizationSupports.get(languageId) !== support) {
+            if (this._map.get(language) !== support) {
                 return;
             }
-            this._tokenizationSupports.delete(languageId);
-            this.handleChange([languageId]);
+            this._map.delete(language);
+            this.fire([language]);
         });
     }
-    get(languageId) {
-        return this._tokenizationSupports.get(languageId) || null;
-    }
     registerFactory(languageId, factory) {
-        this._factories.get(languageId)?.dispose();
+        var _a;
+        (_a = this._factories.get(languageId)) === null || _a === void 0 ? void 0 : _a.dispose();
         const myData = new TokenizationSupportFactoryData(this, languageId, factory);
         this._factories.set(languageId, myData);
         return toDisposable(() => {
@@ -45,19 +52,24 @@ export class TokenizationRegistry {
             v.dispose();
         });
     }
-    async getOrCreate(languageId) {
-        // check first if the support is already set
-        const tokenizationSupport = this.get(languageId);
-        if (tokenizationSupport) {
-            return tokenizationSupport;
-        }
-        const factory = this._factories.get(languageId);
-        if (!factory || factory.isResolved) {
-            // no factory or factory.resolve already finished
-            return null;
-        }
-        await factory.resolve();
-        return this.get(languageId);
+    getOrCreate(languageId) {
+        return __awaiter(this, void 0, void 0, function* () {
+            // check first if the support is already set
+            const tokenizationSupport = this.get(languageId);
+            if (tokenizationSupport) {
+                return tokenizationSupport;
+            }
+            const factory = this._factories.get(languageId);
+            if (!factory || factory.isResolved) {
+                // no factory or factory.resolve already finished
+                return null;
+            }
+            yield factory.resolve();
+            return this.get(languageId);
+        });
+    }
+    get(language) {
+        return (this._map.get(language) || null);
     }
     isResolved(languageId) {
         const tokenizationSupport = this.get(languageId);
@@ -73,7 +85,7 @@ export class TokenizationRegistry {
     setColorMap(colorMap) {
         this._colorMap = colorMap;
         this._onDidChange.fire({
-            changedLanguages: Array.from(this._tokenizationSupports.keys()),
+            changedLanguages: Array.from(this._map.keys()),
             changedColorMap: true
         });
     }
@@ -81,16 +93,13 @@ export class TokenizationRegistry {
         return this._colorMap;
     }
     getDefaultBackground() {
-        if (this._colorMap && this._colorMap.length > 2 /* ColorId.DefaultBackground */) {
-            return this._colorMap[2 /* ColorId.DefaultBackground */];
+        if (this._colorMap && this._colorMap.length > 2 /* DefaultBackground */) {
+            return this._colorMap[2 /* DefaultBackground */];
         }
         return null;
     }
 }
 class TokenizationSupportFactoryData extends Disposable {
-    get isResolved() {
-        return this._isResolved;
-    }
     constructor(_registry, _languageId, _factory) {
         super();
         this._registry = _registry;
@@ -100,22 +109,28 @@ class TokenizationSupportFactoryData extends Disposable {
         this._resolvePromise = null;
         this._isResolved = false;
     }
+    get isResolved() {
+        return this._isResolved;
+    }
     dispose() {
         this._isDisposed = true;
         super.dispose();
     }
-    async resolve() {
-        if (!this._resolvePromise) {
-            this._resolvePromise = this._create();
-        }
-        return this._resolvePromise;
+    resolve() {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (!this._resolvePromise) {
+                this._resolvePromise = this._create();
+            }
+            return this._resolvePromise;
+        });
     }
-    async _create() {
-        const value = await this._factory.tokenizationSupport;
-        this._isResolved = true;
-        if (value && !this._isDisposed) {
-            this._register(this._registry.register(this._languageId, value));
-        }
+    _create() {
+        return __awaiter(this, void 0, void 0, function* () {
+            const value = yield Promise.resolve(this._factory.createTokenizationSupport());
+            this._isResolved = true;
+            if (value && !this._isDisposed) {
+                this._register(this._registry.register(this._languageId, value));
+            }
+        });
     }
 }
-//# sourceMappingURL=tokenizationRegistry.js.map

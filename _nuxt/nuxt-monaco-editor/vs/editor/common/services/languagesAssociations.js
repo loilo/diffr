@@ -8,21 +8,15 @@ import { Schemas } from '../../../base/common/network.js';
 import { basename, posix } from '../../../base/common/path.js';
 import { DataUri } from '../../../base/common/resources.js';
 import { startsWithUTF8BOM } from '../../../base/common/strings.js';
-import { PLAINTEXT_LANGUAGE_ID } from '../languages/modesRegistry.js';
 let registeredAssociations = [];
 let nonUserRegisteredAssociations = [];
 let userRegisteredAssociations = [];
 /**
- * Associate a language to the registry (platform).
- * * **NOTE**: This association will lose over associations registered using `registerConfiguredLanguageAssociation`.
- * * **NOTE**: Use `clearPlatformLanguageAssociations` to remove all associations registered using this function.
+ * Associate a language to the registry.
  */
-export function registerPlatformLanguageAssociation(association, warnOnOverwrite = false) {
-    _registerLanguageAssociation(association, false, warnOnOverwrite);
-}
-function _registerLanguageAssociation(association, userConfigured, warnOnOverwrite) {
+export function registerLanguageAssociation(association, warnOnOverwrite = false) {
     // Register
-    const associationItem = toLanguageAssociationItem(association, userConfigured);
+    const associationItem = toLanguageAssociationItem(association);
     registeredAssociations.push(associationItem);
     if (!associationItem.userConfigured) {
         nonUserRegisteredAssociations.push(associationItem);
@@ -51,7 +45,7 @@ function _registerLanguageAssociation(association, userConfigured, warnOnOverwri
         });
     }
 }
-function toLanguageAssociationItem(association, userConfigured) {
+function toLanguageAssociationItem(association) {
     return {
         id: association.id,
         mime: association.mime,
@@ -59,7 +53,7 @@ function toLanguageAssociationItem(association, userConfigured) {
         extension: association.extension,
         filepattern: association.filepattern,
         firstline: association.firstline,
-        userConfigured: userConfigured,
+        userConfigured: association.userConfigured,
         filenameLowercase: association.filename ? association.filename.toLowerCase() : undefined,
         extensionLowercase: association.extension ? association.extension.toLowerCase() : undefined,
         filepatternLowercase: association.filepattern ? parse(association.filepattern.toLowerCase()) : undefined,
@@ -67,19 +61,24 @@ function toLanguageAssociationItem(association, userConfigured) {
     };
 }
 /**
- * Clear language associations from the registry (platform).
+ * Clear language associations from the registry.
  */
-export function clearPlatformLanguageAssociations() {
-    registeredAssociations = registeredAssociations.filter(a => a.userConfigured);
-    nonUserRegisteredAssociations = [];
+export function clearLanguageAssociations(onlyUserConfigured) {
+    if (!onlyUserConfigured) {
+        registeredAssociations = [];
+        nonUserRegisteredAssociations = [];
+        userRegisteredAssociations = [];
+    }
+    else {
+        registeredAssociations = registeredAssociations.filter(a => !a.userConfigured);
+        userRegisteredAssociations = [];
+    }
 }
 /**
- * @see `getMimeTypes`
+ * Given a file, return the best matching mime types for it
+ * based on the registered language associations.
  */
-export function getLanguageIds(resource, firstLine) {
-    return getAssociations(resource, firstLine).map(item => item.id);
-}
-function getAssociations(resource, firstLine) {
+export function getMimeTypes(resource, firstLine) {
     let path;
     if (resource) {
         switch (resource.scheme) {
@@ -91,39 +90,36 @@ function getAssociations(resource, firstLine) {
                 path = metadata.get(DataUri.META_DATA_LABEL);
                 break;
             }
-            case Schemas.vscodeNotebookCell:
-                // File path not relevant for language detection of cell
-                path = undefined;
-                break;
             default:
                 path = resource.path;
         }
     }
     if (!path) {
-        return [{ id: 'unknown', mime: Mimes.unknown }];
+        return [Mimes.unknown];
     }
     path = path.toLowerCase();
     const filename = basename(path);
     // 1.) User configured mappings have highest priority
-    const configuredLanguage = getAssociationByPath(path, filename, userRegisteredAssociations);
+    const configuredLanguage = getMimeByPath(path, filename, userRegisteredAssociations);
     if (configuredLanguage) {
-        return [configuredLanguage, { id: PLAINTEXT_LANGUAGE_ID, mime: Mimes.text }];
+        return [configuredLanguage, Mimes.text];
     }
     // 2.) Registered mappings have middle priority
-    const registeredLanguage = getAssociationByPath(path, filename, nonUserRegisteredAssociations);
+    const registeredLanguage = getMimeByPath(path, filename, nonUserRegisteredAssociations);
     if (registeredLanguage) {
-        return [registeredLanguage, { id: PLAINTEXT_LANGUAGE_ID, mime: Mimes.text }];
+        return [registeredLanguage, Mimes.text];
     }
     // 3.) Firstline has lowest priority
     if (firstLine) {
-        const firstlineLanguage = getAssociationByFirstline(firstLine);
+        const firstlineLanguage = getMimeByFirstline(firstLine);
         if (firstlineLanguage) {
-            return [firstlineLanguage, { id: PLAINTEXT_LANGUAGE_ID, mime: Mimes.text }];
+            return [firstlineLanguage, Mimes.text];
         }
     }
-    return [{ id: 'unknown', mime: Mimes.unknown }];
+    return [Mimes.unknown];
 }
-function getAssociationByPath(path, filename, associations) {
+function getMimeByPath(path, filename, associations) {
+    var _a;
     let filenameMatch = undefined;
     let patternMatch = undefined;
     let extensionMatch = undefined;
@@ -140,7 +136,7 @@ function getAssociationByPath(path, filename, associations) {
         if (association.filepattern) {
             if (!patternMatch || association.filepattern.length > patternMatch.filepattern.length) {
                 const target = association.filepatternOnPath ? path : filename; // match on full path if pattern contains path separator
-                if (association.filepatternLowercase?.(target)) {
+                if ((_a = association.filepatternLowercase) === null || _a === void 0 ? void 0 : _a.call(association, target)) {
                     patternMatch = association;
                 }
             }
@@ -156,19 +152,19 @@ function getAssociationByPath(path, filename, associations) {
     }
     // 1.) Exact name match has second highest priority
     if (filenameMatch) {
-        return filenameMatch;
+        return filenameMatch.mime;
     }
     // 2.) Match on pattern
     if (patternMatch) {
-        return patternMatch;
+        return patternMatch.mime;
     }
     // 3.) Match on extension comes next
     if (extensionMatch) {
-        return extensionMatch;
+        return extensionMatch.mime;
     }
     return undefined;
 }
-function getAssociationByFirstline(firstLine) {
+function getMimeByFirstline(firstLine) {
     if (startsWithUTF8BOM(firstLine)) {
         firstLine = firstLine.substr(1);
     }
@@ -182,10 +178,9 @@ function getAssociationByFirstline(firstLine) {
             }
             const matches = firstLine.match(association.firstline);
             if (matches && matches.length > 0) {
-                return association;
+                return association.mime;
             }
         }
     }
     return undefined;
 }
-//# sourceMappingURL=languagesAssociations.js.map

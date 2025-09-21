@@ -1,7 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
 // Avoid circular dependency on EventEmitter by implementing a subset of the interface.
 export class ErrorHandler {
     constructor() {
@@ -9,9 +5,6 @@ export class ErrorHandler {
         this.unexpectedErrorHandler = function (e) {
             setTimeout(() => {
                 if (e.stack) {
-                    if (ErrorNoTelemetry.isErrorNoTelemetry(e)) {
-                        throw new ErrorNoTelemetry(e.message + '\n\n' + e.stack);
-                    }
                     throw new Error(e.message + '\n\n' + e.stack);
                 }
                 throw e;
@@ -33,15 +26,6 @@ export class ErrorHandler {
     }
 }
 export const errorHandler = new ErrorHandler();
-/**
- * This function should only be called with errors that indicate a bug in the product.
- * E.g. buggy extensions/invalid user-input/network issues should not be able to trigger this code path.
- * If they are, this indicates there is also a bug in the product.
-*/
-export function onBugIndicatingError(e) {
-    errorHandler.onUnexpectedError(e);
-    return undefined;
-}
 export function onUnexpectedError(e) {
     // ignore errors from cancelled promises
     if (!isCancellationError(e)) {
@@ -58,22 +42,19 @@ export function onUnexpectedExternalError(e) {
 }
 export function transformErrorForSerialization(error) {
     if (error instanceof Error) {
-        const { name, message, cause } = error;
+        let { name, message } = error;
         const stack = error.stacktrace || error.stack;
         return {
             $isError: true,
             name,
             message,
-            stack,
-            noTelemetry: ErrorNoTelemetry.isErrorNoTelemetry(error),
-            cause: cause ? transformErrorForSerialization(cause) : undefined,
-            code: error.code
+            stack
         };
     }
     // return as is
     return error;
 }
-export const canceledName = 'Canceled';
+const canceledName = 'Canceled';
 /**
  * Checks if the given error is a promise in canceled state
  */
@@ -92,7 +73,7 @@ export class CancellationError extends Error {
     }
 }
 /**
- * @deprecated use {@link CancellationError `new CancellationError()`} instead
+ * @deprecated uses {@link CancellationError}
  */
 export function canceled() {
     const error = new Error(canceledName);
@@ -123,39 +104,3 @@ export class NotSupportedError extends Error {
         }
     }
 }
-/**
- * Error that when thrown won't be logged in telemetry as an unhandled error.
- */
-export class ErrorNoTelemetry extends Error {
-    constructor(msg) {
-        super(msg);
-        this.name = 'CodeExpectedError';
-    }
-    static fromError(err) {
-        if (err instanceof ErrorNoTelemetry) {
-            return err;
-        }
-        const result = new ErrorNoTelemetry();
-        result.message = err.message;
-        result.stack = err.stack;
-        return result;
-    }
-    static isErrorNoTelemetry(err) {
-        return err.name === 'CodeExpectedError';
-    }
-}
-/**
- * This error indicates a bug.
- * Do not throw this for invalid user input.
- * Only catch this error to recover gracefully from bugs.
- */
-export class BugIndicatingError extends Error {
-    constructor(message) {
-        super(message || 'An unexpected bug occurred.');
-        Object.setPrototypeOf(this, BugIndicatingError.prototype);
-        // Because we know for sure only buggy code throws this,
-        // we definitely want to break here and fix the bug.
-        // debugger;
-    }
-}
-//# sourceMappingURL=errors.js.map

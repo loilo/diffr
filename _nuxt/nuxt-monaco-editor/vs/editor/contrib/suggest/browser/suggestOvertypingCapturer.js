@@ -4,13 +4,15 @@
  *--------------------------------------------------------------------------------------------*/
 import { DisposableStore } from '../../../../base/common/lifecycle.js';
 export class OvertypingCapturer {
-    static { this._maxSelectionLength = 51200; }
     constructor(editor, suggestModel) {
         this._disposables = new DisposableStore();
         this._lastOvertyped = [];
-        this._locked = false;
+        this._empty = true;
         this._disposables.add(editor.onWillType(() => {
-            if (this._locked || !editor.hasModel()) {
+            if (!this._empty) {
+                return;
+            }
+            if (!editor.hasModel()) {
                 return;
             }
             const selections = editor.getSelections();
@@ -24,9 +26,6 @@ export class OvertypingCapturer {
                 }
             }
             if (!willOvertype) {
-                if (this._lastOvertyped.length !== 0) {
-                    this._lastOvertyped.length = 0;
-                }
                 return;
             }
             this._lastOvertyped = [];
@@ -39,16 +38,16 @@ export class OvertypingCapturer {
                 }
                 this._lastOvertyped[i] = { value: model.getValueInRange(selection), multiline: selection.startLineNumber !== selection.endLineNumber };
             }
-        }));
-        this._disposables.add(suggestModel.onDidTrigger(e => {
-            this._locked = true;
+            this._empty = false;
         }));
         this._disposables.add(suggestModel.onDidCancel(e => {
-            this._locked = false;
+            if (!this._empty && !e.retrigger) {
+                this._empty = true;
+            }
         }));
     }
     getLastOvertypedInfo(idx) {
-        if (idx >= 0 && idx < this._lastOvertyped.length) {
+        if (!this._empty && idx >= 0 && idx < this._lastOvertyped.length) {
             return this._lastOvertyped[idx];
         }
         return undefined;
@@ -57,4 +56,4 @@ export class OvertypingCapturer {
         this._disposables.dispose();
     }
 }
-//# sourceMappingURL=suggestOvertypingCapturer.js.map
+OvertypingCapturer._maxSelectionLength = 51200;

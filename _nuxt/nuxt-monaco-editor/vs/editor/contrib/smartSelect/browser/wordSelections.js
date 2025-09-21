@@ -5,17 +5,12 @@
 import { isLowerAsciiLetter, isUpperAsciiLetter } from '../../../../base/common/strings.js';
 import { Range } from '../../../common/core/range.js';
 export class WordSelectionRangeProvider {
-    constructor(selectSubwords = true) {
-        this.selectSubwords = selectSubwords;
-    }
     provideSelectionRanges(model, positions) {
         const result = [];
         for (const position of positions) {
             const bucket = [];
             result.push(bucket);
-            if (this.selectSubwords) {
-                this._addInWordRanges(bucket, model, position);
-            }
+            this._addInWordRanges(bucket, model, position);
             this._addWordRanges(bucket, model, position);
             this._addWhitespaceLine(bucket, model, position);
             bucket.push({ range: model.getFullModelRange() });
@@ -27,15 +22,15 @@ export class WordSelectionRangeProvider {
         if (!obj) {
             return;
         }
-        const { word, startColumn } = obj;
-        const offset = pos.column - startColumn;
+        let { word, startColumn } = obj;
+        let offset = pos.column - startColumn;
         let start = offset;
         let end = offset;
         let lastCh = 0;
         // LEFT anchor (start)
         for (; start >= 0; start--) {
-            const ch = word.charCodeAt(start);
-            if ((start !== offset) && (ch === 95 /* CharCode.Underline */ || ch === 45 /* CharCode.Dash */)) {
+            let ch = word.charCodeAt(start);
+            if ((start !== offset) && (ch === 95 /* Underline */ || ch === 45 /* Dash */)) {
                 // foo-bar OR foo_bar
                 break;
             }
@@ -48,12 +43,12 @@ export class WordSelectionRangeProvider {
         start += 1;
         // RIGHT anchor (end)
         for (; end < word.length; end++) {
-            const ch = word.charCodeAt(end);
+            let ch = word.charCodeAt(end);
             if (isUpperAsciiLetter(ch) && isLowerAsciiLetter(lastCh)) {
                 // fooBar
                 break;
             }
-            else if (ch === 95 /* CharCode.Underline */ || ch === 45 /* CharCode.Dash */) {
+            else if (ch === 95 /* Underline */ || ch === 45 /* Dash */) {
                 // foo-bar OR foo_bar
                 break;
             }
@@ -77,4 +72,3 @@ export class WordSelectionRangeProvider {
         }
     }
 }
-//# sourceMappingURL=wordSelections.js.map

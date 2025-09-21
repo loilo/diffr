@@ -292,19 +292,29 @@ function prepareBracketForRegExp(str) {
     str = strings.escapeRegExpCharacters(str);
     return (insertWordBoundaries ? `\\b${str}\\b` : str);
 }
-export function createBracketOrRegExp(pieces, options) {
+function createBracketOrRegExp(pieces) {
     const regexStr = `(${pieces.map(prepareBracketForRegExp).join(')|(')})`;
-    return strings.createRegExp(regexStr, true, options);
+    return strings.createRegExp(regexStr, true);
 }
 const toReversedString = (function () {
     function reverse(str) {
-        // create a Uint16Array and then use a TextDecoder to create a string
-        const arr = new Uint16Array(str.length);
-        let offset = 0;
-        for (let i = str.length - 1; i >= 0; i--) {
-            arr[offset++] = str.charCodeAt(i);
+        if (stringBuilder.hasTextDecoder) {
+            // create a Uint16Array and then use a TextDecoder to create a string
+            const arr = new Uint16Array(str.length);
+            let offset = 0;
+            for (let i = str.length - 1; i >= 0; i--) {
+                arr[offset++] = str.charCodeAt(i);
+            }
+            return stringBuilder.getPlatformTextDecoder().decode(arr);
         }
-        return stringBuilder.getPlatformTextDecoder().decode(arr);
+        else {
+            const result = [];
+            let resultLen = 0;
+            for (let i = str.length - 1; i >= 0; i--) {
+                result[resultLen++] = str.charAt(i);
+            }
+            return result.join('');
+        }
     }
     let lastInput = null;
     let lastOutput = null;
@@ -351,4 +361,3 @@ export class BracketsUtils {
         return this.findNextBracketInText(bracketRegex, lineNumber, substr, startOffset);
     }
 }
-//# sourceMappingURL=richEditBrackets.js.map

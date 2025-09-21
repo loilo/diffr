@@ -11,7 +11,6 @@ export class BasicInplaceReplace {
             ['public', 'protected', 'private'],
         ];
     }
-    static { this.INSTANCE = new BasicInplaceReplace(); }
     navigateValueSet(range1, text1, range2, text2, up) {
         if (range1 && text1) {
             const result = this.doNavigateValueSet(text1, up);
@@ -43,7 +42,7 @@ export class BasicInplaceReplace {
     numberReplace(value, up) {
         const precision = Math.pow(10, value.length - (value.lastIndexOf('.') + 1));
         let n1 = Number(value);
-        const n2 = parseFloat(value);
+        let n2 = parseFloat(value);
         if (!isNaN(n1) && !isNaN(n2) && n1 === n2) {
             if (n1 === 0 && !up) {
                 return null; // don't do negative
@@ -83,4 +82,4 @@ export class BasicInplaceReplace {
         return null;
     }
 }
-//# sourceMappingURL=inplaceReplaceSupport.js.map
+BasicInplaceReplace.INSTANCE = new BasicInplaceReplace();

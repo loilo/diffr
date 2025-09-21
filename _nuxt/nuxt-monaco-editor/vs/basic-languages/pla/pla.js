@@ -1,10 +1,9 @@
 /*!-----------------------------------------------------------------------------
  * Copyright (c) Microsoft Corporation. All rights reserved.
- * Version: 0.53.0(4e45ba0c5ff45fc61c0ccac61c0987369df04a6e)
+ * Version: 0.32.1(29a273516805a852aa8edc5e05059f119b13eff0)
  * Released under the MIT license
  * https://github.com/microsoft/monaco-editor/blob/main/LICENSE.txt
  *-----------------------------------------------------------------------------*/
-
 
 // src/basic-languages/pla/pla.ts
 var conf = {
@@ -52,17 +51,13 @@ var language = {
     ".e",
     ".end"
   ],
-  // regular expressions
   comment: /#.*$/,
   identifier: /[a-zA-Z]+[a-zA-Z0-9_\-]*/,
   plaContent: /[01\-~\|]+/,
-  // The main tokenizer for our languages
   tokenizer: {
     root: [
-      // comments and whitespace
       { include: "@whitespace" },
       [/@comment/, "comment"],
-      // keyword
       [
         /\.([a-zA-Z_\-]+)/,
         {
@@ -78,15 +73,12 @@ var language = {
           }
         }
       ],
-      // identifiers
       [/@identifier/, "identifier"],
-      // PLA row
       [/@plaContent/, "string"]
     ],
     whitespace: [[/[ \t\r\n]+/, ""]],
     type: [{ include: "@whitespace" }, [/\w+/, { token: "type", next: "@pop" }]],
     keywordArg: [
-      // whitespace
       [
         /[ \t\r\n]+/,
         {
@@ -96,9 +88,7 @@ var language = {
           }
         }
       ],
-      // comments
       [/@comment/, "comment", "@pop"],
-      // brackets
       [
         /[<>()\[\]]/,
         {
@@ -108,7 +98,6 @@ var language = {
           }
         }
       ],
-      // numbers
       [
         /\-?\d+/,
         {
@@ -118,7 +107,6 @@ var language = {
           }
         }
       ],
-      // identifiers
       [
         /@identifier/,
         {
@@ -128,7 +116,6 @@ var language = {
           }
         }
       ],
-      // delimiter
       [
         /[;=]/,
         {

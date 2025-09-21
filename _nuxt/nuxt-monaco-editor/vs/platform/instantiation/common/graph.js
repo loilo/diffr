@@ -3,11 +3,10 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 export class Node {
-    constructor(key, data) {
-        this.key = key;
-        this.data = data;
+    constructor(data) {
         this.incoming = new Map();
         this.outgoing = new Map();
+        this.data = data;
     }
 }
 export class Graph {
@@ -18,7 +17,7 @@ export class Graph {
     }
     roots() {
         const ret = [];
-        for (const node of this._nodes.values()) {
+        for (let node of this._nodes.values()) {
             if (node.outgoing.size === 0) {
                 ret.push(node);
             }
@@ -28,13 +27,13 @@ export class Graph {
     insertEdge(from, to) {
         const fromNode = this.lookupOrInsertNode(from);
         const toNode = this.lookupOrInsertNode(to);
-        fromNode.outgoing.set(toNode.key, toNode);
-        toNode.incoming.set(fromNode.key, fromNode);
+        fromNode.outgoing.set(this._hashFn(to), toNode);
+        toNode.incoming.set(this._hashFn(from), fromNode);
     }
     removeNode(data) {
         const key = this._hashFn(data);
         this._nodes.delete(key);
-        for (const node of this._nodes.values()) {
+        for (let node of this._nodes.values()) {
             node.outgoing.delete(key);
             node.incoming.delete(key);
         }
@@ -43,7 +42,7 @@ export class Graph {
         const key = this._hashFn(data);
         let node = this._nodes.get(key);
         if (!node) {
-            node = new Node(key, data);
+            node = new Node(data);
             this._nodes.set(key, node);
         }
         return node;
@@ -52,9 +51,9 @@ export class Graph {
         return this._nodes.size === 0;
     }
     toString() {
-        const data = [];
-        for (const [key, value] of this._nodes) {
-            data.push(`${key}\n\t(-> incoming)[${[...value.incoming.keys()].join(', ')}]\n\t(outgoing ->)[${[...value.outgoing.keys()].join(',')}]\n`);
+        let data = [];
+        for (let [key, value] of this._nodes) {
+            data.push(`${key}, (incoming)[${[...value.incoming.keys()].join(', ')}], (outgoing)[${[...value.outgoing.keys()].join(',')}]`);
         }
         return data.join('\n');
     }
@@ -63,7 +62,7 @@ export class Graph {
      * to trouble shoot.
      */
     findCycleSlow() {
-        for (const [id, node] of this._nodes) {
+        for (let [id, node] of this._nodes) {
             const seen = new Set([id]);
             const res = this._findCycle(node, seen);
             if (res) {
@@ -73,7 +72,7 @@ export class Graph {
         return undefined;
     }
     _findCycle(node, seen) {
-        for (const [id, outgoing] of node.outgoing) {
+        for (let [id, outgoing] of node.outgoing) {
             if (seen.has(id)) {
                 return [...seen, id].join(' -> ');
             }
@@ -87,4 +86,3 @@ export class Graph {
         return undefined;
     }
 }
-//# sourceMappingURL=graph.js.map

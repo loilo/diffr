@@ -12,61 +12,55 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
 import { ContextView } from '../../../base/browser/ui/contextview/contextview.js';
-import { Disposable } from '../../../base/common/lifecycle.js';
+import { Disposable, toDisposable } from '../../../base/common/lifecycle.js';
 import { ILayoutService } from '../../layout/browser/layoutService.js';
-import { getWindow } from '../../../base/browser/dom.js';
-let ContextViewHandler = class ContextViewHandler extends Disposable {
+let ContextViewService = class ContextViewService extends Disposable {
     constructor(layoutService) {
         super();
         this.layoutService = layoutService;
-        this.contextView = this._register(new ContextView(this.layoutService.mainContainer, 1 /* ContextViewDOMPosition.ABSOLUTE */));
+        this.currentViewDisposable = Disposable.None;
+        this.container = layoutService.hasContainer ? layoutService.container : null;
+        this.contextView = this._register(new ContextView(this.container, 1 /* ABSOLUTE */));
         this.layout();
-        this._register(layoutService.onDidLayoutContainer(() => this.layout()));
+        this._register(layoutService.onDidLayout(() => this.layout()));
     }
     // ContextView
+    setContainer(container, domPosition) {
+        this.contextView.setContainer(container, domPosition || 1 /* ABSOLUTE */);
+    }
     showContextView(delegate, container, shadowRoot) {
-        let domPosition;
         if (container) {
-            if (container === this.layoutService.getContainer(getWindow(container))) {
-                domPosition = 1 /* ContextViewDOMPosition.ABSOLUTE */;
-            }
-            else if (shadowRoot) {
-                domPosition = 3 /* ContextViewDOMPosition.FIXED_SHADOW */;
-            }
-            else {
-                domPosition = 2 /* ContextViewDOMPosition.FIXED */;
+            if (container !== this.container) {
+                this.container = container;
+                this.setContainer(container, shadowRoot ? 3 /* FIXED_SHADOW */ : 2 /* FIXED */);
             }
         }
         else {
-            domPosition = 1 /* ContextViewDOMPosition.ABSOLUTE */;
-        }
-        this.contextView.setContainer(container ?? this.layoutService.activeContainer, domPosition);
-        this.contextView.show(delegate);
-        const openContextView = {
-            close: () => {
-                if (this.openContextView === openContextView) {
-                    this.hideContextView();
-                }
+            if (this.layoutService.hasContainer && this.container !== this.layoutService.container) {
+                this.container = this.layoutService.container;
+                this.setContainer(this.container, 1 /* ABSOLUTE */);
             }
-        };
-        this.openContextView = openContextView;
-        return openContextView;
+        }
+        this.contextView.show(delegate);
+        const disposable = toDisposable(() => {
+            if (this.currentViewDisposable === disposable) {
+                this.hideContextView();
+            }
+        });
+        this.currentViewDisposable = disposable;
+        return disposable;
+    }
+    getContextViewElement() {
+        return this.contextView.getViewElement();
     }
     layout() {
         this.contextView.layout();
     }
     hideContextView(data) {
         this.contextView.hide(data);
-        this.openContextView = undefined;
     }
 };
-ContextViewHandler = __decorate([
+ContextViewService = __decorate([
     __param(0, ILayoutService)
-], ContextViewHandler);
-export { ContextViewHandler };
-export class ContextViewService extends ContextViewHandler {
-    getContextViewElement() {
-        return this.contextView.getViewElement();
-    }
-}
-//# sourceMappingURL=contextViewService.js.map
+], ContextViewService);
+export { ContextViewService };

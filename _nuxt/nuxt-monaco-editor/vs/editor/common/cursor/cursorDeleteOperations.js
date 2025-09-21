@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 import * as strings from '../../../base/common/strings.js';
 import { ReplaceCommand } from '../commands/replaceCommand.js';
-import { EditOperationResult, isQuote } from '../cursorCommon.js';
+import { EditOperationResult, isQuote } from './cursorCommon.js';
 import { CursorColumns } from '../core/cursorColumns.js';
 import { MoveOperations } from './cursorMoveOperations.js';
 import { Range } from '../core/range.js';
@@ -12,10 +12,15 @@ import { Position } from '../core/position.js';
 export class DeleteOperations {
     static deleteRight(prevEditOperationType, config, model, selections) {
         const commands = [];
-        let shouldPushStackElementBefore = (prevEditOperationType !== 3 /* EditOperationType.DeletingRight */);
+        let shouldPushStackElementBefore = (prevEditOperationType !== 3 /* DeletingRight */);
         for (let i = 0, len = selections.length; i < len; i++) {
             const selection = selections[i];
-            const deleteSelection = this.getDeleteRightRange(selection, model, config);
+            let deleteSelection = selection;
+            if (deleteSelection.isEmpty()) {
+                const position = selection.getPosition();
+                const rightOfPosition = MoveOperations.right(config, model, position);
+                deleteSelection = new Range(rightOfPosition.lineNumber, rightOfPosition.column, position.lineNumber, position.column);
+            }
             if (deleteSelection.isEmpty()) {
                 // Probably at end of file => ignore
                 commands[i] = null;
@@ -27,24 +32,6 @@ export class DeleteOperations {
             commands[i] = new ReplaceCommand(deleteSelection, '');
         }
         return [shouldPushStackElementBefore, commands];
-    }
-    static getDeleteRightRange(selection, model, config) {
-        if (!selection.isEmpty()) {
-            return selection;
-        }
-        const position = selection.getPosition();
-        const rightOfPosition = MoveOperations.right(config, model, position);
-        if (config.trimWhitespaceOnDelete && rightOfPosition.lineNumber !== position.lineNumber) {
-            // Smart line join (deleting leading whitespace) is on
-            // (and) Delete is happening at the end of a line
-            const currentLineHasContent = (model.getLineFirstNonWhitespaceColumn(position.lineNumber) > 0);
-            const firstNonWhitespaceColumn = model.getLineFirstNonWhitespaceColumn(rightOfPosition.lineNumber);
-            if (currentLineHasContent && firstNonWhitespaceColumn > 0) {
-                // The next line has content
-                return new Range(rightOfPosition.lineNumber, firstNonWhitespaceColumn, position.lineNumber, position.column);
-            }
-        }
-        return new Range(rightOfPosition.lineNumber, rightOfPosition.column, position.lineNumber, position.column);
     }
     static isAutoClosingPairDelete(autoClosingDelete, autoClosingBrackets, autoClosingQuotes, autoClosingPairsOpen, model, selections, autoClosedCharacters) {
         if (autoClosingBrackets === 'never' && autoClosingQuotes === 'never') {
@@ -119,9 +106,9 @@ export class DeleteOperations {
             return this._runAutoClosingPairDelete(config, model, selections);
         }
         const commands = [];
-        let shouldPushStackElementBefore = (prevEditOperationType !== 2 /* EditOperationType.DeletingLeft */);
+        let shouldPushStackElementBefore = (prevEditOperationType !== 2 /* DeletingLeft */);
         for (let i = 0, len = selections.length; i < len; i++) {
-            const deleteRange = DeleteOperations.getDeleteLeftRange(selections[i], model, config);
+            const deleteRange = DeleteOperations.getDeleteRange(selections[i], model, config);
             // Ignore empty delete ranges, as they have no effect
             // They happen if the cursor is at the beginning of the file.
             if (deleteRange.isEmpty()) {
@@ -135,7 +122,7 @@ export class DeleteOperations {
         }
         return [shouldPushStackElementBefore, commands];
     }
-    static getDeleteLeftRange(selection, model, config) {
+    static getDeleteRange(selection, model, config) {
         if (!selection.isEmpty()) {
             return selection;
         }
@@ -188,7 +175,7 @@ export class DeleteOperations {
                         endLineNumber = position.lineNumber + 1;
                         endColumn = 1;
                     }
-                    else if (position.lineNumber > 1 && lastCutRange?.endLineNumber !== position.lineNumber) {
+                    else if (position.lineNumber > 1 && (lastCutRange === null || lastCutRange === void 0 ? void 0 : lastCutRange.endLineNumber) !== position.lineNumber) {
                         // Cutting the last line & there are more than 1 lines in the model & a previous cut operation does not touch the current cut operation
                         startLineNumber = position.lineNumber - 1;
                         startColumn = model.getLineMaxColumn(position.lineNumber - 1);
@@ -220,10 +207,9 @@ export class DeleteOperations {
                 commands[i] = new ReplaceCommand(selection, '');
             }
         }
-        return new EditOperationResult(0 /* EditOperationType.Other */, commands, {
+        return new EditOperationResult(0 /* Other */, commands, {
             shouldPushStackElementBefore: true,
             shouldPushStackElementAfter: true
         });
     }
 }
-//# sourceMappingURL=cursorDeleteOperations.js.map

@@ -2,9 +2,8 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-import { compareBy } from '../../../base/common/arrays.js';
-import { findLastMax, findFirstMin } from '../../../base/common/arraysFind.js';
-import { CursorState } from '../cursorCommon.js';
+import { compareBy, findLastMaxBy, findMinBy } from '../../../base/common/arrays.js';
+import { CursorState } from './cursorCommon.js';
 import { Cursor } from './oneCursor.js';
 import { Position } from '../core/position.js';
 import { Range } from '../core/range.js';
@@ -48,10 +47,10 @@ export class CursorCollection {
         return this.cursors.map(c => c.viewState.position);
     }
     getTopMostViewPosition() {
-        return findFirstMin(this.cursors, compareBy(c => c.viewState.position, Position.compare)).viewState.position;
+        return findMinBy(this.cursors, compareBy(c => c.viewState.position, Position.compare)).viewState.position;
     }
     getBottomMostViewPosition() {
-        return findLastMax(this.cursors, compareBy(c => c.viewState.position, Position.compare)).viewState.position;
+        return findLastMaxBy(this.cursors, compareBy(c => c.viewState.position, Position.compare)).viewState.position;
     }
     getSelections() {
         return this.cursors.map(c => c.modelState.selection);
@@ -189,4 +188,3 @@ export class CursorCollection {
         }
     }
 }
-//# sourceMappingURL=cursorCollection.js.map

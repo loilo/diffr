@@ -11,24 +11,20 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
-var InspectTokensController_1;
 import './inspectTokens.css';
 import { $, append, reset } from '../../../../base/browser/dom.js';
 import { Color } from '../../../../base/common/color.js';
 import { Disposable } from '../../../../base/common/lifecycle.js';
 import { EditorAction, registerEditorAction, registerEditorContribution } from '../../../browser/editorExtensions.js';
-import { TokenizationRegistry } from '../../../common/languages.js';
-import { TokenMetadata } from '../../../common/encodedTokenAttributes.js';
-import { NullState, nullTokenize, nullTokenizeEncoded } from '../../../common/languages/nullTokenize.js';
-import { ILanguageService } from '../../../common/languages/language.js';
+import { TokenMetadata, TokenizationRegistry } from '../../../common/languages.js';
+import { NullState, nullTokenize, nullTokenizeEncoded } from '../../../common/languages/nullMode.js';
+import { ILanguageService } from '../../../common/services/language.js';
 import { IStandaloneThemeService } from '../../common/standaloneTheme.js';
+import { editorHoverBackground, editorHoverBorder, editorHoverForeground } from '../../../../platform/theme/common/colorRegistry.js';
+import { registerThemingParticipant } from '../../../../platform/theme/common/themeService.js';
 import { InspectTokensNLS } from '../../../common/standaloneStrings.js';
+import { ColorScheme } from '../../../../platform/theme/common/theme.js';
 let InspectTokensController = class InspectTokensController extends Disposable {
-    static { InspectTokensController_1 = this; }
-    static { this.ID = 'editor.contrib.inspectTokens'; }
-    static get(editor) {
-        return editor.getContribution(InspectTokensController_1.ID);
-    }
     constructor(editor, standaloneColorService, languageService) {
         super();
         this._editor = editor;
@@ -37,7 +33,10 @@ let InspectTokensController = class InspectTokensController extends Disposable {
         this._register(this._editor.onDidChangeModel((e) => this.stop()));
         this._register(this._editor.onDidChangeModelLanguage((e) => this.stop()));
         this._register(TokenizationRegistry.onDidChange((e) => this.stop()));
-        this._register(this._editor.onKeyUp((e) => e.keyCode === 9 /* KeyCode.Escape */ && this.stop()));
+        this._register(this._editor.onKeyUp((e) => e.keyCode === 9 /* Escape */ && this.stop()));
+    }
+    static get(editor) {
+        return editor.getContribution(InspectTokensController.ID);
     }
     dispose() {
         this.stop();
@@ -59,7 +58,8 @@ let InspectTokensController = class InspectTokensController extends Disposable {
         }
     }
 };
-InspectTokensController = InspectTokensController_1 = __decorate([
+InspectTokensController.ID = 'editor.contrib.inspectTokens';
+InspectTokensController = __decorate([
     __param(1, IStandaloneThemeService),
     __param(2, ILanguageService)
 ], InspectTokensController);
@@ -74,7 +74,9 @@ class InspectTokens extends EditorAction {
     }
     run(accessor, editor) {
         const controller = InspectTokensController.get(editor);
-        controller?.launch();
+        if (controller) {
+            controller.launch();
+        }
     }
 }
 function renderTokenText(tokenText) {
@@ -82,10 +84,10 @@ function renderTokenText(tokenText) {
     for (let charIndex = 0, len = tokenText.length; charIndex < len; charIndex++) {
         const charCode = tokenText.charCodeAt(charIndex);
         switch (charCode) {
-            case 9 /* CharCode.Tab */:
+            case 9 /* Tab */:
                 result += '\u2192'; // &rarr;
                 break;
-            case 32 /* CharCode.Space */:
+            case 32 /* Space */:
                 result += '\u00B7'; // &middot;
                 break;
             default:
@@ -107,7 +109,6 @@ function getSafeTokenizationSupport(languageIdCodec, languageId) {
     };
 }
 class InspectTokensWidget extends Disposable {
-    static { this._ID = 'editor.contrib.inspectTokensWidget'; }
     constructor(editor, languageService) {
         super();
         // Editor.IContentWidget.allowEditorOverflow
@@ -180,25 +181,25 @@ class InspectTokensWidget extends Disposable {
     }
     _tokenTypeToString(tokenType) {
         switch (tokenType) {
-            case 0 /* StandardTokenType.Other */: return 'Other';
-            case 1 /* StandardTokenType.Comment */: return 'Comment';
-            case 2 /* StandardTokenType.String */: return 'String';
-            case 3 /* StandardTokenType.RegEx */: return 'RegEx';
+            case 0 /* Other */: return 'Other';
+            case 1 /* Comment */: return 'Comment';
+            case 2 /* String */: return 'String';
+            case 3 /* RegEx */: return 'RegEx';
             default: return '??';
         }
     }
     _fontStyleToString(fontStyle) {
         let r = '';
-        if (fontStyle & 1 /* FontStyle.Italic */) {
+        if (fontStyle & 1 /* Italic */) {
             r += 'italic ';
         }
-        if (fontStyle & 2 /* FontStyle.Bold */) {
+        if (fontStyle & 2 /* Bold */) {
             r += 'bold ';
         }
-        if (fontStyle & 4 /* FontStyle.Underline */) {
+        if (fontStyle & 4 /* Underline */) {
             r += 'underline ';
         }
-        if (fontStyle & 8 /* FontStyle.Strikethrough */) {
+        if (fontStyle & 8 /* Strikethrough */) {
             r += 'strikethrough ';
         }
         if (r.length === 0) {
@@ -231,10 +232,26 @@ class InspectTokensWidget extends Disposable {
     getPosition() {
         return {
             position: this._editor.getPosition(),
-            preference: [2 /* ContentWidgetPositionPreference.BELOW */, 1 /* ContentWidgetPositionPreference.ABOVE */]
+            preference: [2 /* BELOW */, 1 /* ABOVE */]
         };
     }
 }
-registerEditorContribution(InspectTokensController.ID, InspectTokensController, 4 /* EditorContributionInstantiation.Lazy */);
+InspectTokensWidget._ID = 'editor.contrib.inspectTokensWidget';
+registerEditorContribution(InspectTokensController.ID, InspectTokensController);
 registerEditorAction(InspectTokens);
-//# sourceMappingURL=inspectTokens.js.map
+registerThemingParticipant((theme, collector) => {
+    const border = theme.getColor(editorHoverBorder);
+    if (border) {
+        const borderWidth = theme.type === ColorScheme.HIGH_CONTRAST ? 2 : 1;
+        collector.addRule(`.monaco-editor .tokens-inspect-widget { border: ${borderWidth}px solid ${border}; }`);
+        collector.addRule(`.monaco-editor .tokens-inspect-widget .tokens-inspect-separator { background-color: ${border}; }`);
+    }
+    const background = theme.getColor(editorHoverBackground);
+    if (background) {
+        collector.addRule(`.monaco-editor .tokens-inspect-widget { background-color: ${background}; }`);
+    }
+    const foreground = theme.getColor(editorHoverForeground);
+    if (foreground) {
+        collector.addRule(`.monaco-editor .tokens-inspect-widget { color: ${foreground}; }`);
+    }
+});

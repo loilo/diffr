@@ -2,6 +2,10 @@
  * Represents contiguous tokens over a contiguous range of lines.
  */
 export class ContiguousMultilineTokens {
+    constructor(startLineNumber, tokens) {
+        this._startLineNumber = startLineNumber;
+        this._tokens = tokens;
+    }
     /**
      * (Inclusive) start line number for these tokens.
      */
@@ -14,10 +18,6 @@ export class ContiguousMultilineTokens {
     get endLineNumber() {
         return this._startLineNumber + this._tokens.length - 1;
     }
-    constructor(startLineNumber, tokens) {
-        this._startLineNumber = startLineNumber;
-        this._tokens = tokens;
-    }
     /**
      * @see {@link _tokens}
      */
@@ -28,4 +28,3 @@ export class ContiguousMultilineTokens {
         this._tokens.push(lineTokens);
     }
 }
-//# sourceMappingURL=contiguousMultilineTokens.js.map

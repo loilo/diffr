@@ -5,26 +5,22 @@
 export class BracketInfo {
     constructor(range, 
     /** 0-based level */
-    nestingLevel, nestingLevelOfEqualBracketType, isInvalid) {
+    nestingLevel, isInvalid) {
         this.range = range;
         this.nestingLevel = nestingLevel;
-        this.nestingLevelOfEqualBracketType = nestingLevelOfEqualBracketType;
         this.isInvalid = isInvalid;
     }
 }
 export class BracketPairInfo {
     constructor(range, openingBracketRange, closingBracketRange, 
-    /** 0-based */
-    nestingLevel, nestingLevelOfEqualBracketType, bracketPairNode) {
+    /**
+     * 0-based
+    */
+    nestingLevel) {
         this.range = range;
         this.openingBracketRange = openingBracketRange;
         this.closingBracketRange = closingBracketRange;
         this.nestingLevel = nestingLevel;
-        this.nestingLevelOfEqualBracketType = nestingLevelOfEqualBracketType;
-        this.bracketPairNode = bracketPairNode;
-    }
-    get openingBracketInfo() {
-        return this.bracketPairNode.openingBracket.bracketInfo;
     }
 }
 export class BracketPairWithMinIndentationInfo extends BracketPairInfo {
@@ -32,13 +28,12 @@ export class BracketPairWithMinIndentationInfo extends BracketPairInfo {
     /**
      * 0-based
     */
-    nestingLevel, nestingLevelOfEqualBracketType, bracketPairNode, 
+    nestingLevel, 
     /**
      * -1 if not requested, otherwise the size of the minimum indentation in the bracket pair in terms of visible columns.
     */
     minVisibleColumnIndentation) {
-        super(range, openingBracketRange, closingBracketRange, nestingLevel, nestingLevelOfEqualBracketType, bracketPairNode);
+        super(range, openingBracketRange, closingBracketRange, nestingLevel);
         this.minVisibleColumnIndentation = minVisibleColumnIndentation;
     }
 }
-//# sourceMappingURL=textModelBracketPairs.js.map

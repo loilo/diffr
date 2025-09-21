@@ -44,4 +44,3 @@ export class MoveCaretCommand {
         }
     }
 }
-//# sourceMappingURL=moveCaretCommand.js.map

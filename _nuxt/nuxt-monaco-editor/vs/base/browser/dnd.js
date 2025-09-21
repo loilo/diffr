@@ -18,10 +18,21 @@ export const DataTransfers = {
      */
     TEXT: Mimes.text,
     /**
-     * Internal type used to pass around text/uri-list data.
-     *
-     * This is needed to work around https://bugs.chromium.org/p/chromium/issues/detail?id=239745.
+     * Application specific terminal transfer type.
      */
-    INTERNAL_URI_LIST: 'application/vnd.code.uri-list',
+    TERMINALS: 'Terminals'
 };
-//# sourceMappingURL=dnd.js.map
+export class DragAndDropData {
+    constructor(data) {
+        this.data = data;
+    }
+    update() {
+        // noop
+    }
+    getData() {
+        return this.data;
+    }
+}
+export const StaticDND = {
+    CurrentDragAndDropData: undefined
+};

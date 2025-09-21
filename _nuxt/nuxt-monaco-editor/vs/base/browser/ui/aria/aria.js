@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 import * as dom from '../../dom.js';
+import { isMacintosh } from '../../../common/platform.js';
 import './aria.css';
 // Use a max length since we are inserting the whole msg in the DOM and that can cause browsers to freeze for long messages #94233
 const MAX_MESSAGE_LENGTH = 20000;
@@ -27,6 +28,7 @@ export function setARIAContainer(parent) {
     const createStatusContainer = () => {
         const element = document.createElement('div');
         element.className = 'monaco-status';
+        element.setAttribute('role', 'complementary');
         element.setAttribute('aria-live', 'polite');
         element.setAttribute('aria-atomic', 'true');
         ariaContainer.appendChild(element);
@@ -60,13 +62,18 @@ export function status(msg) {
     if (!ariaContainer) {
         return;
     }
-    if (statusContainer.textContent !== msg) {
-        dom.clearNode(statusContainer2);
-        insertMessage(statusContainer, msg);
+    if (isMacintosh) {
+        alert(msg); // VoiceOver does not seem to support status role
     }
     else {
-        dom.clearNode(statusContainer);
-        insertMessage(statusContainer2, msg);
+        if (statusContainer.textContent !== msg) {
+            dom.clearNode(statusContainer2);
+            insertMessage(statusContainer, msg);
+        }
+        else {
+            dom.clearNode(statusContainer);
+            insertMessage(statusContainer2, msg);
+        }
     }
 }
 function insertMessage(target, msg) {
@@ -79,4 +86,3 @@ function insertMessage(target, msg) {
     target.style.visibility = 'hidden';
     target.style.visibility = 'visible';
 }
-//# sourceMappingURL=aria.js.map

@@ -1,10 +1,9 @@
 /*!-----------------------------------------------------------------------------
  * Copyright (c) Microsoft Corporation. All rights reserved.
- * Version: 0.53.0(4e45ba0c5ff45fc61c0ccac61c0987369df04a6e)
+ * Version: 0.32.1(29a273516805a852aa8edc5e05059f119b13eff0)
  * Released under the MIT license
  * https://github.com/microsoft/monaco-editor/blob/main/LICENSE.txt
  *-----------------------------------------------------------------------------*/
-
 
 // src/basic-languages/powerquery/powerquery.ts
 var conf = {
@@ -827,13 +826,10 @@ var language = {
   ],
   tokenizer: {
     root: [
-      // quoted identifier
       [/#"[\w \.]+"/, "identifier.quote"],
-      // numbers
       [/\d*\.\d+([eE][\-+]?\d+)?/, "number.float"],
       [/0[xX][0-9a-fA-F]+/, "number.hex"],
       [/\d+([eE][\-+]?\d+)?/, "number"],
-      // keywords
       [
         /(#?[a-z]+)\b/,
         {
@@ -847,7 +843,6 @@ var language = {
           }
         }
       ],
-      // built-in types
       [
         /\b([A-Z][a-zA-Z0-9]+\.Type)\b/,
         {
@@ -857,7 +852,6 @@ var language = {
           }
         }
       ],
-      // other built-ins
       [
         /\b([A-Z][a-zA-Z0-9]+\.[A-Z][a-zA-Z0-9]+)\b/,
         {
@@ -868,7 +862,6 @@ var language = {
           }
         }
       ],
-      // other identifiers
       [/\b([a-zA-Z_][\w\.]*)\b/, "identifier"],
       { include: "@whitespace" },
       { include: "@comments" },

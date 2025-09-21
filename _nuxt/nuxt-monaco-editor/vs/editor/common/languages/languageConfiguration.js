@@ -58,13 +58,13 @@ export class StandardAutoClosingPairConditional {
     }
     isOK(standardToken) {
         switch (standardToken) {
-            case 0 /* StandardTokenType.Other */:
+            case 0 /* Other */:
                 return true;
-            case 1 /* StandardTokenType.Comment */:
+            case 1 /* Comment */:
                 return this._inComment;
-            case 2 /* StandardTokenType.String */:
+            case 2 /* String */:
                 return this._inString;
-            case 3 /* StandardTokenType.RegEx */:
+            case 3 /* RegEx */:
                 return this._inRegEx;
         }
     }
@@ -93,13 +93,13 @@ export class StandardAutoClosingPairConditional {
         if (!this._neutralCharacterSearched) {
             this._neutralCharacterSearched = true;
             if (!this._neutralCharacter) {
-                this._neutralCharacter = this._findNeutralCharacterInRange(48 /* CharCode.Digit0 */, 57 /* CharCode.Digit9 */);
+                this._neutralCharacter = this._findNeutralCharacterInRange(48 /* Digit0 */, 57 /* Digit9 */);
             }
             if (!this._neutralCharacter) {
-                this._neutralCharacter = this._findNeutralCharacterInRange(97 /* CharCode.a */, 122 /* CharCode.z */);
+                this._neutralCharacter = this._findNeutralCharacterInRange(97 /* a */, 122 /* z */);
             }
             if (!this._neutralCharacter) {
-                this._neutralCharacter = this._findNeutralCharacterInRange(65 /* CharCode.A */, 90 /* CharCode.Z */);
+                this._neutralCharacter = this._findNeutralCharacterInRange(65 /* A */, 90 /* Z */);
             }
         }
         return this._neutralCharacter;
@@ -134,4 +134,3 @@ function appendEntry(target, key, value) {
         target.set(key, [value]);
     }
 }
-//# sourceMappingURL=languageConfiguration.js.map
