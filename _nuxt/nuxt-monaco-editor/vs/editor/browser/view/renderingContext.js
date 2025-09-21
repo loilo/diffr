@@ -20,39 +20,57 @@ export class RestrictedRenderingContext {
     getScrolledTopFromAbsoluteTop(absoluteTop) {
         return absoluteTop - this.scrollTop;
     }
-    getVerticalOffsetForLineNumber(lineNumber) {
-        return this._viewLayout.getVerticalOffsetForLineNumber(lineNumber);
+    getVerticalOffsetForLineNumber(lineNumber, includeViewZones) {
+        return this._viewLayout.getVerticalOffsetForLineNumber(lineNumber, includeViewZones);
+    }
+    getVerticalOffsetAfterLineNumber(lineNumber, includeViewZones) {
+        return this._viewLayout.getVerticalOffsetAfterLineNumber(lineNumber, includeViewZones);
+    }
+    getLineHeightForLineNumber(lineNumber) {
+        return this._viewLayout.getLineHeightForLineNumber(lineNumber);
     }
     getDecorationsInViewport() {
         return this.viewportData.getDecorationsInViewport();
     }
 }
 export class RenderingContext extends RestrictedRenderingContext {
-    constructor(viewLayout, viewportData, viewLines) {
+    constructor(viewLayout, viewportData, viewLines, viewLinesGpu) {
         super(viewLayout, viewportData);
         this._renderingContextBrand = undefined;
         this._viewLines = viewLines;
+        this._viewLinesGpu = viewLinesGpu;
     }
     linesVisibleRangesForRange(range, includeNewLines) {
-        return this._viewLines.linesVisibleRangesForRange(range, includeNewLines);
+        const domRanges = this._viewLines.linesVisibleRangesForRange(range, includeNewLines);
+        if (!this._viewLinesGpu) {
+            return domRanges ?? null;
+        }
+        const gpuRanges = this._viewLinesGpu.linesVisibleRangesForRange(range, includeNewLines);
+        if (!domRanges) {
+            return gpuRanges;
+        }
+        if (!gpuRanges) {
+            return domRanges;
+        }
+        return domRanges.concat(gpuRanges).sort((a, b) => a.lineNumber - b.lineNumber);
     }
     visibleRangeForPosition(position) {
-        return this._viewLines.visibleRangeForPosition(position);
+        return this._viewLines.visibleRangeForPosition(position) ?? this._viewLinesGpu?.visibleRangeForPosition(position) ?? null;
     }
 }
 export class LineVisibleRanges {
-    constructor(outsideRenderedLine, lineNumber, ranges) {
+    constructor(outsideRenderedLine, lineNumber, ranges, 
+    /**
+     * Indicates if the requested range does not end in this line, but continues on the next line.
+     */
+    continuesOnNextLine) {
         this.outsideRenderedLine = outsideRenderedLine;
         this.lineNumber = lineNumber;
         this.ranges = ranges;
+        this.continuesOnNextLine = continuesOnNextLine;
     }
 }
 export class HorizontalRange {
-    constructor(left, width) {
-        this._horizontalRangeBrand = undefined;
-        this.left = Math.round(left);
-        this.width = Math.round(width);
-    }
     static from(ranges) {
         const result = new Array(ranges.length);
         for (let i = 0, len = ranges.length; i < len; i++) {
@@ -60,6 +78,11 @@ export class HorizontalRange {
             result[i] = new HorizontalRange(range.left, range.width);
         }
         return result;
+    }
+    constructor(left, width) {
+        this._horizontalRangeBrand = undefined;
+        this.left = Math.round(left);
+        this.width = Math.round(width);
     }
     toString() {
         return `[${this.left},${this.width}]`;
@@ -91,3 +114,4 @@ export class VisibleRanges {
         this.ranges = ranges;
     }
 }
+//# sourceMappingURL=renderingContext.js.map

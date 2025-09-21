@@ -10,7 +10,7 @@ import { createDecorator } from '../../../../platform/instantiation/common/insta
 import { registerSingleton } from '../../../../platform/instantiation/common/extensions.js';
 import { localize } from '../../../../nls.js';
 const IEditorCancellationTokens = createDecorator('IEditorCancelService');
-const ctxCancellableOperation = new RawContextKey('cancellableOperation', false, localize('cancellableOperation', 'Whether the editor runs a cancellable operation, e.g. like \'Peek References\''));
+const ctxCancellableOperation = new RawContextKey('cancellableOperation', false, localize(931, 'Whether the editor runs a cancellable operation, e.g. like \'Peek References\''));
 registerSingleton(IEditorCancellationTokens, class {
     constructor() {
         this._tokens = new WeakMap();
@@ -49,7 +49,7 @@ registerSingleton(IEditorCancellationTokens, class {
             data.key.set(!data.tokens.isEmpty());
         }
     }
-}, true);
+}, 1 /* InstantiationType.Delayed */);
 export class EditorKeybindingCancellationTokenSource extends CancellationTokenSource {
     constructor(editor, parent) {
         super(parent);
@@ -66,8 +66,8 @@ registerEditorCommand(new class extends EditorCommand {
         super({
             id: 'editor.cancelOperation',
             kbOpts: {
-                weight: 100 /* EditorContrib */,
-                primary: 9 /* Escape */
+                weight: 100 /* KeybindingWeight.EditorContrib */,
+                primary: 9 /* KeyCode.Escape */
             },
             precondition: ctxCancellableOperation
         });
@@ -76,3 +76,4 @@ registerEditorCommand(new class extends EditorCommand {
         accessor.get(IEditorCancellationTokens).cancel(editor);
     }
 });
+//# sourceMappingURL=keybindingCancellation.js.map

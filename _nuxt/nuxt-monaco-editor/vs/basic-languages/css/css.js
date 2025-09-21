@@ -1,9 +1,10 @@
 /*!-----------------------------------------------------------------------------
  * Copyright (c) Microsoft Corporation. All rights reserved.
- * Version: 0.32.1(29a273516805a852aa8edc5e05059f119b13eff0)
+ * Version: 0.53.0(4e45ba0c5ff45fc61c0ccac61c0987369df04a6e)
  * Released under the MIT license
  * https://github.com/microsoft/monaco-editor/blob/main/LICENSE.txt
  *-----------------------------------------------------------------------------*/
+
 
 // src/basic-languages/css/css.ts
 var conf = {
@@ -41,6 +42,7 @@ var language = {
   defaultToken: "",
   tokenPostfix: ".css",
   ws: "[ 	\n\r\f]*",
+  // whitespaces (referenced in several rules)
   identifier: "-?-?([a-zA-Z]|(\\\\(([0-9a-fA-F]{1,6}\\s?)|[^[0-9a-fA-F])))([\\w\\-]|(\\\\(([0-9a-fA-F]{1,6}\\s?)|[^[0-9a-fA-F])))*",
   brackets: [
     { open: "{", close: "}", token: "delimiter.bracket" },
@@ -70,17 +72,21 @@ var language = {
       ],
       { include: "@selectorname" },
       ["[\\*]", "tag"],
+      // selector symbols
       ["[>\\+,]", "delimiter"],
+      // selector operators
       ["\\[", { token: "delimiter.bracket", next: "@selectorattribute" }],
       ["{", { token: "delimiter.bracket", next: "@selectorbody" }]
     ],
     selectorbody: [
       { include: "@comments" },
       ["[*_]?@identifier@ws:(?=(\\s|\\d|[^{;}]*[;}]))", "attribute.name", "@rulevalue"],
+      // rule definition: to distinguish from a nested selector check for whitespace, number or a semicolon
       ["}", { token: "delimiter.bracket", next: "@pop" }]
     ],
     selectorname: [
       ["(\\.|#(?=[^{])|%|(@identifier)|:)+", "tag"]
+      // selector (.foo, div, ...)
     ],
     selectorattribute: [{ include: "@term" }, ["]", { token: "delimiter.bracket", next: "@pop" }]],
     term: [
@@ -107,6 +113,7 @@ var language = {
       ["!important", "keyword"],
       [";", "delimiter", "@pop"],
       ["(?=})", { token: "", next: "@pop" }]
+      // missing semicolon
     ],
     warndebug: [["[@](warn|debug)", { token: "keyword", next: "@declarationbody" }]],
     import: [["[@](import)", { token: "keyword", next: "@declarationbody" }]],
@@ -123,6 +130,7 @@ var language = {
       { include: "@term" },
       [";", "delimiter", "@pop"],
       ["(?=})", { token: "", next: "@pop" }]
+      // missing semicolon
     ],
     comments: [
       ["\\/\\*", "comment", "@comment"],
@@ -140,7 +148,7 @@ var language = {
     ],
     units: [
       [
-        "(em|ex|ch|rem|vmin|vmax|vw|vh|vm|cm|mm|in|px|pt|pc|deg|grad|rad|turn|s|ms|Hz|kHz|%)?",
+        "(em|ex|ch|rem|fr|vmin|vmax|vw|vh|vm|cm|mm|in|px|pt|pc|deg|grad|rad|turn|s|ms|Hz|kHz|%)?",
         "attribute.value.unit",
         "@pop"
       ]

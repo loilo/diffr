@@ -2,15 +2,6 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 import { onUnexpectedError } from '../../../../base/common/errors.js';
 import { Emitter } from '../../../../base/common/event.js';
 import { defaultGenerator } from '../../../../base/common/idGenerator.js';
@@ -32,21 +23,19 @@ export class OneReference {
         return this.link.uri;
     }
     get range() {
-        var _a, _b;
-        return (_b = (_a = this._range) !== null && _a !== void 0 ? _a : this.link.targetSelectionRange) !== null && _b !== void 0 ? _b : this.link.range;
+        return this._range ?? this.link.targetSelectionRange ?? this.link.range;
     }
     set range(value) {
         this._range = value;
         this._rangeCallback(this);
     }
     get ariaMessage() {
-        var _a;
-        const preview = (_a = this.parent.getPreview(this)) === null || _a === void 0 ? void 0 : _a.preview(this.range);
+        const preview = this.parent.getPreview(this)?.preview(this.range);
         if (!preview) {
-            return localize('aria.oneReference', "symbol in {0} on line {1} at column {2}", basename(this.uri), this.range.startLineNumber, this.range.startColumn);
+            return localize(1079, "in {0} on line {1} at column {2}", basename(this.uri), this.range.startLineNumber, this.range.startColumn);
         }
         else {
-            return localize({ key: 'aria.oneReference.preview', comment: ['Placeholders are: 0: filename, 1:line number, 2: column number, 3: preview snippet of source code'] }, "symbol in {0} on line {1} at column {2}, {3}", basename(this.uri), this.range.startLineNumber, this.range.startColumn, preview.value);
+            return localize(1080, "{0} in {1} on line {2} at column {3}", preview.value, basename(this.uri), this.range.startLineNumber, this.range.startColumn);
         }
     }
 }
@@ -65,7 +54,7 @@ export class FilePreview {
         const { startLineNumber, startColumn, endLineNumber, endColumn } = range;
         const word = model.getWordUntilPosition({ lineNumber: startLineNumber, column: startColumn - n });
         const beforeRange = new Range(startLineNumber, word.startColumn, startLineNumber, startColumn);
-        const afterRange = new Range(endLineNumber, endColumn, endLineNumber, 1073741824 /* MAX_SAFE_SMALL_INTEGER */);
+        const afterRange = new Range(endLineNumber, endColumn, endLineNumber, 1073741824 /* Constants.MAX_SAFE_SMALL_INTEGER */);
         const before = model.getValueInRange(beforeRange).replace(/^\s+/, '');
         const inside = model.getValueInRange(range);
         const after = model.getValueInRange(afterRange).replace(/\s+$/, '');
@@ -92,31 +81,29 @@ export class FileReferences {
     get ariaMessage() {
         const len = this.children.length;
         if (len === 1) {
-            return localize('aria.fileReferences.1', "1 symbol in {0}, full path {1}", basename(this.uri), this.uri.fsPath);
+            return localize(1081, "1 symbol in {0}, full path {1}", basename(this.uri), this.uri.fsPath);
         }
         else {
-            return localize('aria.fileReferences.N', "{0} symbols in {1}, full path {2}", len, basename(this.uri), this.uri.fsPath);
+            return localize(1082, "{0} symbols in {1}, full path {2}", len, basename(this.uri), this.uri.fsPath);
         }
     }
-    resolve(textModelResolverService) {
-        return __awaiter(this, void 0, void 0, function* () {
-            if (this._previews.size !== 0) {
-                return this;
-            }
-            for (let child of this.children) {
-                if (this._previews.has(child.uri)) {
-                    continue;
-                }
-                try {
-                    const ref = yield textModelResolverService.createModelReference(child.uri);
-                    this._previews.set(child.uri, new FilePreview(ref));
-                }
-                catch (err) {
-                    onUnexpectedError(err);
-                }
-            }
+    async resolve(textModelResolverService) {
+        if (this._previews.size !== 0) {
             return this;
-        });
+        }
+        for (const child of this.children) {
+            if (this._previews.has(child.uri)) {
+                continue;
+            }
+            try {
+                const ref = await textModelResolverService.createModelReference(child.uri);
+                this._previews.set(child.uri, new FilePreview(ref));
+            }
+            catch (err) {
+                onUnexpectedError(err);
+            }
+        }
+        return this;
     }
 }
 export class ReferencesModel {
@@ -131,7 +118,7 @@ export class ReferencesModel {
         const [providersFirst] = links;
         links.sort(ReferencesModel._compareReferences);
         let current;
-        for (let link of links) {
+        for (const link of links) {
             if (!current || !extUri.isEqual(current.uri, link.uri, true)) {
                 // new group
                 current = new FileReferences(this, link.uri);
@@ -161,23 +148,23 @@ export class ReferencesModel {
     }
     get ariaMessage() {
         if (this.isEmpty) {
-            return localize('aria.result.0', "No results found");
+            return localize(1083, "No results found");
         }
         else if (this.references.length === 1) {
-            return localize('aria.result.1', "Found 1 symbol in {0}", this.references[0].uri.fsPath);
+            return localize(1084, "Found 1 symbol in {0}", this.references[0].uri.fsPath);
         }
         else if (this.groups.length === 1) {
-            return localize('aria.result.n1', "Found {0} symbols in {1}", this.references.length, this.groups[0].uri.fsPath);
+            return localize(1085, "Found {0} symbols in {1}", this.references.length, this.groups[0].uri.fsPath);
         }
         else {
-            return localize('aria.result.nm', "Found {0} symbols in {1} files", this.references.length, this.groups.length);
+            return localize(1086, "Found {0} symbols in {1} files", this.references.length, this.groups.length);
         }
     }
     nextOrPreviousReference(reference, next) {
-        let { parent } = reference;
+        const { parent } = reference;
         let idx = parent.children.indexOf(reference);
-        let childCount = parent.children.length;
-        let groupCount = parent.parent.groups.length;
+        const childCount = parent.children.length;
+        const groupCount = parent.parent.groups.length;
         if (groupCount === 1 || next && idx + 1 < childCount || !next && idx > 0) {
             // cycling within one file
             if (next) {
@@ -249,3 +236,4 @@ export class ReferencesModel {
         return extUri.compare(a.uri, b.uri) || Range.compareRangesUsingStarts(a.range, b.range);
     }
 }
+//# sourceMappingURL=referencesModel.js.map

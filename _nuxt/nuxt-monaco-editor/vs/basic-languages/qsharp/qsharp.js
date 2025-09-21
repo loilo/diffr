@@ -1,9 +1,10 @@
 /*!-----------------------------------------------------------------------------
  * Copyright (c) Microsoft Corporation. All rights reserved.
- * Version: 0.32.1(29a273516805a852aa8edc5e05059f119b13eff0)
+ * Version: 0.53.0(4e45ba0c5ff45fc61c0ccac61c0987369df04a6e)
  * Released under the MIT license
  * https://github.com/microsoft/monaco-editor/blob/main/LICENSE.txt
  *-----------------------------------------------------------------------------*/
+
 
 // src/basic-languages/qsharp/qsharp.ts
 var conf = {
@@ -29,15 +30,19 @@ var conf = {
   ]
 };
 var language = {
+  // Set defaultToken to invalid to see what you do not tokenize yet
   keywords: [
     "namespace",
     "open",
+    "import",
+    "export",
     "as",
     "operation",
     "function",
     "body",
     "adjoint",
     "newtype",
+    "struct",
     "controlled",
     "if",
     "elif",
@@ -73,7 +78,8 @@ var language = {
     "borrow",
     "using",
     "borrowing",
-    "mutable"
+    "mutable",
+    "internal"
   ],
   typeKeywords: [
     "Unit",
@@ -137,7 +143,6 @@ var language = {
     "stackalloc",
     "static",
     "string",
-    "struct",
     "switch",
     "this",
     "throw",
@@ -195,6 +200,7 @@ var language = {
     "^=",
     ":",
     "::",
+    ".",
     "..",
     "==",
     "...",
@@ -232,10 +238,13 @@ var language = {
     "w/="
   ],
   namespaceFollows: ["namespace", "open"],
+  importsFollows: ["import"],
   symbols: /[=><!~?:&|+\-*\/\^%@._]+/,
   escapes: /\\[\s\S]/,
+  // The main tokenizer for our languages
   tokenizer: {
     root: [
+      // identifiers and keywords
       [
         /[a-zA-Z_$][\w$]*/,
         {
@@ -243,6 +252,10 @@ var language = {
             "@namespaceFollows": {
               token: "keyword.$0",
               next: "@namespace"
+            },
+            "@importsFollows": {
+              token: "keyword.$0",
+              next: "@imports"
             },
             "@typeKeywords": "type",
             "@keywords": "keyword",
@@ -253,12 +266,18 @@ var language = {
           }
         }
       ],
+      // whitespace
       { include: "@whitespace" },
+      // delimiters and operators
       [/[{}()\[\]]/, "@brackets"],
       [/@symbols/, { cases: { "@operators": "operator", "@default": "" } }],
+      // numbers
       [/\d*\.\d+([eE][\-+]?\d+)?/, "number.float"],
       [/\d+/, "number"],
+      // delimiter: after number because of .\d floats
       [/[;,.]/, "delimiter"],
+      // strings
+      //[/"([^"\\]|\\.)*$/, 'string.invalid' ],  // non-terminated string
       [/"/, { token: "string.quote", bracket: "@open", next: "@string" }]
     ],
     string: [
@@ -269,7 +288,15 @@ var language = {
     namespace: [
       { include: "@whitespace" },
       [/[A-Za-z]\w*/, "namespace"],
-      [/[\.=]/, "delimiter"],
+      [/[\.]/, "delimiter"],
+      ["", "", "@pop"]
+    ],
+    imports: [
+      { include: "@whitespace" },
+      [/[A-Za-z]\w*(?=\.)/, "namespace"],
+      [/[A-Za-z]\w*/, "identifier"],
+      [/\*/, "wildcard"],
+      [/[\.,]/, "delimiter"],
       ["", "", "@pop"]
     ],
     whitespace: [

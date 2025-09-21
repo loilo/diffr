@@ -5,8 +5,10 @@
 import './rulers.css';
 import { createFastDomNode } from '../../../../base/browser/fastDomNode.js';
 import { ViewPart } from '../../view/viewPart.js';
-import { editorRuler } from '../../../common/core/editorColorRegistry.js';
-import { registerThemingParticipant } from '../../../../platform/theme/common/themeService.js';
+/**
+ * Rulers are vertical lines that appear at certain columns in the editor. There can be >= 0 rulers
+ * at a time.
+ */
 export class Rulers extends ViewPart {
     constructor(context) {
         super(context);
@@ -16,8 +18,8 @@ export class Rulers extends ViewPart {
         this.domNode.setClassName('view-rulers');
         this._renderedRulers = [];
         const options = this._context.configuration.options;
-        this._rulers = options.get(91 /* rulers */);
-        this._typicalHalfwidthCharacterWidth = options.get(44 /* fontInfo */).typicalHalfwidthCharacterWidth;
+        this._rulers = options.get(115 /* EditorOption.rulers */);
+        this._typicalHalfwidthCharacterWidth = options.get(59 /* EditorOption.fontInfo */).typicalHalfwidthCharacterWidth;
     }
     dispose() {
         super.dispose();
@@ -25,8 +27,8 @@ export class Rulers extends ViewPart {
     // --- begin event handlers
     onConfigurationChanged(e) {
         const options = this._context.configuration.options;
-        this._rulers = options.get(91 /* rulers */);
-        this._typicalHalfwidthCharacterWidth = options.get(44 /* fontInfo */).typicalHalfwidthCharacterWidth;
+        this._rulers = options.get(115 /* EditorOption.rulers */);
+        this._typicalHalfwidthCharacterWidth = options.get(59 /* EditorOption.fontInfo */).typicalHalfwidthCharacterWidth;
         return true;
     }
     onScrollChanged(e) {
@@ -44,7 +46,7 @@ export class Rulers extends ViewPart {
             return;
         }
         if (currentCount < desiredCount) {
-            const { tabSize } = this._context.model.getTextModelOptions();
+            const { tabSize } = this._context.viewModel.model.getOptions();
             const rulerWidth = tabSize;
             let addCount = desiredCount - currentCount;
             while (addCount > 0) {
@@ -75,9 +77,4 @@ export class Rulers extends ViewPart {
         }
     }
 }
-registerThemingParticipant((theme, collector) => {
-    const rulerColor = theme.getColor(editorRuler);
-    if (rulerColor) {
-        collector.addRule(`.monaco-editor .view-ruler { box-shadow: 1px 0 0 0 ${rulerColor} inset; }`);
-    }
-});
+//# sourceMappingURL=rulers.js.map

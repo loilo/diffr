@@ -1,9 +1,14 @@
-import { Emitter, PauseableEmitter } from '../../../base/common/event.js';
-import { Disposable } from '../../../base/common/lifecycle.js';
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+import { Promises, RunOnceScheduler, runWhenGlobalIdle } from '../../../base/common/async.js';
+import { Emitter, Event, PauseableEmitter } from '../../../base/common/event.js';
+import { Disposable, MutableDisposable } from '../../../base/common/lifecycle.js';
 import { isUndefinedOrNull } from '../../../base/common/types.js';
-import { InMemoryStorageDatabase, Storage } from '../../../base/parts/storage/common/storage.js';
+import { InMemoryStorageDatabase, Storage, StorageHint } from '../../../base/parts/storage/common/storage.js';
 import { createDecorator } from '../../instantiation/common/instantiation.js';
-const TARGET_KEY = '__$__targetStorageMarker';
+export const TARGET_KEY = '__$__targetStorageMarker';
 export const IStorageService = createDecorator('storageService');
 export var WillSaveStateReason;
 (function (WillSaveStateReason) {
@@ -16,70 +21,101 @@ export var WillSaveStateReason;
      */
     WillSaveStateReason[WillSaveStateReason["SHUTDOWN"] = 1] = "SHUTDOWN";
 })(WillSaveStateReason || (WillSaveStateReason = {}));
+export function loadKeyTargets(storage) {
+    const keysRaw = storage.get(TARGET_KEY);
+    if (keysRaw) {
+        try {
+            return JSON.parse(keysRaw);
+        }
+        catch (error) {
+            // Fail gracefully
+        }
+    }
+    return Object.create(null);
+}
 export class AbstractStorageService extends Disposable {
+    static { this.DEFAULT_FLUSH_INTERVAL = 60 * 1000; } // every minute
     constructor(options = { flushInterval: AbstractStorageService.DEFAULT_FLUSH_INTERVAL }) {
         super();
-        this.options = options;
         this._onDidChangeValue = this._register(new PauseableEmitter());
         this._onDidChangeTarget = this._register(new PauseableEmitter());
         this._onWillSaveState = this._register(new Emitter());
         this.onWillSaveState = this._onWillSaveState.event;
+        this.runFlushWhenIdle = this._register(new MutableDisposable());
         this._workspaceKeyTargets = undefined;
-        this._globalKeyTargets = undefined;
+        this._profileKeyTargets = undefined;
+        this._applicationKeyTargets = undefined;
+        this.flushWhenIdleScheduler = this._register(new RunOnceScheduler(() => this.doFlushWhenIdle(), options.flushInterval));
     }
-    emitDidChangeValue(scope, key) {
+    onDidChangeValue(scope, key, disposable) {
+        return Event.filter(this._onDidChangeValue.event, e => e.scope === scope && (key === undefined || e.key === key), disposable);
+    }
+    doFlushWhenIdle() {
+        this.runFlushWhenIdle.value = runWhenGlobalIdle(() => {
+            if (this.shouldFlushWhenIdle()) {
+                this.flush();
+            }
+            // repeat
+            this.flushWhenIdleScheduler.schedule();
+        });
+    }
+    shouldFlushWhenIdle() {
+        return true;
+    }
+    emitDidChangeValue(scope, event) {
+        const { key, external } = event;
         // Specially handle `TARGET_KEY`
         if (key === TARGET_KEY) {
             // Clear our cached version which is now out of date
-            if (scope === 0 /* GLOBAL */) {
-                this._globalKeyTargets = undefined;
-            }
-            else if (scope === 1 /* WORKSPACE */) {
-                this._workspaceKeyTargets = undefined;
+            switch (scope) {
+                case -1 /* StorageScope.APPLICATION */:
+                    this._applicationKeyTargets = undefined;
+                    break;
+                case 0 /* StorageScope.PROFILE */:
+                    this._profileKeyTargets = undefined;
+                    break;
+                case 1 /* StorageScope.WORKSPACE */:
+                    this._workspaceKeyTargets = undefined;
+                    break;
             }
             // Emit as `didChangeTarget` event
             this._onDidChangeTarget.fire({ scope });
         }
         // Emit any other key to outside
         else {
-            this._onDidChangeValue.fire({ scope, key, target: this.getKeyTargets(scope)[key] });
+            this._onDidChangeValue.fire({ scope, key, target: this.getKeyTargets(scope)[key], external });
         }
     }
     get(key, scope, fallbackValue) {
-        var _a;
-        return (_a = this.getStorage(scope)) === null || _a === void 0 ? void 0 : _a.get(key, fallbackValue);
+        return this.getStorage(scope)?.get(key, fallbackValue);
     }
     getBoolean(key, scope, fallbackValue) {
-        var _a;
-        return (_a = this.getStorage(scope)) === null || _a === void 0 ? void 0 : _a.getBoolean(key, fallbackValue);
+        return this.getStorage(scope)?.getBoolean(key, fallbackValue);
     }
     getNumber(key, scope, fallbackValue) {
-        var _a;
-        return (_a = this.getStorage(scope)) === null || _a === void 0 ? void 0 : _a.getNumber(key, fallbackValue);
+        return this.getStorage(scope)?.getNumber(key, fallbackValue);
     }
-    store(key, value, scope, target) {
+    store(key, value, scope, target, external = false) {
         // We remove the key for undefined/null values
         if (isUndefinedOrNull(value)) {
-            this.remove(key, scope);
+            this.remove(key, scope, external);
             return;
         }
         // Update our datastructures but send events only after
         this.withPausedEmitters(() => {
-            var _a;
             // Update key-target map
             this.updateKeyTarget(key, scope, target);
             // Store actual value
-            (_a = this.getStorage(scope)) === null || _a === void 0 ? void 0 : _a.set(key, value);
+            this.getStorage(scope)?.set(key, value, external);
         });
     }
-    remove(key, scope) {
+    remove(key, scope, external = false) {
         // Update our datastructures but send events only after
         this.withPausedEmitters(() => {
-            var _a;
             // Update key-target map
             this.updateKeyTarget(key, scope, undefined);
             // Remove actual key
-            (_a = this.getStorage(scope)) === null || _a === void 0 ? void 0 : _a.delete(key);
+            this.getStorage(scope)?.delete(key, external);
         });
     }
     withPausedEmitters(fn) {
@@ -95,62 +131,104 @@ export class AbstractStorageService extends Disposable {
             this._onDidChangeTarget.resume();
         }
     }
-    updateKeyTarget(key, scope, target) {
-        var _a, _b;
+    updateKeyTarget(key, scope, target, external = false) {
         // Add
         const keyTargets = this.getKeyTargets(scope);
         if (typeof target === 'number') {
             if (keyTargets[key] !== target) {
                 keyTargets[key] = target;
-                (_a = this.getStorage(scope)) === null || _a === void 0 ? void 0 : _a.set(TARGET_KEY, JSON.stringify(keyTargets));
+                this.getStorage(scope)?.set(TARGET_KEY, JSON.stringify(keyTargets), external);
             }
         }
         // Remove
         else {
             if (typeof keyTargets[key] === 'number') {
                 delete keyTargets[key];
-                (_b = this.getStorage(scope)) === null || _b === void 0 ? void 0 : _b.set(TARGET_KEY, JSON.stringify(keyTargets));
+                this.getStorage(scope)?.set(TARGET_KEY, JSON.stringify(keyTargets), external);
             }
         }
     }
     get workspaceKeyTargets() {
         if (!this._workspaceKeyTargets) {
-            this._workspaceKeyTargets = this.loadKeyTargets(1 /* WORKSPACE */);
+            this._workspaceKeyTargets = this.loadKeyTargets(1 /* StorageScope.WORKSPACE */);
         }
         return this._workspaceKeyTargets;
     }
-    get globalKeyTargets() {
-        if (!this._globalKeyTargets) {
-            this._globalKeyTargets = this.loadKeyTargets(0 /* GLOBAL */);
+    get profileKeyTargets() {
+        if (!this._profileKeyTargets) {
+            this._profileKeyTargets = this.loadKeyTargets(0 /* StorageScope.PROFILE */);
         }
-        return this._globalKeyTargets;
+        return this._profileKeyTargets;
+    }
+    get applicationKeyTargets() {
+        if (!this._applicationKeyTargets) {
+            this._applicationKeyTargets = this.loadKeyTargets(-1 /* StorageScope.APPLICATION */);
+        }
+        return this._applicationKeyTargets;
     }
     getKeyTargets(scope) {
-        return scope === 0 /* GLOBAL */ ? this.globalKeyTargets : this.workspaceKeyTargets;
+        switch (scope) {
+            case -1 /* StorageScope.APPLICATION */:
+                return this.applicationKeyTargets;
+            case 0 /* StorageScope.PROFILE */:
+                return this.profileKeyTargets;
+            default:
+                return this.workspaceKeyTargets;
+        }
     }
     loadKeyTargets(scope) {
-        const keysRaw = this.get(TARGET_KEY, scope);
-        if (keysRaw) {
-            try {
-                return JSON.parse(keysRaw);
-            }
-            catch (error) {
-                // Fail gracefully
-            }
+        const storage = this.getStorage(scope);
+        return storage ? loadKeyTargets(storage) : Object.create(null);
+    }
+    async flush(reason = WillSaveStateReason.NONE) {
+        // Signal event to collect changes
+        this._onWillSaveState.fire({ reason });
+        const applicationStorage = this.getStorage(-1 /* StorageScope.APPLICATION */);
+        const profileStorage = this.getStorage(0 /* StorageScope.PROFILE */);
+        const workspaceStorage = this.getStorage(1 /* StorageScope.WORKSPACE */);
+        switch (reason) {
+            // Unspecific reason: just wait when data is flushed
+            case WillSaveStateReason.NONE:
+                await Promises.settled([
+                    applicationStorage?.whenFlushed() ?? Promise.resolve(),
+                    profileStorage?.whenFlushed() ?? Promise.resolve(),
+                    workspaceStorage?.whenFlushed() ?? Promise.resolve()
+                ]);
+                break;
+            // Shutdown: we want to flush as soon as possible
+            // and not hit any delays that might be there
+            case WillSaveStateReason.SHUTDOWN:
+                await Promises.settled([
+                    applicationStorage?.flush(0) ?? Promise.resolve(),
+                    profileStorage?.flush(0) ?? Promise.resolve(),
+                    workspaceStorage?.flush(0) ?? Promise.resolve()
+                ]);
+                break;
         }
-        return Object.create(null);
     }
 }
-AbstractStorageService.DEFAULT_FLUSH_INTERVAL = 60 * 1000; // every minute
 export class InMemoryStorageService extends AbstractStorageService {
     constructor() {
         super();
-        this.globalStorage = this._register(new Storage(new InMemoryStorageDatabase()));
-        this.workspaceStorage = this._register(new Storage(new InMemoryStorageDatabase()));
-        this._register(this.workspaceStorage.onDidChangeStorage(key => this.emitDidChangeValue(1 /* WORKSPACE */, key)));
-        this._register(this.globalStorage.onDidChangeStorage(key => this.emitDidChangeValue(0 /* GLOBAL */, key)));
+        this.applicationStorage = this._register(new Storage(new InMemoryStorageDatabase(), { hint: StorageHint.STORAGE_IN_MEMORY }));
+        this.profileStorage = this._register(new Storage(new InMemoryStorageDatabase(), { hint: StorageHint.STORAGE_IN_MEMORY }));
+        this.workspaceStorage = this._register(new Storage(new InMemoryStorageDatabase(), { hint: StorageHint.STORAGE_IN_MEMORY }));
+        this._register(this.workspaceStorage.onDidChangeStorage(e => this.emitDidChangeValue(1 /* StorageScope.WORKSPACE */, e)));
+        this._register(this.profileStorage.onDidChangeStorage(e => this.emitDidChangeValue(0 /* StorageScope.PROFILE */, e)));
+        this._register(this.applicationStorage.onDidChangeStorage(e => this.emitDidChangeValue(-1 /* StorageScope.APPLICATION */, e)));
     }
     getStorage(scope) {
-        return scope === 0 /* GLOBAL */ ? this.globalStorage : this.workspaceStorage;
+        switch (scope) {
+            case -1 /* StorageScope.APPLICATION */:
+                return this.applicationStorage;
+            case 0 /* StorageScope.PROFILE */:
+                return this.profileStorage;
+            default:
+                return this.workspaceStorage;
+        }
+    }
+    shouldFlushWhenIdle() {
+        return false;
     }
 }
+//# sourceMappingURL=storage.js.map

@@ -11,12 +11,12 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
+var FileReferencesRenderer_1;
 import * as dom from '../../../../../base/browser/dom.js';
 import { CountBadge } from '../../../../../base/browser/ui/countBadge/countBadge.js';
 import { HighlightedLabel } from '../../../../../base/browser/ui/highlightedlabel/highlightedLabel.js';
 import { IconLabel } from '../../../../../base/browser/ui/iconLabel/iconLabel.js';
 import { createMatches, FuzzyScore } from '../../../../../base/common/filters.js';
-import { getBaseLabel } from '../../../../../base/common/labels.js';
 import { Disposable } from '../../../../../base/common/lifecycle.js';
 import { basename, dirname } from '../../../../../base/common/resources.js';
 import { ITextModelService } from '../../../../common/services/resolverService.js';
@@ -24,8 +24,7 @@ import { localize } from '../../../../../nls.js';
 import { IInstantiationService } from '../../../../../platform/instantiation/common/instantiation.js';
 import { IKeybindingService } from '../../../../../platform/keybinding/common/keybinding.js';
 import { ILabelService } from '../../../../../platform/label/common/label.js';
-import { attachBadgeStyler } from '../../../../../platform/theme/common/styler.js';
-import { IThemeService } from '../../../../../platform/theme/common/themeService.js';
+import { defaultCountBadgeStyles } from '../../../../../platform/theme/browser/defaultStyles.js';
 import { FileReferences, OneReference, ReferencesModel } from '../referencesModel.js';
 let DataSource = class DataSource {
     constructor(_resolverService) {
@@ -80,9 +79,8 @@ let StringRepresentationProvider = class StringRepresentationProvider {
         this._keybindingService = _keybindingService;
     }
     getKeyboardNavigationLabel(element) {
-        var _a;
         if (element instanceof OneReference) {
-            const parts = (_a = element.parent.getPreview(element)) === null || _a === void 0 ? void 0 : _a.preview(element.range);
+            const parts = element.parent.getPreview(element)?.preview(element.range);
             if (parts) {
                 return parts.value;
             }
@@ -102,37 +100,37 @@ export class IdentityProvider {
 }
 //#region render: File
 let FileReferencesTemplate = class FileReferencesTemplate extends Disposable {
-    constructor(container, _uriLabel, themeService) {
+    constructor(container, _labelService) {
         super();
-        this._uriLabel = _uriLabel;
+        this._labelService = _labelService;
         const parent = document.createElement('div');
         parent.classList.add('reference-file');
         this.file = this._register(new IconLabel(parent, { supportHighlights: true }));
-        this.badge = new CountBadge(dom.append(parent, dom.$('.count')));
-        this._register(attachBadgeStyler(this.badge, themeService));
+        this.badge = this._register(new CountBadge(dom.append(parent, dom.$('.count')), {}, defaultCountBadgeStyles));
         container.appendChild(parent);
     }
     set(element, matches) {
-        let parent = dirname(element.uri);
-        this.file.setLabel(getBaseLabel(element.uri), this._uriLabel.getUriLabel(parent, { relative: true }), { title: this._uriLabel.getUriLabel(element.uri), matches });
+        const parent = dirname(element.uri);
+        this.file.setLabel(this._labelService.getUriBasenameLabel(element.uri), this._labelService.getUriLabel(parent, { relative: true }), { title: this._labelService.getUriLabel(element.uri), matches });
         const len = element.children.length;
         this.badge.setCount(len);
         if (len > 1) {
-            this.badge.setTitleFormat(localize('referencesCount', "{0} references", len));
+            this.badge.setTitleFormat(localize(1073, "{0} references", len));
         }
         else {
-            this.badge.setTitleFormat(localize('referenceCount', "{0} reference", len));
+            this.badge.setTitleFormat(localize(1074, "{0} reference", len));
         }
     }
 };
 FileReferencesTemplate = __decorate([
-    __param(1, ILabelService),
-    __param(2, IThemeService)
+    __param(1, ILabelService)
 ], FileReferencesTemplate);
 let FileReferencesRenderer = class FileReferencesRenderer {
+    static { FileReferencesRenderer_1 = this; }
+    static { this.id = 'FileReferencesRenderer'; }
     constructor(_instantiationService) {
         this._instantiationService = _instantiationService;
-        this.templateId = FileReferencesRenderer.id;
+        this.templateId = FileReferencesRenderer_1.id;
     }
     renderTemplate(container) {
         return this._instantiationService.createInstance(FileReferencesTemplate, container);
@@ -144,20 +142,19 @@ let FileReferencesRenderer = class FileReferencesRenderer {
         templateData.dispose();
     }
 };
-FileReferencesRenderer.id = 'FileReferencesRenderer';
-FileReferencesRenderer = __decorate([
+FileReferencesRenderer = FileReferencesRenderer_1 = __decorate([
     __param(0, IInstantiationService)
 ], FileReferencesRenderer);
 export { FileReferencesRenderer };
 //#endregion
 //#region render: Reference
-class OneReferenceTemplate {
+class OneReferenceTemplate extends Disposable {
     constructor(container) {
-        this.label = new HighlightedLabel(container);
+        super();
+        this.label = this._register(new HighlightedLabel(container));
     }
     set(element, score) {
-        var _a;
-        const preview = (_a = element.parent.getPreview(element)) === null || _a === void 0 ? void 0 : _a.preview(element.range);
+        const preview = element.parent.getPreview(element)?.preview(element.range);
         if (!preview || !preview.value) {
             // this means we FAILED to resolve the document or the value is the empty string
             this.label.set(`${basename(element.uri)}:${element.range.startLineNumber + 1}:${element.range.startColumn + 1}`);
@@ -181,22 +178,24 @@ export class OneReferenceRenderer {
     constructor() {
         this.templateId = OneReferenceRenderer.id;
     }
+    static { this.id = 'OneReferenceRenderer'; }
     renderTemplate(container) {
         return new OneReferenceTemplate(container);
     }
     renderElement(node, index, templateData) {
         templateData.set(node.element, node.filterData);
     }
-    disposeTemplate() {
+    disposeTemplate(templateData) {
+        templateData.dispose();
     }
 }
-OneReferenceRenderer.id = 'OneReferenceRenderer';
 //#endregion
 export class AccessibilityProvider {
     getWidgetAriaLabel() {
-        return localize('treeAriaLabel', "References");
+        return localize(1075, "References");
     }
     getAriaLabel(element) {
         return element.ariaMessage;
     }
 }
+//# sourceMappingURL=referencesTree.js.map

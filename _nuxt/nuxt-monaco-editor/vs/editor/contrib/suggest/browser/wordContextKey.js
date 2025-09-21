@@ -11,24 +11,27 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
+var WordContextKey_1;
 import { IContextKeyService, RawContextKey } from '../../../../platform/contextkey/common/contextkey.js';
+import { localize } from '../../../../nls.js';
 let WordContextKey = class WordContextKey {
+    static { WordContextKey_1 = this; }
+    static { this.AtEnd = new RawContextKey('atEndOfWord', false, { type: 'boolean', description: localize(1476, "A context key that is true when at the end of a word. Note that this is only defined when tab-completions are enabled") }); }
     constructor(_editor, contextKeyService) {
         this._editor = _editor;
         this._enabled = false;
-        this._ckAtEnd = WordContextKey.AtEnd.bindTo(contextKeyService);
-        this._configListener = this._editor.onDidChangeConfiguration(e => e.hasChanged(111 /* tabCompletion */) && this._update());
+        this._ckAtEnd = WordContextKey_1.AtEnd.bindTo(contextKeyService);
+        this._configListener = this._editor.onDidChangeConfiguration(e => e.hasChanged(138 /* EditorOption.tabCompletion */) && this._update());
         this._update();
     }
     dispose() {
-        var _a;
         this._configListener.dispose();
-        (_a = this._selectionListener) === null || _a === void 0 ? void 0 : _a.dispose();
+        this._selectionListener?.dispose();
         this._ckAtEnd.reset();
     }
     _update() {
         // only update this when tab completions are enabled
-        const enabled = this._editor.getOption(111 /* tabCompletion */) === 'on';
+        const enabled = this._editor.getOption(138 /* EditorOption.tabCompletion */) === 'on';
         if (this._enabled === enabled) {
             return;
         }
@@ -46,7 +49,7 @@ let WordContextKey = class WordContextKey {
                     this._ckAtEnd.set(false);
                     return;
                 }
-                this._ckAtEnd.set(word.endColumn === selection.getStartPosition().column);
+                this._ckAtEnd.set(word.endColumn === selection.getStartPosition().column && selection.getStartPosition().lineNumber === selection.getEndPosition().lineNumber);
             };
             this._selectionListener = this._editor.onDidChangeCursorSelection(checkForWordEnd);
             checkForWordEnd();
@@ -58,8 +61,8 @@ let WordContextKey = class WordContextKey {
         }
     }
 };
-WordContextKey.AtEnd = new RawContextKey('atEndOfWord', false);
-WordContextKey = __decorate([
+WordContextKey = WordContextKey_1 = __decorate([
     __param(1, IContextKeyService)
 ], WordContextKey);
 export { WordContextKey };
+//# sourceMappingURL=wordContextKey.js.map

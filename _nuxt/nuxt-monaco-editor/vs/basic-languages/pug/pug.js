@@ -1,9 +1,10 @@
 /*!-----------------------------------------------------------------------------
  * Copyright (c) Microsoft Corporation. All rights reserved.
- * Version: 0.32.1(29a273516805a852aa8edc5e05059f119b13eff0)
+ * Version: 0.53.0(4e45ba0c5ff45fc61c0ccac61c0987369df04a6e)
  * Released under the MIT license
  * https://github.com/microsoft/monaco-editor/blob/main/LICENSE.txt
  *-----------------------------------------------------------------------------*/
+
 
 // src/basic-languages/pug/pug.ts
 var conf = {
@@ -171,10 +172,12 @@ var language = {
     "video",
     "wbr"
   ],
+  // we include these common regular expressions
   symbols: /[\+\-\*\%\&\|\!\=\/\.\,\:]+/,
   escapes: /\\(?:[abfnrtv\\"']|x[0-9A-Fa-f]{1,4}|u[0-9A-Fa-f]{4}|U[0-9A-Fa-f]{8})/,
   tokenizer: {
     root: [
+      // Tag or a keyword at start
       [
         /^(\s*)([a-zA-Z_-][\w-]*)/,
         {
@@ -190,6 +193,7 @@ var language = {
           }
         }
       ],
+      // id
       [
         /^(\s*)(#[a-zA-Z_-][\w-]*)/,
         {
@@ -199,6 +203,7 @@ var language = {
           }
         }
       ],
+      // class
       [
         /^(\s*)(\.[a-zA-Z_-][\w-]*)/,
         {
@@ -208,8 +213,10 @@ var language = {
           }
         }
       ],
+      // plain text with pipe
       [/^(\s*)(\|.*)$/, ""],
       { include: "@whitespace" },
+      // keywords
       [
         /[a-zA-Z_$][\w$]*/,
         {
@@ -219,16 +226,20 @@ var language = {
           }
         }
       ],
+      // delimiters and operators
       [/[{}()\[\]]/, "@brackets"],
       [/@symbols/, "delimiter"],
+      // numbers
       [/\d+\.\d+([eE][\-+]?\d+)?/, "number.float"],
       [/\d+/, "number"],
+      // strings:
       [/"/, "string", '@string."'],
       [/'/, "string", "@string.'"]
     ],
     tag: [
       [/(\.)(\s*$)/, [{ token: "delimiter", next: "@blockText.$S2." }, ""]],
       [/\s+/, { token: "", next: "@simpleText" }],
+      // id
       [
         /#[a-zA-Z_-][\w-]*/,
         {
@@ -238,6 +249,7 @@ var language = {
           }
         }
       ],
+      // class
       [
         /\.[a-zA-Z_-][\w-]*/,
         {
@@ -247,11 +259,13 @@ var language = {
           }
         }
       ],
+      // attributes
       [/\(/, { token: "delimiter.parenthesis", next: "@attributeList" }]
     ],
     simpleText: [
       [/[^#]+$/, { token: "", next: "@popall" }],
       [/[^#]+/, { token: "" }],
+      // interpolation
       [
         /(#{)([^}]*)(})/,
         {
@@ -347,6 +361,7 @@ var language = {
           }
         }
       ],
+      // interpolation
       [/(#{)([^}]*)(})/, ["interpolation.delimiter", "interpolation", "interpolation.delimiter"]],
       [/#/, "string"],
       [
@@ -359,6 +374,7 @@ var language = {
         }
       ]
     ],
+    // Almost identical to above, except for escapes and the output token
     value: [
       [
         /[^\\"']+/,

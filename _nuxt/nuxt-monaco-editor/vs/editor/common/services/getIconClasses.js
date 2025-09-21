@@ -3,10 +3,19 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 import { Schemas } from '../../../base/common/network.js';
-import { DataUri, basenameOrAuthority } from '../../../base/common/resources.js';
+import { DataUri } from '../../../base/common/resources.js';
+import { URI } from '../../../base/common/uri.js';
 import { PLAINTEXT_LANGUAGE_ID } from '../languages/modesRegistry.js';
 import { FileKind } from '../../../platform/files/common/files.js';
-export function getIconClasses(modelService, languageService, resource, fileKind) {
+import { ThemeIcon } from '../../../base/common/themables.js';
+const fileIconDirectoryRegex = /(?:\/|^)(?:([^\/]+)\/)?([^\/]+)$/;
+export function getIconClasses(modelService, languageService, resource, fileKind, icon) {
+    if (ThemeIcon.isThemeIcon(icon)) {
+        return [`codicon-${icon.id}`, 'predefined-file-icon'];
+    }
+    if (URI.isUri(icon)) {
+        return [];
+    }
     // we always set these base classes even if we do not have a path
     const classes = fileKind === FileKind.ROOT_FOLDER ? ['rootfolder-icon'] : fileKind === FileKind.FOLDER ? ['folder-icon'] : ['file-icon'];
     if (resource) {
@@ -17,10 +26,23 @@ export function getIconClasses(modelService, languageService, resource, fileKind
             name = metadata.get(DataUri.META_DATA_LABEL);
         }
         else {
-            name = cssEscape(basenameOrAuthority(resource).toLowerCase());
+            const match = resource.path.match(fileIconDirectoryRegex);
+            if (match) {
+                name = fileIconSelectorEscape(match[2].toLowerCase());
+                if (match[1]) {
+                    classes.push(`${fileIconSelectorEscape(match[1].toLowerCase())}-name-dir-icon`); // parent directory
+                }
+            }
+            else {
+                name = fileIconSelectorEscape(resource.authority.toLowerCase());
+            }
+        }
+        // Root Folders
+        if (fileKind === FileKind.ROOT_FOLDER) {
+            classes.push(`${name}-root-name-folder-icon`);
         }
         // Folders
-        if (fileKind === FileKind.FOLDER) {
+        else if (fileKind === FileKind.FOLDER) {
             classes.push(`${name}-name-folder-icon`);
         }
         // Files
@@ -28,6 +50,7 @@ export function getIconClasses(modelService, languageService, resource, fileKind
             // Name & Extension(s)
             if (name) {
                 classes.push(`${name}-name-file-icon`);
+                classes.push(`name-file-icon`); // extra segment to increase file-name score
                 // Avoid doing an explosive combination of extensions for very long filenames
                 // (most file systems do not allow files > 255 length) with lots of `.` characters
                 // https://github.com/microsoft/vscode/issues/116199
@@ -42,7 +65,7 @@ export function getIconClasses(modelService, languageService, resource, fileKind
             // Detected Mode
             const detectedLanguageId = detectLanguageId(modelService, languageService, resource);
             if (detectedLanguageId) {
-                classes.push(`${cssEscape(detectedLanguageId)}-lang-file-icon`);
+                classes.push(`${fileIconSelectorEscape(detectedLanguageId)}-lang-file-icon`);
             }
         }
     }
@@ -75,6 +98,7 @@ function detectLanguageId(modelService, languageService, resource) {
     // otherwise fallback to path based detection
     return languageService.guessLanguageIdByFilepathOrFirstLine(resource);
 }
-export function cssEscape(str) {
-    return str.replace(/[\11\12\14\15\40]/g, '/'); // HTML class names can not contain certain whitespace characters, use / instead, which doesn't exist in file names.
+export function fileIconSelectorEscape(str) {
+    return str.replace(/[\s]/g, '/'); // HTML class names can not contain certain whitespace characters (https://dom.spec.whatwg.org/#interface-domtokenlist), use / instead, which doesn't exist in file names.
 }
+//# sourceMappingURL=getIconClasses.js.map

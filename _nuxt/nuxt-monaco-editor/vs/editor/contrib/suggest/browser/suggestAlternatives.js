@@ -11,20 +11,22 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
+var SuggestAlternatives_1;
 import { IContextKeyService, RawContextKey } from '../../../../platform/contextkey/common/contextkey.js';
 let SuggestAlternatives = class SuggestAlternatives {
+    static { SuggestAlternatives_1 = this; }
+    static { this.OtherSuggestions = new RawContextKey('hasOtherSuggestions', false); }
     constructor(_editor, contextKeyService) {
         this._editor = _editor;
         this._index = 0;
-        this._ckOtherSuggestions = SuggestAlternatives.OtherSuggestions.bindTo(contextKeyService);
+        this._ckOtherSuggestions = SuggestAlternatives_1.OtherSuggestions.bindTo(contextKeyService);
     }
     dispose() {
         this.reset();
     }
     reset() {
-        var _a;
         this._ckOtherSuggestions.reset();
-        (_a = this._listener) === null || _a === void 0 ? void 0 : _a.dispose();
+        this._listener?.dispose();
         this._model = undefined;
         this._acceptNext = undefined;
         this._ignore = false;
@@ -36,7 +38,7 @@ let SuggestAlternatives = class SuggestAlternatives {
             return;
         }
         // no alternative suggestions -> nothing to do
-        let nextIndex = SuggestAlternatives._moveIndex(true, model, index);
+        const nextIndex = SuggestAlternatives_1._moveIndex(true, model, index);
         if (nextIndex === index) {
             this.reset();
             return;
@@ -53,7 +55,7 @@ let SuggestAlternatives = class SuggestAlternatives {
     }
     static _moveIndex(fwd, model, index) {
         let newIndex = index;
-        while (true) {
+        for (let rounds = model.items.length; rounds > 0; rounds--) {
             newIndex = (newIndex + model.items.length + (fwd ? +1 : -1)) % model.items.length;
             if (newIndex === index) {
                 break;
@@ -77,7 +79,7 @@ let SuggestAlternatives = class SuggestAlternatives {
         }
         try {
             this._ignore = true;
-            this._index = SuggestAlternatives._moveIndex(fwd, this._model, this._index);
+            this._index = SuggestAlternatives_1._moveIndex(fwd, this._model, this._index);
             this._acceptNext({ index: this._index, item: this._model.items[this._index], model: this._model });
         }
         finally {
@@ -85,8 +87,8 @@ let SuggestAlternatives = class SuggestAlternatives {
         }
     }
 };
-SuggestAlternatives.OtherSuggestions = new RawContextKey('hasOtherSuggestions', false);
-SuggestAlternatives = __decorate([
+SuggestAlternatives = SuggestAlternatives_1 = __decorate([
     __param(1, IContextKeyService)
 ], SuggestAlternatives);
 export { SuggestAlternatives };
+//# sourceMappingURL=suggestAlternatives.js.map

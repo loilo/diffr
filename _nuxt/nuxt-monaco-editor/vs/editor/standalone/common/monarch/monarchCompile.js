@@ -6,6 +6,7 @@
  * This module only exports 'compile' which compiles a JSON language definition
  * into a typed and checked ILexer definition.
  */
+import { isString } from '../../../../base/common/types.js';
 import * as monarchCommon from './monarchCommon.js';
 /*
  * Type helpers
@@ -64,15 +65,7 @@ function createKeywordMatcher(arr, caseInsensitive = false) {
         };
     }
 }
-// Lexer helpers
-/**
- * Compiles a regular expression string, adding the 'i' flag if 'ignoreCase' is set, and the 'u' flag if 'unicode' is set.
- * Also replaces @\w+ or sequences with the content of the specified attribute
- * @\w+ replacement can be avoided by escaping `@` signs with another `@` sign.
- * @example /@attr/ will be replaced with the value of lexer[attr]
- * @example /@@text/ will not be replaced and will become /@text/.
- */
-function compileRegExp(lexer, str) {
+function compileRegExp(lexer, str, handleSn) {
     // @@ must be interpreted as a literal @, so we replace all occurences of @@ with a placeholder character
     str = str.replace(/@@/g, `\x01`);
     let n = 0;
@@ -103,6 +96,22 @@ function compileRegExp(lexer, str) {
     // handle escaped @@
     str = str.replace(/\x01/g, '@');
     const flags = (lexer.ignoreCase ? 'i' : '') + (lexer.unicode ? 'u' : '');
+    // handle $Sn
+    if (handleSn) {
+        const match = str.match(/\$[sS](\d\d?)/g);
+        if (match) {
+            let lastState = null;
+            let lastRegEx = null;
+            return (state) => {
+                if (lastRegEx && lastState === state) {
+                    return lastRegEx;
+                }
+                lastState = state;
+                lastRegEx = new RegExp(monarchCommon.substituteMatchesRe(lexer, str, state), flags);
+                return lastRegEx;
+            };
+        }
+    }
     return new RegExp(str, flags);
 }
 /**
@@ -179,12 +188,12 @@ function createGuard(lexer, ruleName, tkey, val) {
     else if (op === '~' || op === '!~') {
         if (pat.indexOf('$') < 0) {
             // precompile regular expression
-            const re = compileRegExp(lexer, '^' + pat + '$');
+            const re = compileRegExp(lexer, '^' + pat + '$', false);
             tester = function (s) { return (op === '~' ? re.test(s) : !re.test(s)); };
         }
         else {
             tester = function (s, id, matches, state) {
-                const re = compileRegExp(lexer, '^' + monarchCommon.substituteMatches(lexer, pat, id, matches, state) + '$');
+                const re = compileRegExp(lexer, '^' + monarchCommon.substituteMatches(lexer, pat, id, matches, state) + '$', false);
                 return re.test(s);
             };
         }
@@ -246,10 +255,10 @@ function compileAction(lexer, ruleName, action) {
             }
             if (typeof (action.bracket) === 'string') {
                 if (action.bracket === '@open') {
-                    newAction.bracket = 1 /* Open */;
+                    newAction.bracket = 1 /* monarchCommon.MonarchBracket.Open */;
                 }
                 else if (action.bracket === '@close') {
-                    newAction.bracket = -1 /* Close */;
+                    newAction.bracket = -1 /* monarchCommon.MonarchBracket.Close */;
                 }
                 else {
                     throw monarchCommon.createError(lexer, 'a \'bracket\' attribute must be either \'@open\' or \'@close\', in rule: ' + ruleName);
@@ -300,8 +309,9 @@ function compileAction(lexer, ruleName, action) {
     else if (action.cases) {
         // build an array of test cases
         const cases = [];
+        let hasEmbeddedEndInCases = false;
         // for each case, push a test function and result value
-        for (let tkey in action.cases) {
+        for (const tkey in action.cases) {
             if (action.cases.hasOwnProperty(tkey)) {
                 const val = compileAction(lexer, ruleName, action.cases[tkey]);
                 // what kind of case
@@ -314,11 +324,15 @@ function compileAction(lexer, ruleName, action) {
                 else {
                     cases.push(createGuard(lexer, ruleName, tkey, val)); // call separate function to avoid local variable capture
                 }
+                if (!hasEmbeddedEndInCases) {
+                    hasEmbeddedEndInCases = !isString(val) && (val.hasEmbeddedEndInCases || ['@pop', '@popall'].includes(val.nextEmbedded || ''));
+                }
             }
         }
         // create a matching function
         const def = lexer.defaultToken;
         return {
+            hasEmbeddedEndInCases,
             test: function (id, matches, state, eos) {
                 for (const _case of cases) {
                     const didmatch = (!_case.test || _case.test(id, matches, state, eos));
@@ -358,10 +372,18 @@ class Rule {
         }
         this.matchOnlyAtLineStart = (sregex.length > 0 && sregex[0] === '^');
         this.name = this.name + ': ' + sregex;
-        this.regex = compileRegExp(lexer, '^(?:' + (this.matchOnlyAtLineStart ? sregex.substr(1) : sregex) + ')');
+        this.regex = compileRegExp(lexer, '^(?:' + (this.matchOnlyAtLineStart ? sregex.substr(1) : sregex) + ')', true);
     }
     setAction(lexer, act) {
         this.action = compileAction(lexer, this.name, act);
+    }
+    resolveRegex(state) {
+        if (this.regex instanceof RegExp) {
+            return this.regex;
+        }
+        else {
+            return this.regex(state);
+        }
     }
 }
 /**
@@ -378,18 +400,21 @@ export function compile(languageId, json) {
         throw new Error('Monarch: expecting a language definition object');
     }
     // Create our lexer
-    const lexer = {};
-    lexer.languageId = languageId;
-    lexer.includeLF = bool(json.includeLF, false);
-    lexer.noThrow = false; // raise exceptions during compilation
-    lexer.maxStack = 100;
-    // Set standard fields: be defensive about types
-    lexer.start = (typeof json.start === 'string' ? json.start : null);
-    lexer.ignoreCase = bool(json.ignoreCase, false);
-    lexer.unicode = bool(json.unicode, false);
-    lexer.tokenPostfix = string(json.tokenPostfix, '.' + lexer.languageId);
-    lexer.defaultToken = string(json.defaultToken, 'source');
-    lexer.usesEmbedded = false; // becomes true if we find a nextEmbedded action
+    const lexer = {
+        languageId: languageId,
+        includeLF: bool(json.includeLF, false),
+        noThrow: false, // raise exceptions during compilation
+        maxStack: 100,
+        start: (typeof json.start === 'string' ? json.start : null),
+        ignoreCase: bool(json.ignoreCase, false),
+        unicode: bool(json.unicode, false),
+        tokenPostfix: string(json.tokenPostfix, '.' + languageId),
+        defaultToken: string(json.defaultToken, 'source'),
+        usesEmbedded: false, // becomes true if we find a nextEmbedded action
+        stateNames: {},
+        tokenizer: {},
+        brackets: []
+    };
     // For calling compileAction later on
     const lexerMin = json;
     lexerMin.languageId = languageId;
@@ -462,7 +487,7 @@ export function compile(languageId, json) {
         throw monarchCommon.createError(lexer, 'a language definition must define the \'tokenizer\' attribute as an object');
     }
     lexer.tokenizer = [];
-    for (let key in json.tokenizer) {
+    for (const key in json.tokenizer) {
         if (json.tokenizer.hasOwnProperty(key)) {
             if (!lexer.start) {
                 lexer.start = key;
@@ -488,7 +513,7 @@ export function compile(languageId, json) {
         ];
     }
     const brackets = [];
-    for (let el of json.brackets) {
+    for (const el of json.brackets) {
         let desc = el;
         if (desc && Array.isArray(desc) && desc.length === 3) {
             desc = { token: desc[2], open: desc[0], close: desc[1] };
@@ -513,3 +538,4 @@ export function compile(languageId, json) {
     lexer.noThrow = true;
     return lexer;
 }
+//# sourceMappingURL=monarchCompile.js.map

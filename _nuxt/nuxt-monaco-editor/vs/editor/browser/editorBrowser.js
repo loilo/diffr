@@ -28,6 +28,14 @@ export function isDiffEditor(thing) {
 /**
  *@internal
  */
+export function isCompositeEditor(thing) {
+    return !!thing
+        && typeof thing === 'object'
+        && typeof thing.onDidChangeActiveEditor === 'function';
+}
+/**
+ *@internal
+ */
 export function getCodeEditor(thing) {
     if (isCodeEditor(thing)) {
         return thing;
@@ -35,5 +43,9 @@ export function getCodeEditor(thing) {
     if (isDiffEditor(thing)) {
         return thing.getModifiedEditor();
     }
+    if (isCompositeEditor(thing) && isCodeEditor(thing.activeCodeEditor)) {
+        return thing.activeCodeEditor;
+    }
     return null;
 }
+//# sourceMappingURL=editorBrowser.js.map

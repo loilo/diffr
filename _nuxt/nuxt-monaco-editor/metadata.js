@@ -1,16 +1,16 @@
 
 exports.features = [
   {
-    "label": "accessibilityHelp",
-    "entry": "vs/editor/standalone/browser/accessibilityHelp/accessibilityHelp"
-  },
-  {
     "label": "anchorSelect",
     "entry": "vs/editor/contrib/anchorSelect/browser/anchorSelect"
   },
   {
     "label": "bracketMatching",
     "entry": "vs/editor/contrib/bracketMatching/browser/bracketMatching"
+  },
+  {
+    "label": "browser",
+    "entry": "vs/editor/browser/coreCommands"
   },
   {
     "label": "caretOperations",
@@ -28,12 +28,16 @@ exports.features = [
     "entry": "vs/editor/contrib/codeAction/browser/codeActionContributions"
   },
   {
+    "label": "codeEditor",
+    "entry": "vs/editor/browser/widget/codeEditor/codeEditorWidget"
+  },
+  {
     "label": "codelens",
     "entry": "vs/editor/contrib/codelens/browser/codelensController"
   },
   {
     "label": "colorPicker",
-    "entry": "vs/editor/contrib/colorPicker/browser/colorContributions"
+    "entry": "vs/editor/contrib/colorPicker/browser/colorPickerContribution"
   },
   {
     "label": "comment",
@@ -44,12 +48,16 @@ exports.features = [
     "entry": "vs/editor/contrib/contextmenu/browser/contextmenu"
   },
   {
-    "label": "coreCommands",
-    "entry": "vs/editor/browser/controller/coreCommands"
-  },
-  {
     "label": "cursorUndo",
     "entry": "vs/editor/contrib/cursorUndo/browser/cursorUndo"
+  },
+  {
+    "label": "diffEditor",
+    "entry": "vs/editor/browser/widget/diffEditor/diffEditor.contribution"
+  },
+  {
+    "label": "diffEditorBreadcrumbs",
+    "entry": "vs/editor/contrib/diffEditorBreadcrumbs/browser/contribution"
   },
   {
     "label": "dnd",
@@ -58,6 +66,13 @@ exports.features = [
   {
     "label": "documentSymbols",
     "entry": "vs/editor/contrib/documentSymbols/browser/documentSymbols"
+  },
+  {
+    "label": "dropOrPasteInto",
+    "entry": [
+      "vs/editor/contrib/dropOrPasteInto/browser/copyPasteContribution",
+      "vs/editor/contrib/dropOrPasteInto/browser/dropIntoEditorContribution"
+    ]
   },
   {
     "label": "find",
@@ -91,8 +106,12 @@ exports.features = [
     ]
   },
   {
+    "label": "gpu",
+    "entry": "vs/editor/contrib/gpu/browser/gpuActions"
+  },
+  {
     "label": "hover",
-    "entry": "vs/editor/contrib/hover/browser/hover"
+    "entry": "vs/editor/contrib/hover/browser/hoverContribution"
   },
   {
     "label": "iPadShowKeyboard",
@@ -108,11 +127,19 @@ exports.features = [
   },
   {
     "label": "inlayHints",
-    "entry": "vs/editor/contrib/inlayHints/browser/inlayHintsController"
+    "entry": "vs/editor/contrib/inlayHints/browser/inlayHintsContribution"
   },
   {
     "label": "inlineCompletions",
-    "entry": "vs/editor/contrib/inlineCompletions/browser/ghostTextController"
+    "entry": "vs/editor/contrib/inlineCompletions/browser/inlineCompletions.contribution"
+  },
+  {
+    "label": "inlineProgress",
+    "entry": "vs/editor/contrib/inlineProgress/browser/inlineProgress"
+  },
+  {
+    "label": "insertFinalNewLine",
+    "entry": "vs/editor/contrib/insertFinalNewLine/browser/insertFinalNewLine"
   },
   {
     "label": "inspectTokens",
@@ -135,12 +162,24 @@ exports.features = [
     "entry": "vs/editor/contrib/links/browser/links"
   },
   {
+    "label": "longLinesHelper",
+    "entry": "vs/editor/contrib/longLinesHelper/browser/longLinesHelper"
+  },
+  {
+    "label": "middleScroll",
+    "entry": "vs/editor/contrib/middleScroll/browser/middleScroll.contribution"
+  },
+  {
     "label": "multicursor",
     "entry": "vs/editor/contrib/multicursor/browser/multicursor"
   },
   {
     "label": "parameterHints",
     "entry": "vs/editor/contrib/parameterHints/browser/parameterHints"
+  },
+  {
+    "label": "placeholderText",
+    "entry": "vs/editor/contrib/placeholderText/browser/placeholderText.contribution"
   },
   {
     "label": "quickCommand",
@@ -155,12 +194,27 @@ exports.features = [
     "entry": "vs/editor/standalone/browser/quickAccess/standaloneGotoSymbolQuickAccess"
   },
   {
+    "label": "readOnlyMessage",
+    "entry": "vs/editor/contrib/readOnlyMessage/browser/contribution"
+  },
+  {
     "label": "referenceSearch",
     "entry": "vs/editor/standalone/browser/referenceSearch/standaloneReferenceSearch"
   },
   {
     "label": "rename",
     "entry": "vs/editor/contrib/rename/browser/rename"
+  },
+  {
+    "label": "sectionHeaders",
+    "entry": "vs/editor/contrib/sectionHeaders/browser/sectionHeaders"
+  },
+  {
+    "label": "semanticTokens",
+    "entry": [
+      "vs/editor/contrib/semanticTokens/browser/documentSemanticTokens",
+      "vs/editor/contrib/semanticTokens/browser/viewportSemanticTokens"
+    ]
   },
   {
     "label": "smartSelect",
@@ -171,8 +225,15 @@ exports.features = [
     "entry": "vs/editor/contrib/snippet/browser/snippetController2"
   },
   {
+    "label": "stickyScroll",
+    "entry": "vs/editor/contrib/stickyScroll/browser/stickyScrollContribution"
+  },
+  {
     "label": "suggest",
-    "entry": "vs/editor/contrib/suggest/browser/suggestController"
+    "entry": [
+      "vs/editor/contrib/suggest/browser/suggestController",
+      "vs/editor/contrib/suggest/browser/suggestInlineCompletions"
+    ]
   },
   {
     "label": "toggleHighContrast",
@@ -193,10 +254,6 @@ exports.features = [
   {
     "label": "unusualLineTerminators",
     "entry": "vs/editor/contrib/unusualLineTerminators/browser/unusualLineTerminators"
-  },
-  {
-    "label": "viewportSemanticTokens",
-    "entry": "vs/editor/contrib/viewportSemanticTokens/browser/viewportSemanticTokens"
   },
   {
     "label": "wordHighlighter",
@@ -266,6 +323,10 @@ exports.languages = [
       "id": "vs/language/css/cssWorker",
       "entry": "vs/language/css/css.worker"
     }
+  },
+  {
+    "label": "cypher",
+    "entry": "vs/basic-languages/cypher/cypher.contribution"
   },
   {
     "label": "dart",
@@ -373,6 +434,10 @@ exports.languages = [
   {
     "label": "markdown",
     "entry": "vs/basic-languages/markdown/markdown.contribution"
+  },
+  {
+    "label": "mdx",
+    "entry": "vs/basic-languages/mdx/mdx.contribution"
   },
   {
     "label": "mips",
@@ -538,8 +603,16 @@ exports.languages = [
     }
   },
   {
+    "label": "typespec",
+    "entry": "vs/basic-languages/typespec/typespec.contribution"
+  },
+  {
     "label": "vb",
     "entry": "vs/basic-languages/vb/vb.contribution"
+  },
+  {
+    "label": "wgsl",
+    "entry": "vs/basic-languages/wgsl/wgsl.contribution"
   },
   {
     "label": "xml",

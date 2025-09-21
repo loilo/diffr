@@ -120,9 +120,7 @@ export class Scrollable extends Disposable {
         const newState = this._state.withScrollDimensions(dimensions, useRawScrollPositions);
         this._setState(newState, Boolean(this._smoothScrolling));
         // Validate outstanding animated scroll position target
-        if (this._smoothScrolling) {
-            this._smoothScrolling.acceptScrollDimensions(this._state);
-        }
+        this._smoothScrolling?.acceptScrollDimensions(this._state);
     }
     /**
      * Returns the final scroll position that the instance will have once the smooth scroll animation concludes.
@@ -191,6 +189,9 @@ export class Scrollable extends Disposable {
             this._smoothScrolling.animationFrameDisposable = null;
             this._performSmoothScrolling();
         });
+    }
+    hasPendingScrollAnimation() {
+        return Boolean(this._smoothScrolling);
     }
     _performSmoothScrolling() {
         if (!this._smoothScrolling) {
@@ -317,3 +318,4 @@ function easeInCubic(t) {
 function easeOutCubic(t) {
     return 1 - easeInCubic(1 - t);
 }
+//# sourceMappingURL=scrollable.js.map

@@ -7,12 +7,17 @@ import { onUnexpectedError } from '../../../../base/common/errors.js';
 import { ViewPart } from '../../view/viewPart.js';
 import { Position } from '../../../common/core/position.js';
 const invalidFunc = () => { throw new Error(`Invalid change accessor`); };
+/**
+ * A view zone is a rectangle that is a section that is inserted into the editor
+ * lines that can be used for various purposes such as showing a diffs, peeking
+ * an implementation, etc.
+ */
 export class ViewZones extends ViewPart {
     constructor(context) {
         super(context);
         const options = this._context.configuration.options;
-        const layoutInfo = options.get(131 /* layoutInfo */);
-        this._lineHeight = options.get(59 /* lineHeight */);
+        const layoutInfo = options.get(164 /* EditorOption.layoutInfo */);
+        this._lineHeight = options.get(75 /* EditorOption.lineHeight */);
         this._contentWidth = layoutInfo.contentWidth;
         this._contentLeft = layoutInfo.contentLeft;
         this.domNode = createFastDomNode(document.createElement('div'));
@@ -39,7 +44,7 @@ export class ViewZones extends ViewPart {
             oldWhitespaces.set(whitespace.id, whitespace);
         }
         let hadAChange = false;
-        this._context.model.changeWhitespace((whitespaceAccessor) => {
+        this._context.viewModel.changeWhitespace((whitespaceAccessor) => {
             const keys = Object.keys(this._zones);
             for (let i = 0, len = keys.length; i < len; i++) {
                 const id = keys[i];
@@ -58,11 +63,11 @@ export class ViewZones extends ViewPart {
     }
     onConfigurationChanged(e) {
         const options = this._context.configuration.options;
-        const layoutInfo = options.get(131 /* layoutInfo */);
-        this._lineHeight = options.get(59 /* lineHeight */);
+        const layoutInfo = options.get(164 /* EditorOption.layoutInfo */);
+        this._lineHeight = options.get(75 /* EditorOption.lineHeight */);
         this._contentWidth = layoutInfo.contentWidth;
         this._contentLeft = layoutInfo.contentLeft;
-        if (e.hasChanged(59 /* lineHeight */)) {
+        if (e.hasChanged(75 /* EditorOption.lineHeight */)) {
             this._recomputeWhitespacesProps();
         }
         return true;
@@ -84,10 +89,7 @@ export class ViewZones extends ViewPart {
     }
     // ---- end view event handlers
     _getZoneOrdinal(zone) {
-        if (typeof zone.afterColumn !== 'undefined') {
-            return zone.afterColumn;
-        }
-        return 10000;
+        return zone.ordinal ?? zone.afterColumn ?? 10000;
     }
     _computeWhitespaceProps(zone) {
         if (zone.afterLineNumber === 0) {
@@ -100,33 +102,33 @@ export class ViewZones extends ViewPart {
         }
         let zoneAfterModelPosition;
         if (typeof zone.afterColumn !== 'undefined') {
-            zoneAfterModelPosition = this._context.model.validateModelPosition({
+            zoneAfterModelPosition = this._context.viewModel.model.validatePosition({
                 lineNumber: zone.afterLineNumber,
                 column: zone.afterColumn
             });
         }
         else {
-            const validAfterLineNumber = this._context.model.validateModelPosition({
+            const validAfterLineNumber = this._context.viewModel.model.validatePosition({
                 lineNumber: zone.afterLineNumber,
                 column: 1
             }).lineNumber;
-            zoneAfterModelPosition = new Position(validAfterLineNumber, this._context.model.getModelLineMaxColumn(validAfterLineNumber));
+            zoneAfterModelPosition = new Position(validAfterLineNumber, this._context.viewModel.model.getLineMaxColumn(validAfterLineNumber));
         }
         let zoneBeforeModelPosition;
-        if (zoneAfterModelPosition.column === this._context.model.getModelLineMaxColumn(zoneAfterModelPosition.lineNumber)) {
-            zoneBeforeModelPosition = this._context.model.validateModelPosition({
+        if (zoneAfterModelPosition.column === this._context.viewModel.model.getLineMaxColumn(zoneAfterModelPosition.lineNumber)) {
+            zoneBeforeModelPosition = this._context.viewModel.model.validatePosition({
                 lineNumber: zoneAfterModelPosition.lineNumber + 1,
                 column: 1
             });
         }
         else {
-            zoneBeforeModelPosition = this._context.model.validateModelPosition({
+            zoneBeforeModelPosition = this._context.viewModel.model.validatePosition({
                 lineNumber: zoneAfterModelPosition.lineNumber,
                 column: zoneAfterModelPosition.column + 1
             });
         }
-        const viewPosition = this._context.model.coordinatesConverter.convertModelPositionToViewPosition(zoneAfterModelPosition, zone.afterColumnAffinity);
-        const isVisible = this._context.model.coordinatesConverter.modelPositionIsVisible(zoneBeforeModelPosition);
+        const viewPosition = this._context.viewModel.coordinatesConverter.convertModelPositionToViewPosition(zoneAfterModelPosition, zone.afterColumnAffinity, true);
+        const isVisible = zone.showInHiddenAreas || this._context.viewModel.coordinatesConverter.modelPositionIsVisible(zoneBeforeModelPosition);
         return {
             isInHiddenArea: !isVisible,
             afterViewLineNumber: viewPosition.lineNumber,
@@ -136,7 +138,7 @@ export class ViewZones extends ViewPart {
     }
     changeViewZones(callback) {
         let zonesHaveChanged = false;
-        this._context.model.changeWhitespace((whitespaceAccessor) => {
+        this._context.viewModel.changeWhitespace((whitespaceAccessor) => {
             const changeAccessor = {
                 addZone: (zone) => {
                     zonesHaveChanged = true;
@@ -198,11 +200,11 @@ export class ViewZones extends ViewPart {
             whitespaceAccessor.removeWhitespace(zone.whitespaceId);
             zone.domNode.removeAttribute('monaco-visible-view-zone');
             zone.domNode.removeAttribute('monaco-view-zone');
-            zone.domNode.domNode.parentNode.removeChild(zone.domNode.domNode);
+            zone.domNode.domNode.remove();
             if (zone.marginDomNode) {
                 zone.marginDomNode.removeAttribute('monaco-visible-view-zone');
                 zone.marginDomNode.removeAttribute('monaco-view-zone');
-                zone.marginDomNode.domNode.parentNode.removeChild(zone.marginDomNode.domNode);
+                zone.marginDomNode.domNode.remove();
             }
             this.setShouldRender();
             return true;
@@ -327,3 +329,4 @@ function safeInvoke1Arg(func, arg1) {
         onUnexpectedError(e);
     }
 }
+//# sourceMappingURL=viewZones.js.map

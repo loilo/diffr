@@ -1,9 +1,10 @@
 /*!-----------------------------------------------------------------------------
  * Copyright (c) Microsoft Corporation. All rights reserved.
- * Version: 0.32.1(29a273516805a852aa8edc5e05059f119b13eff0)
+ * Version: 0.53.0(4e45ba0c5ff45fc61c0ccac61c0987369df04a6e)
  * Released under the MIT license
  * https://github.com/microsoft/monaco-editor/blob/main/LICENSE.txt
  *-----------------------------------------------------------------------------*/
+
 
 // src/basic-languages/pgsql/pgsql.ts
 var conf = {
@@ -40,6 +41,7 @@ var language = {
     { open: "(", close: ")", token: "delimiter.parenthesis" }
   ],
   keywords: [
+    // This list is generated using `keywords.js`
     "ALL",
     "ANALYSE",
     "ANALYZE",
@@ -624,11 +626,15 @@ var language = {
     "range_intersect_agg",
     "range_merge",
     "rank",
+    "regexp_count",
+    "regexp_instr",
+    "regexp_like",
     "regexp_match",
     "regexp_matches",
     "regexp_replace",
     "regexp_split_to_array",
     "regexp_split_to_table",
+    "regexp_substr",
     "regr_avgx",
     "regr_avgy",
     "regr_count",
@@ -772,8 +778,12 @@ var language = {
     "xpath",
     "xpath_exists"
   ],
-  builtinVariables: [],
-  pseudoColumns: [],
+  builtinVariables: [
+    // NOT SUPPORTED
+  ],
+  pseudoColumns: [
+    // NOT SUPPORTED
+  ],
   tokenizer: {
     root: [
       { include: "@comments" },
@@ -806,6 +816,9 @@ var language = {
     ],
     comment: [
       [/[^*/]+/, "comment"],
+      // Not supporting nested comments, as nested comments seem to not be standard?
+      // i.e. http://stackoverflow.com/questions/728172/are-there-multiline-comment-delimiters-in-sql-that-are-vendor-agnostic
+      // [/\/\*/, { token: 'comment.quote', next: '@push' }],    // nested comment not allowed :-(
       [/\*\//, { token: "comment.quote", next: "@pop" }],
       [/./, "comment"]
     ],
@@ -837,7 +850,9 @@ var language = {
       [/""/, "identifier"],
       [/"/, { token: "identifier.quote", next: "@pop" }]
     ],
-    scopes: []
+    scopes: [
+      // NOT SUPPORTED
+    ]
   }
 };
 export {

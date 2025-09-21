@@ -1,14 +1,10 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
 /**
  * An event describing that a model has been reset to a new value.
  * @internal
  */
 export class ModelRawFlush {
     constructor() {
-        this.changeType = 1 /* Flush */;
+        this.changeType = 1 /* RawContentChangedType.Flush */;
     }
 }
 /**
@@ -16,13 +12,6 @@ export class ModelRawFlush {
  * @internal
  */
 export class LineInjectedText {
-    constructor(ownerId, lineNumber, column, options, order) {
-        this.ownerId = ownerId;
-        this.lineNumber = lineNumber;
-        this.column = column;
-        this.options = options;
-        this.order = order;
-    }
     static applyInjectedText(lineText, injectedTexts) {
         if (!injectedTexts || injectedTexts.length === 0) {
             return lineText;
@@ -58,6 +47,13 @@ export class LineInjectedText {
         });
         return result;
     }
+    constructor(ownerId, lineNumber, column, options, order) {
+        this.ownerId = ownerId;
+        this.lineNumber = lineNumber;
+        this.column = column;
+        this.options = options;
+        this.order = order;
+    }
 }
 /**
  * An event describing that a line has changed in a model.
@@ -65,10 +61,32 @@ export class LineInjectedText {
  */
 export class ModelRawLineChanged {
     constructor(lineNumber, detail, injectedText) {
-        this.changeType = 2 /* LineChanged */;
+        this.changeType = 2 /* RawContentChangedType.LineChanged */;
         this.lineNumber = lineNumber;
         this.detail = detail;
         this.injectedText = injectedText;
+    }
+}
+/**
+ * An event describing that a line height has changed in the model.
+ * @internal
+ */
+export class ModelLineHeightChanged {
+    constructor(ownerId, decorationId, lineNumber, lineHeight) {
+        this.ownerId = ownerId;
+        this.decorationId = decorationId;
+        this.lineNumber = lineNumber;
+        this.lineHeight = lineHeight;
+    }
+}
+/**
+ * An event describing that a line height has changed in the model.
+ * @internal
+ */
+export class ModelFontChanged {
+    constructor(ownerId, lineNumber) {
+        this.ownerId = ownerId;
+        this.lineNumber = lineNumber;
     }
 }
 /**
@@ -77,7 +95,7 @@ export class ModelRawLineChanged {
  */
 export class ModelRawLinesDeleted {
     constructor(fromLineNumber, toLineNumber) {
-        this.changeType = 3 /* LinesDeleted */;
+        this.changeType = 3 /* RawContentChangedType.LinesDeleted */;
         this.fromLineNumber = fromLineNumber;
         this.toLineNumber = toLineNumber;
     }
@@ -88,7 +106,7 @@ export class ModelRawLinesDeleted {
  */
 export class ModelRawLinesInserted {
     constructor(fromLineNumber, toLineNumber, detail, injectedTexts) {
-        this.changeType = 4 /* LinesInserted */;
+        this.changeType = 4 /* RawContentChangedType.LinesInserted */;
         this.injectedTexts = injectedTexts;
         this.fromLineNumber = fromLineNumber;
         this.toLineNumber = toLineNumber;
@@ -101,7 +119,7 @@ export class ModelRawLinesInserted {
  */
 export class ModelRawEOLChanged {
     constructor() {
-        this.changeType = 5 /* EOLChanged */;
+        this.changeType = 5 /* RawContentChangedType.EOLChanged */;
     }
 }
 /**
@@ -143,6 +161,24 @@ export class ModelInjectedTextChangedEvent {
     }
 }
 /**
+ * An event describing a change of a line height.
+ * @internal
+ */
+export class ModelLineHeightChangedEvent {
+    constructor(changes) {
+        this.changes = changes;
+    }
+}
+/**
+ * An event describing a change in fonts.
+ * @internal
+ */
+export class ModelFontChangedEvent {
+    constructor(changes) {
+        this.changes = changes;
+    }
+}
+/**
  * @internal
  */
 export class InternalModelContentChangeEvent {
@@ -162,13 +198,18 @@ export class InternalModelContentChangeEvent {
         const isUndoing = (a.isUndoing || b.isUndoing);
         const isRedoing = (a.isRedoing || b.isRedoing);
         const isFlush = (a.isFlush || b.isFlush);
+        const isEolChange = a.isEolChange && b.isEolChange; // both must be true to not confuse listeners who skip such edits
         return {
             changes: changes,
             eol: eol,
+            isEolChange: isEolChange,
             versionId: versionId,
             isUndoing: isUndoing,
             isRedoing: isRedoing,
-            isFlush: isFlush
+            isFlush: isFlush,
+            detailedReasons: a.detailedReasons.concat(b.detailedReasons),
+            detailedReasonsChangeLengths: a.detailedReasonsChangeLengths.concat(b.detailedReasonsChangeLengths),
         };
     }
 }
+//# sourceMappingURL=textModelEvents.js.map

@@ -1,9 +1,10 @@
 /*!-----------------------------------------------------------------------------
  * Copyright (c) Microsoft Corporation. All rights reserved.
- * Version: 0.32.1(29a273516805a852aa8edc5e05059f119b13eff0)
+ * Version: 0.53.0(4e45ba0c5ff45fc61c0ccac61c0987369df04a6e)
  * Released under the MIT license
  * https://github.com/microsoft/monaco-editor/blob/main/LICENSE.txt
  *-----------------------------------------------------------------------------*/
+
 
 // src/basic-languages/cpp/cpp.ts
 var conf = {
@@ -145,6 +146,7 @@ var language = {
     "where",
     "while",
     "_asm",
+    // reserved word with one underscores
     "_based",
     "_cdecl",
     "_declspec",
@@ -159,6 +161,7 @@ var language = {
     "_virtual_inheritance",
     "_w64",
     "__abstract",
+    // reserved word with two underscores
     "__alignof",
     "__asm",
     "__assume",
@@ -193,6 +196,9 @@ var language = {
     "__m256",
     "__m256d",
     "__m256i",
+    "__m512",
+    "__m512d",
+    "__m512i",
     "__m64",
     "__multiple_inheritance",
     "__newslot",
@@ -251,7 +257,6 @@ var language = {
     "%",
     "<<",
     ">>",
-    ">>>",
     "+=",
     "-=",
     "*=",
@@ -261,17 +266,20 @@ var language = {
     "^=",
     "%=",
     "<<=",
-    ">>=",
-    ">>>="
+    ">>="
   ],
+  // we include these common regular expressions
   symbols: /[=><!~?:&|+\-*\/\^%]+/,
-  escapes: /\\(?:[abfnrtv\\"']|x[0-9A-Fa-f]{1,4}|u[0-9A-Fa-f]{4}|U[0-9A-Fa-f]{8})/,
+  escapes: /\\(?:[0abfnrtv\\"']|x[0-9A-Fa-f]{1,4}|u[0-9A-Fa-f]{4}|U[0-9A-Fa-f]{8})/,
   integersuffix: /([uU](ll|LL|l|L)|(ll|LL|l|L)?[uU]?)/,
   floatsuffix: /[fFlL]?/,
   encoding: /u|u8|U|L/,
+  // The main tokenizer for our languages
   tokenizer: {
     root: [
+      // C++ 11 Raw String
       [/@encoding?R\"(?:([^ ()\\\t]*))\(/, { token: "string.raw.begin", next: "@raw.$1" }],
+      // identifiers and keywords
       [
         /[a-zA-Z_]\w*/,
         {
@@ -281,12 +289,18 @@ var language = {
           }
         }
       ],
+      // The preprocessor checks must be before whitespace as they check /^\s*#/ which
+      // otherwise fails to match later after other whitespace has been removed.
+      // Inclusion
       [/^\s*#\s*include/, { token: "keyword.directive.include", next: "@include" }],
+      // Preprocessor directive
       [/^\s*#\s*\w+/, "keyword.directive"],
+      // whitespace
       { include: "@whitespace" },
+      // [[ attributes ]].
       [/\[\s*\[/, { token: "annotation", next: "@annotation" }],
-      [/[{}()\[\]]/, "@brackets"],
-      [/[<>](?!@symbols)/, "@brackets"],
+      // delimiters and operators
+      [/[{}()<>\[\]]/, "@brackets"],
       [
         /@symbols/,
         {
@@ -296,6 +310,7 @@ var language = {
           }
         }
       ],
+      // numbers
       [/\d*\d+[eE]([\-+]?\d+)?(@floatsuffix)/, "number.float"],
       [/\d*\.\d+([eE][\-+]?\d+)?(@floatsuffix)/, "number.float"],
       [/0[xX][0-9a-fA-F']*[0-9a-fA-F](@integersuffix)/, "number.hex"],
@@ -303,9 +318,13 @@ var language = {
       [/0[bB][0-1']*[0-1](@integersuffix)/, "number.binary"],
       [/\d[\d']*\d(@integersuffix)/, "number"],
       [/\d(@integersuffix)/, "number"],
+      // delimiter: after number because of .\d floats
       [/[;,.]/, "delimiter"],
+      // strings
       [/"([^"\\]|\\.)*$/, "string.invalid"],
+      // non-teminated string
       [/"/, "string", "@string"],
+      // characters
       [/'[^\\']'/, "string"],
       [/(')(@escapes)(')/, ["string", "string.escape", "string"]],
       [/'/, "string.invalid"]
@@ -322,10 +341,12 @@ var language = {
       [/\*\//, "comment", "@pop"],
       [/[\/*]/, "comment"]
     ],
+    //For use with continuous line comments
     linecomment: [
       [/.*[^\\]$/, "comment", "@pop"],
       [/[^]+/, "comment"]
     ],
+    //Identical copy of comment above, except for the addition of .doc
     doccomment: [
       [/[^\/*]+/, "comment.doc"],
       [/\*\//, "comment.doc", "@pop"],
@@ -338,21 +359,9 @@ var language = {
       [/"/, "string", "@pop"]
     ],
     raw: [
-      [
-        /(.*)(\))(?:([^ ()\\\t"]*))(\")/,
-        {
-          cases: {
-            "$3==$S2": [
-              "string.raw",
-              "string.raw.end",
-              "string.raw.end",
-              { token: "string.raw.end", next: "@pop" }
-            ],
-            "@default": ["string.raw", "string.raw", "string.raw", "string.raw"]
-          }
-        }
-      ],
-      [/.*/, "string.raw"]
+      [/[^)]+/, "string.raw"],
+      [/\)$S2\"/, { token: "string.raw.end", next: "@pop" }],
+      [/\)/, "string.raw"]
     ],
     annotation: [
       { include: "@whitespace" },

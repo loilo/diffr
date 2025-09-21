@@ -1,9 +1,10 @@
 /*!-----------------------------------------------------------------------------
  * Copyright (c) Microsoft Corporation. All rights reserved.
- * Version: 0.32.1(29a273516805a852aa8edc5e05059f119b13eff0)
+ * Version: 0.53.0(4e45ba0c5ff45fc61c0ccac61c0987369df04a6e)
  * Released under the MIT license
  * https://github.com/microsoft/monaco-editor/blob/main/LICENSE.txt
  *-----------------------------------------------------------------------------*/
+
 
 // src/basic-languages/st/st.ts
 var conf = {
@@ -170,7 +171,8 @@ var language = {
     "vendor",
     "common_source",
     "from",
-    "extends"
+    "extends",
+    "implements"
   ],
   constant: ["false", "true", "null"],
   defineKeywords: [
@@ -331,8 +333,11 @@ var language = {
     "right",
     "rtc"
   ],
+  // we include these common regular expressions
   symbols: /[=><!~?:&|+\-*\/\^%]+/,
+  // C# style strings
   escapes: /\\(?:[abfnrtv\\"']|x[0-9A-Fa-f]{1,4}|u[0-9A-Fa-f]{4}|U[0-9A-Fa-f]{8})/,
+  // The main tokenizer for our languages
   tokenizer: {
     root: [
       [/(\.\.)/, "delimiter"],
@@ -351,6 +356,7 @@ var language = {
       [/\b[A_Za-z]+(_TO_)[A_Za-z]+\b/, "predefined"],
       [/[;]/, "delimiter"],
       [/[.]/, { token: "delimiter", next: "@params" }],
+      // identifiers and keywords
       [
         /[a-zA-Z_]\w*/,
         {
@@ -369,6 +375,7 @@ var language = {
       { include: "@whitespace" },
       [/[{}()\[\]]/, "@brackets"],
       [/"([^"\\]|\\.)*$/, "string.invalid"],
+      // non-teminated string
       [/"/, { token: "string.quote", bracket: "@open", next: "@string_dq" }],
       [/'/, { token: "string.quote", bracket: "@open", next: "@string_sq" }],
       [/'[^\\']'/, "string"],
@@ -382,12 +389,14 @@ var language = {
     comment: [
       [/[^\/*]+/, "comment"],
       [/\/\*/, "comment", "@push"],
+      // nested comment
       ["\\*/", "comment", "@pop"],
       [/[\/*]/, "comment"]
     ],
     comment2: [
       [/[^\(*]+/, "comment"],
       [/\(\*/, "comment", "@push"],
+      // nested comment
       ["\\*\\)", "comment", "@pop"],
       [/[\(*]/, "comment"]
     ],

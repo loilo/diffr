@@ -13,9 +13,6 @@ class TabFocusImpl {
         return this._tabFocus;
     }
     setTabFocusMode(tabFocusMode) {
-        if (this._tabFocus === tabFocusMode) {
-            return;
-        }
         this._tabFocus = tabFocusMode;
         this._onDidChangeTabFocus.fire(this._tabFocus);
     }
@@ -27,3 +24,4 @@ class TabFocusImpl {
  * Defaults to false.
  */
 export const TabFocus = new TabFocusImpl();
+//# sourceMappingURL=tabFocus.js.map

@@ -2,10 +2,11 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
+import { isIterable } from './types.js';
 export var Iterable;
 (function (Iterable) {
     function is(thing) {
-        return thing && typeof thing === 'object' && typeof thing[Symbol.iterator] === 'function';
+        return !!thing && typeof thing === 'object' && typeof thing[Symbol.iterator] === 'function';
     }
     Iterable.is = is;
     const _empty = Object.freeze([]);
@@ -17,10 +18,25 @@ export var Iterable;
         yield element;
     }
     Iterable.single = single;
+    function wrap(iterableOrElement) {
+        if (is(iterableOrElement)) {
+            return iterableOrElement;
+        }
+        else {
+            return single(iterableOrElement);
+        }
+    }
+    Iterable.wrap = wrap;
     function from(iterable) {
         return iterable || _empty;
     }
     Iterable.from = from;
+    function* reverse(array) {
+        for (let i = array.length - 1; i >= 0; i--) {
+            yield array[i];
+        }
+    }
+    Iterable.reverse = reverse;
     function isEmpty(iterable) {
         return !iterable || iterable[Symbol.iterator]().next().done === true;
     }
@@ -30,14 +46,25 @@ export var Iterable;
     }
     Iterable.first = first;
     function some(iterable, predicate) {
+        let i = 0;
         for (const element of iterable) {
-            if (predicate(element)) {
+            if (predicate(element, i++)) {
                 return true;
             }
         }
         return false;
     }
     Iterable.some = some;
+    function every(iterable, predicate) {
+        let i = 0;
+        for (const element of iterable) {
+            if (!predicate(element, i++)) {
+                return false;
+            }
+        }
+        return true;
+    }
+    Iterable.every = every;
     function find(iterable, predicate) {
         for (const element of iterable) {
             if (predicate(element)) {
@@ -62,22 +89,24 @@ export var Iterable;
         }
     }
     Iterable.map = map;
+    function* flatMap(iterable, fn) {
+        let index = 0;
+        for (const element of iterable) {
+            yield* fn(element, index++);
+        }
+    }
+    Iterable.flatMap = flatMap;
     function* concat(...iterables) {
-        for (const iterable of iterables) {
-            for (const element of iterable) {
-                yield element;
+        for (const item of iterables) {
+            if (isIterable(item)) {
+                yield* item;
+            }
+            else {
+                yield item;
             }
         }
     }
     Iterable.concat = concat;
-    function* concatNested(iterables) {
-        for (const iterable of iterables) {
-            for (const element of iterable) {
-                yield element;
-            }
-        }
-    }
-    Iterable.concatNested = concatNested;
     function reduce(iterable, reducer, initialValue) {
         let value = initialValue;
         for (const element of iterable) {
@@ -86,10 +115,21 @@ export var Iterable;
         return value;
     }
     Iterable.reduce = reduce;
+    function length(iterable) {
+        let count = 0;
+        for (const _ of iterable) {
+            count++;
+        }
+        return count;
+    }
+    Iterable.length = length;
     /**
      * Returns an iterable slice of the array, with the same semantics as `array.slice()`.
      */
     function* slice(arr, from, to = arr.length) {
+        if (from < -arr.length) {
+            from = 0;
+        }
         if (from < 0) {
             from += arr.length;
         }
@@ -124,26 +164,21 @@ export var Iterable;
         return [consumed, { [Symbol.iterator]() { return iterator; } }];
     }
     Iterable.consume = consume;
-    /**
-     * Returns whether the iterables are the same length and all items are
-     * equal using the comparator function.
-     */
-    function equals(a, b, comparator = (at, bt) => at === bt) {
-        const ai = a[Symbol.iterator]();
-        const bi = b[Symbol.iterator]();
-        while (true) {
-            const an = ai.next();
-            const bn = bi.next();
-            if (an.done !== bn.done) {
-                return false;
-            }
-            else if (an.done) {
-                return true;
-            }
-            else if (!comparator(an.value, bn.value)) {
-                return false;
-            }
+    async function asyncToArray(iterable) {
+        const result = [];
+        for await (const item of iterable) {
+            result.push(item);
         }
+        return result;
     }
-    Iterable.equals = equals;
+    Iterable.asyncToArray = asyncToArray;
+    async function asyncToArrayFlat(iterable) {
+        let result = [];
+        for await (const item of iterable) {
+            result = result.concat(item);
+        }
+        return result;
+    }
+    Iterable.asyncToArrayFlat = asyncToArrayFlat;
 })(Iterable || (Iterable = {}));
+//# sourceMappingURL=iterator.js.map

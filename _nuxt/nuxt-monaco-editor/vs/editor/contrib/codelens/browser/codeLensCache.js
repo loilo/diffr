@@ -11,14 +11,15 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
-import { runWhenIdle } from '../../../../base/common/async.js';
-import { once } from '../../../../base/common/functional.js';
+import { Event } from '../../../../base/common/event.js';
 import { LRUCache } from '../../../../base/common/map.js';
 import { Range } from '../../../common/core/range.js';
 import { CodeLensModel } from './codelens.js';
 import { registerSingleton } from '../../../../platform/instantiation/common/extensions.js';
 import { createDecorator } from '../../../../platform/instantiation/common/instantiation.js';
 import { IStorageService, WillSaveStateReason } from '../../../../platform/storage/common/storage.js';
+import { mainWindow } from '../../../../base/browser/window.js';
+import { runWhenWindowIdle } from '../../../../base/browser/dom.js';
 export const ICodeLensCache = createDecorator('ICodeLensCache');
 class CacheItem {
     constructor(lineCount, data) {
@@ -36,30 +37,28 @@ let CodeLensCache = class CodeLensCache {
         this._cache = new LRUCache(20, 0.75);
         // remove old data
         const oldkey = 'codelens/cache';
-        runWhenIdle(() => storageService.remove(oldkey, 1 /* WORKSPACE */));
+        runWhenWindowIdle(mainWindow, () => storageService.remove(oldkey, 1 /* StorageScope.WORKSPACE */));
         // restore lens data on start
         const key = 'codelens/cache2';
-        const raw = storageService.get(key, 1 /* WORKSPACE */, '{}');
+        const raw = storageService.get(key, 1 /* StorageScope.WORKSPACE */, '{}');
         this._deserialize(raw);
         // store lens data on shutdown
-        once(storageService.onWillSaveState)(e => {
-            if (e.reason === WillSaveStateReason.SHUTDOWN) {
-                storageService.store(key, this._serialize(), 1 /* WORKSPACE */, 1 /* MACHINE */);
-            }
+        const onWillSaveStateBecauseOfShutdown = Event.filter(storageService.onWillSaveState, e => e.reason === WillSaveStateReason.SHUTDOWN);
+        Event.once(onWillSaveStateBecauseOfShutdown)(e => {
+            storageService.store(key, this._serialize(), 1 /* StorageScope.WORKSPACE */, 1 /* StorageTarget.MACHINE */);
         });
     }
     put(model, data) {
         // create a copy of the model that is without command-ids
         // but with comand-labels
-        const copyItems = data.lenses.map(item => {
-            var _a;
+        const copyItems = data.lenses.map((item) => {
             return {
                 range: item.symbol.range,
-                command: item.symbol.command && { id: '', title: (_a = item.symbol.command) === null || _a === void 0 ? void 0 : _a.title },
+                command: item.symbol.command && { id: '', title: item.symbol.command?.title },
             };
         });
         const copyModel = new CodeLensModel();
-        copyModel.add({ lenses: copyItems, dispose: () => { } }, this._fakeProvider);
+        copyModel.add({ lenses: copyItems }, this._fakeProvider);
         const item = new CacheItem(model.getLineCount(), copyModel);
         this._cache.set(model.uri.toString(), item);
     }
@@ -95,11 +94,11 @@ let CodeLensCache = class CodeLensCache {
                     lenses.push({ range: new Range(line, 1, line, 11) });
                 }
                 const model = new CodeLensModel();
-                model.add({ lenses, dispose() { } }, this._fakeProvider);
+                model.add({ lenses }, this._fakeProvider);
                 this._cache.set(key, new CacheItem(element.lineCount, model));
             }
         }
-        catch (_a) {
+        catch {
             // ignore...
         }
     }
@@ -108,4 +107,5 @@ CodeLensCache = __decorate([
     __param(0, IStorageService)
 ], CodeLensCache);
 export { CodeLensCache };
-registerSingleton(ICodeLensCache, CodeLensCache);
+registerSingleton(ICodeLensCache, CodeLensCache, 1 /* InstantiationType.Delayed */);
+//# sourceMappingURL=codeLensCache.js.map

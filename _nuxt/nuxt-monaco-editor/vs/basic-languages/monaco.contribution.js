@@ -1,10 +1,11 @@
 import '../editor/editor.api.js';
 /*!-----------------------------------------------------------------------------
  * Copyright (c) Microsoft Corporation. All rights reserved.
- * Version: 0.32.1(29a273516805a852aa8edc5e05059f119b13eff0)
+ * Version: 0.53.0(4e45ba0c5ff45fc61c0ccac61c0987369df04a6e)
  * Released under the MIT license
  * https://github.com/microsoft/monaco-editor/blob/main/LICENSE.txt
  *-----------------------------------------------------------------------------*/
+
 
 // src/basic-languages/monaco.contribution.ts
 import "./abap/abap.contribution.js";
@@ -19,6 +20,7 @@ import "./cpp/cpp.contribution.js";
 import "./csharp/csharp.contribution.js";
 import "./csp/csp.contribution.js";
 import "./css/css.contribution.js";
+import "./cypher/cypher.contribution.js";
 import "./dart/dart.contribution.js";
 import "./dockerfile/dockerfile.contribution.js";
 import "./ecl/ecl.contribution.js";
@@ -42,6 +44,7 @@ import "./lua/lua.contribution.js";
 import "./liquid/liquid.contribution.js";
 import "./m3/m3.contribution.js";
 import "./markdown/markdown.contribution.js";
+import "./mdx/mdx.contribution.js";
 import "./mips/mips.contribution.js";
 import "./msdax/msdax.contribution.js";
 import "./mysql/mysql.contribution.js";
@@ -81,6 +84,8 @@ import "./systemverilog/systemverilog.contribution.js";
 import "./tcl/tcl.contribution.js";
 import "./twig/twig.contribution.js";
 import "./typescript/typescript.contribution.js";
+import "./typespec/typespec.contribution.js";
 import "./vb/vb.contribution.js";
+import "./wgsl/wgsl.contribution.js";
 import "./xml/xml.contribution.js";
 import "./yaml/yaml.contribution.js";

@@ -1,9 +1,10 @@
 /*!-----------------------------------------------------------------------------
  * Copyright (c) Microsoft Corporation. All rights reserved.
- * Version: 0.32.1(29a273516805a852aa8edc5e05059f119b13eff0)
+ * Version: 0.53.0(4e45ba0c5ff45fc61c0ccac61c0987369df04a6e)
  * Released under the MIT license
  * https://github.com/microsoft/monaco-editor/blob/main/LICENSE.txt
  *-----------------------------------------------------------------------------*/
+
 
 // src/basic-languages/m3/m3.ts
 var conf = {
@@ -151,6 +152,7 @@ var language = {
   escapes: /\\(?:[\\fnrt"']|[0-7]{3})/,
   tokenizer: {
     root: [
+      // Identifiers and keywords
       [/_\w*/, "invalid"],
       [
         /[a-zA-Z][a-zA-Z0-9_]*/,
@@ -163,10 +165,13 @@ var language = {
           }
         }
       ],
+      // Whitespace
       { include: "@whitespace" },
       [/[{}()\[\]]/, "@brackets"],
+      // Integer- and real literals
       [/[0-9]+\.[0-9]+(?:[DdEeXx][\+\-]?[0-9]+)?/, "number.float"],
       [/[0-9]+(?:\_[0-9a-fA-F]+)?L?/, "number"],
+      // Operators, relations, and delimiters
       [
         /@symbols/,
         {
@@ -178,9 +183,11 @@ var language = {
           }
         }
       ],
+      // Character literals
       [/'[^\\']'/, "string.char"],
       [/(')(@escapes)(')/, ["string.char", "string.escape", "string.char"]],
       [/'/, "invalid"],
+      // Text literals
       [/"([^"\\]|\\.)*$/, "invalid"],
       [/"/, "string.text", "@text"]
     ],

@@ -2,13 +2,22 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-import { isFalsyOrEmpty } from '../../../base/common/arrays.js';
+import { isFalsyOrEmpty, isNonEmptyArray } from '../../../base/common/arrays.js';
 import { DebounceEmitter } from '../../../base/common/event.js';
 import { Iterable } from '../../../base/common/iterator.js';
-import { ResourceMap } from '../../../base/common/map.js';
+import { ResourceMap, ResourceSet } from '../../../base/common/map.js';
 import { Schemas } from '../../../base/common/network.js';
 import { URI } from '../../../base/common/uri.js';
+import { localize } from '../../../nls.js';
 import { MarkerSeverity } from './markers.js';
+export const unsupportedSchemas = new Set([
+    Schemas.inMemory,
+    Schemas.vscodeSourceControl,
+    Schemas.walkThrough,
+    Schemas.walkThroughSnippet,
+    Schemas.vscodeChatCodeBlock,
+    Schemas.vscodeTerminal
+]);
 class DoubleResourceMap {
     constructor() {
         this._byResource = new ResourceMap();
@@ -29,17 +38,17 @@ class DoubleResourceMap {
         resourceMap.set(resource, value);
     }
     get(resource, owner) {
-        let ownerMap = this._byResource.get(resource);
-        return ownerMap === null || ownerMap === void 0 ? void 0 : ownerMap.get(owner);
+        const ownerMap = this._byResource.get(resource);
+        return ownerMap?.get(owner);
     }
     delete(resource, owner) {
         let removedA = false;
         let removedB = false;
-        let ownerMap = this._byResource.get(resource);
+        const ownerMap = this._byResource.get(resource);
         if (ownerMap) {
             removedA = ownerMap.delete(owner);
         }
-        let resourceMap = this._byOwner.get(owner);
+        const resourceMap = this._byOwner.get(owner);
         if (resourceMap) {
             removedB = resourceMap.delete(resource);
         }
@@ -49,12 +58,11 @@ class DoubleResourceMap {
         return removedA && removedB;
     }
     values(key) {
-        var _a, _b, _c, _d;
         if (typeof key === 'string') {
-            return (_b = (_a = this._byOwner.get(key)) === null || _a === void 0 ? void 0 : _a.values()) !== null && _b !== void 0 ? _b : Iterable.empty();
+            return this._byOwner.get(key)?.values() ?? Iterable.empty();
         }
         if (URI.isUri(key)) {
-            return (_d = (_c = this._byResource.get(key)) === null || _c === void 0 ? void 0 : _c.values()) !== null && _d !== void 0 ? _d : Iterable.empty();
+            return this._byResource.get(key)?.values() ?? Iterable.empty();
         }
         return Iterable.map(Iterable.concat(...this._byOwner.values()), map => map[1]);
     }
@@ -86,7 +94,7 @@ class MarkerStats {
     _resourceStats(resource) {
         const result = { errors: 0, warnings: 0, infos: 0, unknowns: 0 };
         // TODO this is a hack
-        if (resource.scheme === Schemas.inMemory || resource.scheme === Schemas.walkThrough || resource.scheme === Schemas.walkThroughSnippet) {
+        if (unsupportedSchemas.has(resource.scheme)) {
             return result;
         }
         for (const { severity } of this._service.read({ resource })) {
@@ -127,6 +135,7 @@ export class MarkerService {
         this.onMarkerChanged = this._onMarkerChanged.event;
         this._data = new DoubleResourceMap();
         this._stats = new MarkerStats(this);
+        this._filteredResources = new ResourceMap();
     }
     dispose() {
         this._stats.dispose();
@@ -159,7 +168,7 @@ export class MarkerService {
         }
     }
     static _toMarker(owner, resource, data) {
-        let { code, severity, message, source, startLineNumber, startColumn, endLineNumber, endColumn, relatedInformation, tags, } = data;
+        let { code, severity, message, source, startLineNumber, startColumn, endLineNumber, endColumn, relatedInformation, tags, origin } = data;
         if (!message) {
             return undefined;
         }
@@ -181,6 +190,66 @@ export class MarkerService {
             endColumn,
             relatedInformation,
             tags,
+            origin
+        };
+    }
+    changeAll(owner, data) {
+        const changes = [];
+        // remove old marker
+        const existing = this._data.values(owner);
+        if (existing) {
+            for (const data of existing) {
+                const first = Iterable.first(data);
+                if (first) {
+                    changes.push(first.resource);
+                    this._data.delete(first.resource, owner);
+                }
+            }
+        }
+        // add new markers
+        if (isNonEmptyArray(data)) {
+            // group by resource
+            const groups = new ResourceMap();
+            for (const { resource, marker: markerData } of data) {
+                const marker = MarkerService._toMarker(owner, resource, markerData);
+                if (!marker) {
+                    // filter bad markers
+                    continue;
+                }
+                const array = groups.get(resource);
+                if (!array) {
+                    groups.set(resource, [marker]);
+                    changes.push(resource);
+                }
+                else {
+                    array.push(marker);
+                }
+            }
+            // insert all
+            for (const [resource, value] of groups) {
+                this._data.set(resource, owner, value);
+            }
+        }
+        if (changes.length > 0) {
+            this._onMarkerChanged.fire(changes);
+        }
+    }
+    /**
+     * Creates an information marker for filtered resources
+     */
+    _createFilteredMarker(resource, reasons) {
+        const message = reasons.length === 1
+            ? localize(1719, "Problems are paused because: \"{0}\"", reasons[0])
+            : localize(1720, "Problems are paused because: \"{0}\" and {1} more", reasons[0], reasons.length - 1);
+        return {
+            owner: 'markersFilter',
+            resource,
+            severity: MarkerSeverity.Info,
+            message,
+            startLineNumber: 1,
+            startColumn: 1,
+            endLineNumber: 1,
+            endColumn: 1,
         };
     }
     read(filter = Object.create(null)) {
@@ -190,49 +259,52 @@ export class MarkerService {
         }
         if (owner && resource) {
             // exactly one owner AND resource
+            const reasons = !filter.ignoreResourceFilters ? this._filteredResources.get(resource) : undefined;
+            if (reasons?.length) {
+                const infoMarker = this._createFilteredMarker(resource, reasons);
+                return [infoMarker];
+            }
             const data = this._data.get(resource, owner);
             if (!data) {
                 return [];
             }
-            else {
-                const result = [];
-                for (const marker of data) {
-                    if (MarkerService._accept(marker, severities)) {
-                        const newLen = result.push(marker);
-                        if (take > 0 && newLen === take) {
-                            break;
-                        }
-                    }
-                }
-                return result;
-            }
-        }
-        else if (!owner && !resource) {
-            // all
             const result = [];
-            for (let markers of this._data.values()) {
-                for (let data of markers) {
-                    if (MarkerService._accept(data, severities)) {
-                        const newLen = result.push(data);
-                        if (take > 0 && newLen === take) {
-                            return result;
-                        }
-                    }
+            for (const marker of data) {
+                if (take > 0 && result.length === take) {
+                    break;
+                }
+                const reasons = !filter.ignoreResourceFilters ? this._filteredResources.get(resource) : undefined;
+                if (reasons?.length) {
+                    result.push(this._createFilteredMarker(resource, reasons));
+                }
+                else if (MarkerService._accept(marker, severities)) {
+                    result.push(marker);
                 }
             }
             return result;
         }
         else {
             // of one resource OR owner
-            const iterable = this._data.values(resource !== null && resource !== void 0 ? resource : owner);
+            const iterable = !owner && !resource
+                ? this._data.values()
+                : this._data.values(resource ?? owner);
             const result = [];
+            const filtered = new ResourceSet();
             for (const markers of iterable) {
                 for (const data of markers) {
-                    if (MarkerService._accept(data, severities)) {
-                        const newLen = result.push(data);
-                        if (take > 0 && newLen === take) {
-                            return result;
-                        }
+                    if (filtered.has(data.resource)) {
+                        continue;
+                    }
+                    if (take > 0 && result.length === take) {
+                        break;
+                    }
+                    const reasons = !filter.ignoreResourceFilters ? this._filteredResources.get(data.resource) : undefined;
+                    if (reasons?.length) {
+                        result.push(this._createFilteredMarker(data.resource, reasons));
+                        filtered.add(data.resource);
+                    }
+                    else if (MarkerService._accept(data, severities)) {
+                        result.push(data);
                     }
                 }
             }
@@ -245,11 +317,12 @@ export class MarkerService {
     // --- event debounce logic
     static _merge(all) {
         const set = new ResourceMap();
-        for (let array of all) {
-            for (let item of array) {
+        for (const array of all) {
+            for (const item of array) {
                 set.set(item, true);
             }
         }
         return Array.from(set.keys());
     }
 }
+//# sourceMappingURL=markerService.js.map

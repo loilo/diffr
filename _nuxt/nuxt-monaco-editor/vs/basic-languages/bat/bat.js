@@ -1,9 +1,10 @@
 /*!-----------------------------------------------------------------------------
  * Copyright (c) Microsoft Corporation. All rights reserved.
- * Version: 0.32.1(29a273516805a852aa8edc5e05059f119b13eff0)
+ * Version: 0.53.0(4e45ba0c5ff45fc61c0ccac61c0987369df04a6e)
  * Released under the MIT license
  * https://github.com/microsoft/monaco-editor/blob/main/LICENSE.txt
  *-----------------------------------------------------------------------------*/
+
 
 // src/basic-languages/bat/bat.ts
 var conf = {
@@ -43,25 +44,36 @@ var language = {
     { token: "delimiter.square", open: "[", close: "]" }
   ],
   keywords: /call|defined|echo|errorlevel|exist|for|goto|if|pause|set|shift|start|title|not|pushd|popd/,
+  // we include these common regular expressions
   symbols: /[=><!~?&|+\-*\/\^;\.,]+/,
   escapes: /\\(?:[abfnrtv\\"']|x[0-9A-Fa-f]{1,4}|u[0-9A-Fa-f]{4}|U[0-9A-Fa-f]{8})/,
+  // The main tokenizer for our languages
   tokenizer: {
     root: [
       [/^(\s*)(rem(?:\s.*|))$/, ["", "comment"]],
       [/(\@?)(@keywords)(?!\w)/, [{ token: "keyword" }, { token: "keyword.$2" }]],
+      // whitespace
       [/[ \t\r\n]+/, ""],
+      // blocks
       [/setlocal(?!\w)/, "keyword.tag-setlocal"],
       [/endlocal(?!\w)/, "keyword.tag-setlocal"],
+      // words
       [/[a-zA-Z_]\w*/, ""],
+      // labels
       [/:\w*/, "metatag"],
+      // variables
       [/%[^%]+%/, "variable"],
       [/%%[\w]+(?!\w)/, "variable"],
+      // punctuations
       [/[{}()\[\]]/, "@brackets"],
       [/@symbols/, "delimiter"],
+      // numbers
       [/\d*\.\d+([eE][\-+]?\d+)?/, "number.float"],
       [/0[xX][0-9a-fA-F_]*[0-9a-fA-F]/, "number.hex"],
       [/\d+/, "number"],
+      // punctuation: after number because of .\d floats
       [/[;,.]/, "delimiter"],
+      // strings:
       [/"/, "string", '@string."'],
       [/'/, "string", "@string.'"]
     ],

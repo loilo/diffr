@@ -29,10 +29,10 @@ export class ScrollbarVisibilityController extends Disposable {
         this._updateShouldBeVisible();
     }
     _applyVisibilitySetting() {
-        if (this._visibility === 2 /* Hidden */) {
+        if (this._visibility === 2 /* ScrollbarVisibility.Hidden */) {
             return false;
         }
-        if (this._visibility === 3 /* Visible */) {
+        if (this._visibility === 3 /* ScrollbarVisibility.Visible */) {
             return true;
         }
         return this._rawShouldBeVisible;
@@ -76,9 +76,7 @@ export class ScrollbarVisibilityController extends Disposable {
         this._isVisible = true;
         // The CSS animation doesn't play otherwise
         this._revealTimer.setIfNotSet(() => {
-            if (this._domNode) {
-                this._domNode.setClassName(this._visibleClassName);
-            }
+            this._domNode?.setClassName(this._visibleClassName);
         }, 0);
     }
     _hide(withFadeAway) {
@@ -87,8 +85,7 @@ export class ScrollbarVisibilityController extends Disposable {
             return;
         }
         this._isVisible = false;
-        if (this._domNode) {
-            this._domNode.setClassName(this._invisibleClassName + (withFadeAway ? ' fade' : ''));
-        }
+        this._domNode?.setClassName(this._invisibleClassName + (withFadeAway ? ' fade' : ''));
     }
 }
+//# sourceMappingURL=scrollbarVisibilityController.js.map

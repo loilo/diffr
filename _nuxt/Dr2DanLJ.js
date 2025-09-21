@@ -1,0 +1,1 @@
+import"./DmIAt9tV.js";import{n as e,t}from"./CjFvkU5p.js";export{t as conf,e as language};

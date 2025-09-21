@@ -25,8 +25,11 @@ import { ComputeOptionsMemory, ConfigurationChangedEvent, editorOptionsRegistry 
 import { EditorZoom } from '../../common/config/editorZoom.js';
 import { BareFontInfo } from '../../common/config/fontInfo.js';
 import { IAccessibilityService } from '../../../platform/accessibility/common/accessibility.js';
+import { getWindow, getWindowById } from '../../../base/browser/dom.js';
+import { PixelRatio } from '../../../base/browser/pixelRatio.js';
+import { InputMode } from '../../common/inputMode.js';
 let EditorConfiguration = class EditorConfiguration extends Disposable {
-    constructor(isSimpleWidget, options, container, _accessibilityService) {
+    constructor(isSimpleWidget, contextMenuId, options, container, _accessibilityService) {
         super();
         this._accessibilityService = _accessibilityService;
         this._onDidChange = this._register(new Emitter());
@@ -37,21 +40,25 @@ let EditorConfiguration = class EditorConfiguration extends Disposable {
         this._viewLineCount = 1;
         this._lineNumbersDigitCount = 1;
         this._reservedHeight = 0;
+        this._glyphMarginDecorationLaneCount = 1;
         this._computeOptionsMemory = new ComputeOptionsMemory();
         this.isSimpleWidget = isSimpleWidget;
+        this.contextMenuId = contextMenuId;
         this._containerObserver = this._register(new ElementSizeObserver(container, options.dimension));
+        this._targetWindowId = getWindow(container).vscodeWindowId;
         this._rawOptions = deepCloneAndMigrateOptions(options);
         this._validatedOptions = EditorOptionsUtil.validateOptions(this._rawOptions);
         this.options = this._computeOptions();
-        if (this.options.get(10 /* automaticLayout */)) {
+        if (this.options.get(19 /* EditorOption.automaticLayout */)) {
             this._containerObserver.startObserving();
         }
         this._register(EditorZoom.onDidChangeZoomLevel(() => this._recomputeOptions()));
         this._register(TabFocus.onDidChangeTabFocus(() => this._recomputeOptions()));
         this._register(this._containerObserver.onDidChange(() => this._recomputeOptions()));
         this._register(FontMeasurements.onDidChange(() => this._recomputeOptions()));
-        this._register(browser.PixelRatio.onDidChange(() => this._recomputeOptions()));
+        this._register(PixelRatio.getInstance(getWindow(container)).onDidChange(() => this._recomputeOptions()));
         this._register(this._accessibilityService.onDidChangeScreenReaderOptimized(() => this._recomputeOptions()));
+        this._register(InputMode.onDidChangeInputMode(() => this._recomputeOptions()));
     }
     _recomputeOptions() {
         const newOptions = this._computeOptions();
@@ -79,8 +86,11 @@ let EditorConfiguration = class EditorConfiguration extends Disposable {
             lineNumbersDigitCount: this._lineNumbersDigitCount,
             emptySelectionClipboard: partialEnv.emptySelectionClipboard,
             pixelRatio: partialEnv.pixelRatio,
-            tabFocusMode: TabFocus.getTabFocusMode(),
-            accessibilitySupport: partialEnv.accessibilitySupport
+            tabFocusMode: this._validatedOptions.get(163 /* EditorOption.tabFocusMode */) || TabFocus.getTabFocusMode(),
+            inputMode: InputMode.getInputMode(),
+            accessibilitySupport: partialEnv.accessibilitySupport,
+            glyphMarginDecorationLaneCount: this._glyphMarginDecorationLaneCount,
+            editContextSupported: partialEnv.editContextSupported
         };
         return EditorOptionsUtil.computeOptions(this._validatedOptions, env);
     }
@@ -90,14 +100,15 @@ let EditorConfiguration = class EditorConfiguration extends Disposable {
             outerWidth: this._containerObserver.getWidth(),
             outerHeight: this._containerObserver.getHeight(),
             emptySelectionClipboard: browser.isWebKit || browser.isFirefox,
-            pixelRatio: browser.PixelRatio.value,
+            pixelRatio: PixelRatio.getInstance(getWindowById(this._targetWindowId, true).window).value,
+            editContextSupported: typeof globalThis.EditContext === 'function',
             accessibilitySupport: (this._accessibilityService.isScreenReaderOptimized()
-                ? 2 /* Enabled */
+                ? 2 /* AccessibilitySupport.Enabled */
                 : this._accessibilityService.getAccessibilitySupport())
         };
     }
     _readFontInfo(bareFontInfo) {
-        return FontMeasurements.readFontInfo(bareFontInfo);
+        return FontMeasurements.readFontInfo(getWindowById(this._targetWindowId, true).window, bareFontInfo);
     }
     getRawOptions() {
         return this._rawOptions;
@@ -143,9 +154,16 @@ let EditorConfiguration = class EditorConfiguration extends Disposable {
         this._reservedHeight = reservedHeight;
         this._recomputeOptions();
     }
+    setGlyphMarginDecorationLaneCount(decorationLaneCount) {
+        if (this._glyphMarginDecorationLaneCount === decorationLaneCount) {
+            return;
+        }
+        this._glyphMarginDecorationLaneCount = decorationLaneCount;
+        this._recomputeOptions();
+    }
 };
 EditorConfiguration = __decorate([
-    __param(3, IAccessibilityService)
+    __param(4, IAccessibilityService)
 ], EditorConfiguration);
 export { EditorConfiguration };
 function digitCount(n) {
@@ -158,13 +176,14 @@ function digitCount(n) {
 }
 function getExtraEditorClassName() {
     let extra = '';
-    if (!browser.isSafari && !browser.isWebkitWebView) {
-        // Use user-select: none in all browsers except Safari and native macOS WebView
-        extra += 'no-user-select ';
-    }
-    if (browser.isSafari) {
+    if (browser.isSafari || browser.isWebkitWebView) {
         // See https://github.com/microsoft/vscode/issues/108822
         extra += 'no-minimap-shadow ';
+        extra += 'enable-user-select ';
+    }
+    else {
+        // Use user-select: none in all browsers except Safari and native macOS WebView
+        extra += 'no-user-select ';
     }
     if (platform.isMacintosh) {
         extra += 'mac ';
@@ -268,3 +287,4 @@ function deepCloneAndMigrateOptions(_options) {
     migrateOptions(options);
     return options;
 }
+//# sourceMappingURL=editorConfiguration.js.map

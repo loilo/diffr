@@ -9,31 +9,29 @@ import { Disposable } from '../../../common/lifecycle.js';
 import './list.css';
 import { List } from './listWidget.js';
 class PagedRenderer {
+    get templateId() { return this.renderer.templateId; }
     constructor(renderer, modelProvider) {
         this.renderer = renderer;
         this.modelProvider = modelProvider;
     }
-    get templateId() { return this.renderer.templateId; }
     renderTemplate(container) {
         const data = this.renderer.renderTemplate(container);
         return { data, disposable: Disposable.None };
     }
-    renderElement(index, _, data, height) {
-        if (data.disposable) {
-            data.disposable.dispose();
-        }
+    renderElement(index, _, data, details) {
+        data.disposable?.dispose();
         if (!data.data) {
             return;
         }
         const model = this.modelProvider();
         if (model.isResolved(index)) {
-            return this.renderer.renderElement(model.get(index), index, data.data, height);
+            return this.renderer.renderElement(model.get(index), index, data.data, details);
         }
         const cts = new CancellationTokenSource();
         const promise = model.resolve(index, cts.token);
         data.disposable = { dispose: () => cts.cancel() };
         this.renderer.renderPlaceholder(index, data.data);
-        promise.then(entry => this.renderer.renderElement(entry, index, data.data, height));
+        promise.then(entry => this.renderer.renderElement(entry, index, data.data, details));
     }
     disposeTemplate(data) {
         if (data.disposable) {
@@ -63,7 +61,10 @@ class PagedAccessibilityProvider {
     }
 }
 function fromPagedListOptions(modelProvider, options) {
-    return Object.assign(Object.assign({}, options), { accessibilityProvider: options.accessibilityProvider && new PagedAccessibilityProvider(modelProvider, options.accessibilityProvider) });
+    return {
+        ...options,
+        accessibilityProvider: options.accessibilityProvider && new PagedAccessibilityProvider(modelProvider, options.accessibilityProvider)
+    };
 }
 export class PagedList {
     constructor(user, container, virtualDelegate, renderers, options = {}) {
@@ -79,6 +80,9 @@ export class PagedList {
     }
     get onDidFocus() {
         return this.list.onDidFocus;
+    }
+    get widget() {
+        return this.list;
     }
     get onDidDispose() {
         return this.list.onDidDispose;
@@ -115,3 +119,4 @@ export class PagedList {
         this.list.dispose();
     }
 }
+//# sourceMappingURL=listPaging.js.map
