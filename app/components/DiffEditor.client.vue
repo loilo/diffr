@@ -311,7 +311,7 @@ async function onDrop(event: DragEvent) {
 
   let value: string
   if (event.dataTransfer?.types.includes('Files')) {
-    value = await event.dataTransfer.files[0].text()
+    value = (await event.dataTransfer.files[0]?.text()) ?? ''
   } else {
     value = event.dataTransfer?.getData('text')!
   }

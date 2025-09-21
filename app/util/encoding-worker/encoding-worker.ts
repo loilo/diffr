@@ -1,8 +1,8 @@
 // Handle the actual LZ encoding/decoding
 import { encode, decode } from './encoding-tools'
 import {
-  DecodingWorkerResponse,
-  EncodingWorkerResponse,
+  type DecodingWorkerResponse,
+  type EncodingWorkerResponse,
   validateMessage,
 } from './encoding-utils'
 

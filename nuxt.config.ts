@@ -55,7 +55,5 @@ export default defineNuxtConfig({
     devOptions: { enabled: true, type: 'module' },
   },
   googleFonts: { families: { 'Fragment+Mono': [400], Poppins: [400] } },
-  imports: { dirs: ['./app/stores'] },
-  pinia: { autoImports: ['defineStore', 'acceptHMRUpdate'] },
   colorMode: { storageKey: 'theme', classSuffix: '' },
 })
