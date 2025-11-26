@@ -24,7 +24,7 @@
     "sass": "^1.93.0"
   },
   "dependencies": {
-    "@nuxtjs/color-mode": "^3.3.0",
+    "@nuxtjs/color-mode": "^4.0.0",
     "@vueuse/nuxt": "^14.0.0",
     "floating-vue": "^5.2.2",
     "lz-string": "^1.5.0",
