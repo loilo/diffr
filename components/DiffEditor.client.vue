@@ -49,7 +49,7 @@ let emit = defineEmits<Emits>()
 let isLoading = ref(true)
 
 let editorElementRef = ref<HTMLDivElement>()
-let monaco = useMonaco()!
+let monaco = await useMonaco()!
 
 let editor: Monaco.editor.IStandaloneDiffEditor
 let originalModel: Monaco.editor.ITextModel
