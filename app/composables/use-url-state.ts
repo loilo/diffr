@@ -4,7 +4,7 @@ import type {
   WorkerMessage,
   EncodingWorkerResponse,
   DecodingWorkerResponse,
-} from '~/util/encoding-worker/encoding-utils'
+} from '~/utils/encoding-worker/encoding-utils'
 
 export function useUrlState<T = any>() {
   if (import.meta.env.SSR)

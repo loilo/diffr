@@ -5,6 +5,7 @@ const baseURL = (String(import.meta.env.BASE_URL ?? '') + '/').replace(
 )
 
 export default defineNuxtConfig({
+  compatibilityDate: '2026-10-30',
   modules: [
     '@vite-pwa/nuxt',
     '@nuxtjs/color-mode',
@@ -14,8 +15,8 @@ export default defineNuxtConfig({
     '@nuxtjs/google-fonts',
     'nuxt-headlessui',
     'nuxt-monaco-editor',
-    '~/modules/floating-vue/module',
-    '~/modules/fix-manifest/module',
+    './modules/floating-vue/module',
+    './modules/fix-manifest/module',
   ],
   app: {
     baseURL,
