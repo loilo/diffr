@@ -15,7 +15,7 @@
     "@pinia/nuxt": "^1.0.0",
     "@tailwindcss/typography": "^0.5.9",
     "@types/node": "^26",
-    "@vite-pwa/nuxt": "^1.0.0",
+    "@vite-pwa/nuxt": "^2.0.1",
     "monaco-editor": "^0.32.1",
     "nuxt": "^4.6.4",
     "nuxt-headlessui": "^1.2.1",
